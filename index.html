@@ -78,33 +78,59 @@
                     </div>
 
                     <div class="summary-block">
-                        <div class="summary-block__content">
-                            <div class="summary-item">
-                                <span class="summary-item__label">Total de campanhas</span>
-                                <span class="summary-item__value" id="totalCampaigns">–</span>
+                        <div class="summary-split">
+                            <!-- ESQUERDA: mantém os dados atuais -->
+                            <div class="summary-left">
+                                <div class="summary-block__content">
+                                    <div class="summary-item">
+                                        <span class="summary-item__label">Investimento total</span>
+                                        <span class="summary-item__value" id="totalInvestment">–</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-item__label">Receita total</span>
+                                        <span class="summary-item__value" id="totalValue">–</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-item__label">Ticket médio geral</span>
+                                        <span class="summary-item__value" id="totalTicketMedioGeneral">–</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-item__label">CPL Geral</span>
+                                        <span class="summary-item__value" id="totalCplGeneral">–</span>
+                                    </div>
+
+                                </div>
                             </div>
 
-                            <div class="summary-item">
-                                <span class="summary-item__label">Total de leads</span>
-                                <span class="summary-item__value" id="totalLeads">–</span>
+                            <!-- DIREITA: novo KPI CPL Geral -->
+                            <!-- DIREITA: mesma estrutura de linhas -->
+                            <div class="summary-right">
+                                <div class="summary-block__content">
+                                    <div class="summary-item">
+                                        <span class="summary-item__label">Total de leads</span>
+                                        <span class="summary-item__value" id="totalLeads">–</span>
+                                    </div>
+
+                                    <div class="summary-item">
+                                        <span class="summary-item__label">Total de vendas</span>
+                                        <span class="summary-item__value" id="totalSales">–</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-item__label">Total de campanhas</span>
+                                        <span class="summary-item__value" id="totalCampaigns">–</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <span class="summary-item__label">Tempo médio de conversão</span>
+                                        <span class="summary-item__value" id="totalAvgGeneral">–</span>
+                                    </div>
+
+
+                                </div>
                             </div>
 
-                            <div class="summary-item">
-                                <span class="summary-item__label">Total de vendas</span>
-                                <span class="summary-item__value" id="totalSales">–</span>
-                            </div>
-
-                            <div class="summary-item">
-                                <span class="summary-item__label">Valor total</span>
-                                <span class="summary-item__value" id="totalValue">–</span>
-                            </div>
-
-                            <div class="summary-item">
-                                <span class="summary-item__label">Investimento total</span>
-                                <span class="summary-item__value" id="totalInvestment">–</span>
-                            </div>
                         </div>
                     </div>
+
                 </div>
 
                 <!-- ========== Facebook ========== -->
@@ -126,6 +152,7 @@
                                     <th data-sort="rpl">RPL <span class="sort-icon">↕</span></th>
                                     <th data-sort="investment">Investimento <span class="sort-icon">↕</span></th>
                                     <th data-sort="roas">ROAS <span class="sort-icon">↕</span></th>
+                                    <th data-sort="cpl">CPL <span class="sort-icon">↕</span></th>
                                     <th data-sort="cac">CAC <span class="sort-icon">↕</span></th>
                                     <th data-sort="avg_time_to_purchase_days">AVG (dias) <span
                                             class="sort-icon">↕</span></th>
@@ -174,6 +201,7 @@
                                     <th data-sort="investment"><span>Investimento</span> <span
                                             class="sort-icon">↕</span></th>
                                     <th data-sort="roas"><span>ROAS</span> <span class="sort-icon">↕</span></th>
+                                    <th data-sort="cpl"><span>CPL</span> <span class="sort-icon">↕</span></th>
                                     <th data-sort="cac"><span>CAC</span> <span class="sort-icon">↕</span></th>
                                     <th data-sort="avg_time_to_purchase_days"><span>AVG (dias)</span> <span
                                             class="sort-icon">↕</span></th>

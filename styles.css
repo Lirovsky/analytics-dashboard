@@ -863,3 +863,44 @@ body {
   background: var(--color-surface);
   font-size: var(--font-size-xs);
 }
+
+/* ========================================
+   Resumo Geral - split 50/50 (sem card)
+   ======================================== */
+.summary-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* meio a meio */
+  gap: var(--spacing-lg);
+  align-items: stretch;
+}
+
+.summary-left,
+.summary-right {
+  min-width: 0;
+}
+
+.summary-right {
+  border-left: 1px solid var(--color-border-light);
+  padding-left: var(--spacing-lg);
+}
+
+.summary-right-hint {
+  margin-top: 10px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  opacity: 0.9;
+}
+
+@media (max-width: 900px) {
+  .summary-split {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-right {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--color-border-light);
+    padding-top: var(--spacing-lg);
+  }
+}

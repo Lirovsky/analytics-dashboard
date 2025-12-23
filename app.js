@@ -103,6 +103,10 @@ const elements = {
   totalValue: dom.byId('totalValue'),
   totalInvestment: dom.byId('totalInvestment'),
   totalRPL: dom.byId('totalRPL'),
+  totalCplGeneral: dom.byId('totalCplGeneral'),
+  totalTicketMedioGeneral: dom.byId('totalTicketMedioGeneral'),
+  totalAvgGeneral: dom.byId('totalAvgGeneral'),
+
 
   // Funnel Tables (stages)
   moneyStatusBody: dom.byId('moneyStatusBody'),
@@ -322,6 +326,75 @@ const funnelRender = {
       </tr>
     `;
   },
+  funnelTotalRowNoPercent(stage, counts) {
+    const cells = counts
+      .map((count) => `<td><strong>${utils.formatNumber(count)}</strong></td><td></td>`)
+      .join('');
+
+    return `
+    <tr class="total-row">
+      <td><strong>${stage}</strong></td>
+      ${cells}
+    </tr>
+  `;
+  },
+
+
+  funnelTotalRow(stage, groups) {
+    const cells = groups
+      .map(
+        (g) => `
+        <td><strong>${utils.formatNumber(g.count)}</strong></td>
+        <td><strong>${utils.formatPercentage(g.percentage)}</strong></td>
+      `
+      )
+      .join('');
+
+    return `
+    <tr class="total-row">
+      <td><strong>${stage}</strong></td>
+      ${cells}
+    </tr>
+  `;
+  },
+
+  buildTotalByChannelCountsOnly(stages) {
+    const sumStages = ['Lead', '1ª Interação', 'Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
+    const keys = ['google', 'facebook', 'organic'];
+
+    return keys.map((k) =>
+      sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.count || 0), 0)
+    );
+  },
+
+
+  buildTotalMoneyStatus(stages) {
+    const sumStages = ['Lead', '1ª Interação', 'Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
+
+    const allCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.all?.count || 0), 0);
+    const yesCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.moneyYes?.count || 0), 0);
+    const noCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.moneyNo?.count || 0), 0);
+
+    return [
+      { count: allCount, percentage: 100 },
+      { count: yesCount, percentage: Number((utils.safeDivide(yesCount, allCount) * 100).toFixed(2)) },
+      { count: noCount, percentage: Number((utils.safeDivide(noCount, allCount) * 100).toFixed(2)) },
+    ];
+  },
+
+
+  buildTotalByChannel(stages) {
+    // mesmas linhas do funil (exceto "Conversando")
+    const sumStages = ['Lead', '1ª Interação', 'Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
+    const keys = ['google', 'facebook', 'organic'];
+
+    return keys.map((k) => {
+      const pct = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.percentage || 0), 0);
+      const count = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.count || 0), 0);
+      return { count, percentage: Number(pct.toFixed(2)) };
+    });
+  },
+
 
   buildConversandoMoneyStatus(stages) {
     const sumStages = ['Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
@@ -368,7 +441,10 @@ const funnelRender = {
       .join('');
 
     const conversando = this.funnelRow('Conversando', this.buildConversandoMoneyStatus(data.stages));
-    elements.moneyStatusBody.innerHTML = rows + conversando;
+    const total = this.funnelTotalRow('Total', this.buildTotalMoneyStatus(data.stages));
+
+    elements.moneyStatusBody.innerHTML = rows + conversando + total;
+
   },
 
   channelTable(data) {
@@ -394,7 +470,11 @@ const funnelRender = {
       .join('');
 
     const conversando = this.funnelRow('Conversando', this.buildConversandoByChannel(data.stages));
-    elements.channelFunnelBody.innerHTML = rows + conversando;
+    const total = this.funnelTotalRowNoPercent('Total', this.buildTotalByChannelCountsOnly(data.stages));
+
+
+    elements.channelFunnelBody.innerHTML = rows + conversando + total;
+
   },
 };
 
@@ -409,6 +489,8 @@ const campaignsRender = {
 
     const ticketMedio = utils.safeDivide(value, sales);
     const rpl = utils.safeDivide(value, leads);
+    const cpl = utils.safeDivide(campaign.investment, leads);
+
 
     const valueClass = value > 0 ? 'value-positive' : '';
     const roasClass = (Number(campaign.roas) || 0) >= 1 ? 'value-positive' : 'value-negative';
@@ -424,6 +506,7 @@ const campaignsRender = {
           <td>${utils.formatCurrency(rpl)}</td>
           <td>${utils.formatCurrency(campaign.investment)}</td>
           <td class="${roasClass}">${utils.formatROAS(campaign.roas)}</td>
+          <td>${utils.formatCurrency(cpl)}</td>
           <td>${utils.formatCurrency(campaign.cac)}</td>
           <td>${utils.formatDays(campaign.avg_time_to_purchase_days)}</td>
         </tr>
@@ -449,6 +532,8 @@ const campaignsRender = {
 
     const ticketMedioTotal = utils.safeDivide(value, sales);
     const rplTotal = utils.safeDivide(value, leads);
+    const cpl = leads > 0 ? investment / leads : null;
+
 
     if (includeInvestment) {
       return `
@@ -461,6 +546,7 @@ const campaignsRender = {
           <td><strong>${utils.formatCurrency(rplTotal)}</strong></td>
           <td><strong>${utils.formatCurrency(investment)}</strong></td>
           <td><strong>${utils.formatROAS(roas)}</strong></td>
+          <td><strong>${utils.formatCurrency(cpl)}</strong></td>
           <td><strong>${utils.formatCurrency(cac)}</strong></td>
           <td><strong>${utils.formatDays(avgDaysTotal)}</strong></td>
         </tr>
@@ -491,13 +577,13 @@ const campaignsRender = {
         const v = Number(c.value) || 0;
         const s = Number(c.sales) || 0;
         const l = Number(c.leads) || 0;
-        return { ...c, ticket_medio: utils.safeDivide(v, s), rpl: utils.safeDivide(v, l) };
+        return { ...c, ticket_medio: utils.safeDivide(v, s), rpl: utils.safeDivide(v, l), cpl: utils.safeDivide(Number(c.investment) || 0, l) };
       });
 
       const sorted = sortCampaigns(enriched);
 
       if (!sorted.length) {
-        bodyEl.innerHTML = ui.renderEmptyState('Sem dados', includeInvestment ? 10 : 7);
+        bodyEl.innerHTML = ui.renderEmptyState('Sem dados', includeInvestment ? 11 : 7);
         updatePaginationUI(channel, { page: 1, totalPages: 1 });
         return;
       }
@@ -555,6 +641,94 @@ const campaignsRender = {
     const gg = data?.google || [];
     const org = data?.organic || [];
     const all = [...fb, ...gg, ...org];
+
+    const fbAvgAgg = fb.reduce(
+      (acc, c) => {
+        const avg = Number(c.avg_time_to_purchase_days);
+        const sales = Number(c.sales) || 0;
+
+        if (!isNaN(avg) && sales > 0) {
+          acc.weightedSum += avg * sales;
+          acc.sales += sales;
+        }
+
+        return acc;
+      },
+      { weightedSum: 0, sales: 0 }
+    );
+
+    const ggAvgAgg = gg.reduce(
+      (acc, c) => {
+        const avg = Number(c.avg_time_to_purchase_days);
+        const sales = Number(c.sales) || 0;
+
+        if (!isNaN(avg) && sales > 0) {
+          acc.weightedSum += avg * sales;
+          acc.sales += sales;
+        }
+
+        return acc;
+      },
+      { weightedSum: 0, sales: 0 }
+    );
+
+    const avgGeneral = utils.safeDivide(
+      fbAvgAgg.weightedSum + ggAvgAgg.weightedSum,
+      fbAvgAgg.sales + ggAvgAgg.sales
+    );
+
+    if (elements.totalAvgGeneral) {
+      elements.totalAvgGeneral.textContent = utils.formatDays(avgGeneral);
+    }
+
+
+    const fbAgg = fb.reduce(
+      (acc, c) => {
+        acc.leads += Number(c.leads) || 0;
+        acc.sales += Number(c.sales) || 0;
+        acc.value += Number(c.value) || 0;
+        acc.investment += Number(c.investment) || 0;
+        return acc;
+      },
+      { leads: 0, sales: 0, value: 0, investment: 0 }
+    );
+
+    const ggAgg = gg.reduce(
+      (acc, c) => {
+        acc.leads += Number(c.leads) || 0;
+        acc.sales += Number(c.sales) || 0;
+        acc.value += Number(c.value) || 0;
+        acc.investment += Number(c.investment) || 0;
+        return acc;
+      },
+      { leads: 0, sales: 0, value: 0, investment: 0 }
+    );
+
+    // CPL geral (já existente)
+    const cplGeneral = utils.safeDivide(
+      fbAgg.investment + ggAgg.investment,
+      fbAgg.leads + ggAgg.leads
+    );
+
+    if (elements.totalCplGeneral) {
+      elements.totalCplGeneral.textContent = utils.formatCurrency(cplGeneral);
+    }
+
+    // Ticket médio geral (novo)
+    const ticketMedioGeneral = utils.safeDivide(
+      fbAgg.value + ggAgg.value,
+      fbAgg.sales + ggAgg.sales
+    );
+
+    if (elements.totalTicketMedioGeneral) {
+      elements.totalTicketMedioGeneral.textContent = utils.formatCurrency(ticketMedioGeneral);
+    }
+
+
+    if (elements.totalCplGeneral) {
+      elements.totalCplGeneral.textContent = utils.formatCurrency(cplGeneral);
+    }
+
 
     const totals = all.reduce(
       (acc, c) => {
@@ -658,8 +832,8 @@ async function loadMetrics(mode = 'both') {
   }
 
   ui.showLoading();
-  if (elements.facebookBody) elements.facebookBody.innerHTML = ui.renderSkeleton(3, 10);
-  if (elements.googleBody) elements.googleBody.innerHTML = ui.renderSkeleton(3, 10);
+  if (elements.facebookBody) elements.facebookBody.innerHTML = ui.renderSkeleton(3, 11);
+  if (elements.googleBody) elements.googleBody.innerHTML = ui.renderSkeleton(3, 11);
   if (elements.organicBody) elements.organicBody.innerHTML = ui.renderSkeleton(3, 7);
 
   try {
