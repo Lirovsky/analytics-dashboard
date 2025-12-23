@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-page="metrics">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analytics Dashboard • Métricas</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <!-- ================= Navbar ================= -->
+    <header class="top-nav">
+        <div class="top-nav__inner">
+            <div class="top-nav__brand">Analytics</div>
+
+            <nav class="top-nav__links">
+                <a class="top-nav__link is-active" href="metrics.html">Métricas</a>
+                <a class="top-nav__link" href="stages.html">Stages</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <!-- ================= Filtro ================= -->
+        <aside class="filter-panel">
+            <h3 class="filter-panel__title">Filtro</h3>
+
+            <div class="filter-panel__controls">
+                <div class="filter-group">
+                    <label for="entryStartDate">Entrada • Data inicial</label>
+                    <input type="date" id="entryStartDate" class="date-input" />
+                </div>
+
+                <div class="filter-group">
+                    <label for="entryEndDate">Entrada • Data final</label>
+                    <input type="date" id="entryEndDate" class="date-input" />
+                </div>
+
+                <button id="clearEntryDates" class="btn btn--primary">Limpar</button>
+
+                <div class="filter-group">
+                    <label for="purchaseStartDateInput">Compra • Data inicial</label>
+                    <input type="date" id="purchaseStartDateInput" class="date-input" />
+                </div>
+
+                <div class="filter-group">
+                    <label for="purchaseEndDateInput">Compra • Data final</label>
+                    <input type="date" id="purchaseEndDateInput" class="date-input" />
+                </div>
+
+                <hr style="opacity:.2; width:100%; border:none; border-top:1px solid currentColor;" />
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button id="applyEntryOnly" class="btn btn--primary">Entrada</button>
+                    <button id="applyPurchaseOnly" class="btn btn--primary">Compra</button>
+                    <button id="applyFilters" class="btn btn--primary">Entrada + Compra</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ================= Campanhas ================= -->
+        <section class="section section--campaigns">
+            <h2 class="section__title">Campanhas</h2>
+
+            <div class="campaigns-grid">
+
+                <!-- ========== Resumo Geral ========== -->
+                <div class="summary-card table-block table-block--summary">
+                    <div class="table-block__header">
+                        <span class="table-block__icon">📊</span>
+                        <h3>Resumo Geral</h3>
+                    </div>
+
+                    <div class="summary-block">
+                        <div class="summary-block__content">
+                            <div class="summary-item">
+                                <span class="summary-item__label">Total de campanhas</span>
+                                <span class="summary-item__value" id="totalCampaigns">–</span>
+                            </div>
+
+                            <div class="summary-item">
+                                <span class="summary-item__label">Total de leads</span>
+                                <span class="summary-item__value" id="totalLeads">–</span>
+                            </div>
+
+                            <div class="summary-item">
+                                <span class="summary-item__label">Total de vendas</span>
+                                <span class="summary-item__value" id="totalSales">–</span>
+                            </div>
+
+                            <div class="summary-item">
+                                <span class="summary-item__label">Valor total</span>
+                                <span class="summary-item__value" id="totalValue">–</span>
+                            </div>
+
+                            <div class="summary-item">
+                                <span class="summary-item__label">Investimento total</span>
+                                <span class="summary-item__value" id="totalInvestment">–</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========== Facebook ========== -->
+                <div class="table-block table-block--facebook">
+                    <div class="table-block__header">
+                        <span class="table-block__icon">📘</span>
+                        <h3>Facebook</h3>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th data-sort="leads">Leads <span class="sort-icon">↕</span></th>
+                                    <th data-sort="sales">Vendas <span class="sort-icon">↕</span></th>
+                                    <th data-sort="value">Valor <span class="sort-icon">↕</span></th>
+                                    <th data-sort="ticket_medio">Ticket Médio <span class="sort-icon">↕</span></th>
+                                    <th data-sort="rpl">RPL <span class="sort-icon">↕</span></th>
+                                    <th data-sort="investment">Investimento <span class="sort-icon">↕</span></th>
+                                    <th data-sort="roas">ROAS <span class="sort-icon">↕</span></th>
+                                    <th data-sort="cac">CAC <span class="sort-icon">↕</span></th>
+                                    <th data-sort="avg_time_to_purchase_days">AVG (dias) <span
+                                            class="sort-icon">↕</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="facebookBody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação -->
+                    <div class="pagination" data-channel="facebook">
+                        <button class="pg-btn" data-action="prev" type="button">‹</button>
+                        <span class="pg-info" id="facebookPageInfo">1 / 1</span>
+                        <button class="pg-btn" data-action="next" type="button">›</button>
+
+                        <span class="pg-sep"></span>
+
+                        <label class="pg-label">Linhas</label>
+                        <select class="pg-size" data-action="size">
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ========== Google ========== -->
+                <div class="table-block table-block--google">
+                    <div class="table-block__header">
+                        <span class="table-block__icon">🔍</span>
+                        <h3>Google</h3>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th data-sort="leads"><span>Leads</span> <span class="sort-icon">↕</span></th>
+                                    <th data-sort="sales"><span>Vendas</span> <span class="sort-icon">↕</span></th>
+                                    <th data-sort="value"><span>Valor</span> <span class="sort-icon">↕</span></th>
+                                    <th data-sort="ticket_medio"><span>Ticket Médio</span> <span
+                                            class="sort-icon">↕</span></th>
+                                    <th data-sort="rpl"><span>RPL</span> <span class="sort-icon">↕</span></th>
+                                    <th data-sort="investment"><span>Investimento</span> <span
+                                            class="sort-icon">↕</span></th>
+                                    <th data-sort="roas"><span>ROAS</span> <span class="sort-icon">↕</span></th>
+                                    <th data-sort="cac"><span>CAC</span> <span class="sort-icon">↕</span></th>
+                                    <th data-sort="avg_time_to_purchase_days"><span>AVG (dias)</span> <span
+                                            class="sort-icon">↕</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="googleBody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação -->
+                    <div class="pagination" data-channel="google">
+                        <button class="pg-btn" data-action="prev" type="button">‹</button>
+                        <span class="pg-info" id="googlePageInfo">1 / 1</span>
+                        <button class="pg-btn" data-action="next" type="button">›</button>
+
+                        <span class="pg-sep"></span>
+
+                        <label class="pg-label">Linhas</label>
+                        <select class="pg-size" data-action="size">
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ========== Orgânico ========== -->
+                <div class="table-block table-block--organic">
+                    <div class="table-block__header">
+                        <span class="table-block__icon">🌱</span>
+                        <h3>Orgânico</h3>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th data-sort="leads">Leads <span class="sort-icon">↕</span></th>
+                                    <th data-sort="sales">Vendas <span class="sort-icon">↕</span></th>
+                                    <th data-sort="value">Valor <span class="sort-icon">↕</span></th>
+                                    <th data-sort="ticket_medio">Ticket Médio <span class="sort-icon">↕</span></th>
+                                    <th data-sort="rpl">RPL <span class="sort-icon">↕</span></th>
+                                    <th data-sort="avg_time_to_purchase_days">AVG (dias) <span
+                                            class="sort-icon">↕</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="organicBody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação -->
+                    <div class="pagination" data-channel="organic">
+                        <button class="pg-btn" data-action="prev" type="button">‹</button>
+                        <span class="pg-info" id="organicPageInfo">1 / 1</span>
+                        <button class="pg-btn" data-action="next" type="button">›</button>
+
+                        <span class="pg-sep"></span>
+
+                        <label class="pg-label">Linhas</label>
+                        <select class="pg-size" data-action="size">
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Loading / Error -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <div class="toast toast--error" id="errorToast">
+            <span class="toast__icon">⚠️</span>
+            <span class="toast__message" id="errorMessage">Error loading data</span>
+            <button class="toast__close" id="closeToast">×</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

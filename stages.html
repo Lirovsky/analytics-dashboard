@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-page="stages">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analytics Dashboard • Stages</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <!-- ================= Navbar ================= -->
+    <header class="top-nav">
+        <div class="top-nav__inner">
+            <div class="top-nav__brand">Analytics</div>
+
+            <nav class="top-nav__links">
+                <a class="top-nav__link" href="metrics.html">Métricas</a>
+                <a class="top-nav__link is-active" href="stages.html">Stages</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <!-- ================= Filtro ================= -->
+        <aside class="filter-panel">
+            <h3 class="filter-panel__title">Filtro</h3>
+
+            <div class="filter-panel__controls">
+                <div class="filter-group">
+                    <label for="entryStartDate">Entrada • Data inicial</label>
+                    <input type="date" id="entryStartDate" class="date-input" />
+                </div>
+
+                <div class="filter-group">
+                    <label for="entryEndDate">Entrada • Data final</label>
+                    <input type="date" id="entryEndDate" class="date-input" />
+                </div>
+
+                <div class="filter-group">
+                    <label for="stageSelect">Stage</label>
+                    <select id="stageSelect" class="date-input">
+                        <option value="">Todos</option>
+                        <option value="Lead">Lead</option>
+                        <option value="1ª Interação">1ª Interação</option>
+                        <option value="Apresentação">Apresentação</option>
+                        <option value="Proposta Enviada">Proposta Enviada</option>
+                        <option value="Pagamento Pendente">Pagamento Pendente</option>
+                        <option value="Assinou">Assinou</option>
+                    </select>
+                </div>
+
+                <!-- <button id="clearEntryDates" class="btn btn--primary">Limpar</button> -->
+
+                <hr style="opacity:.2; width:100%; border:none; border-top:1px solid currentColor;" />
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button id="applyEntryOnly" class="btn btn--primary">Aplicar</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ================= Funil ================= -->
+        <section class="section section--funnel">
+            <h2 class="section__title">Funil / Stages</h2>
+
+            <div class="funnel-block">
+                <h3 class="funnel-block__title">Funil por Money Status</h3>
+                <div class="table-wrapper">
+                    <table class="data-table data-table--funnel">
+                        <thead>
+                            <tr>
+                                <th class="stage-col">Stage</th>
+                                <th colspan="2" class="group-header group-header--all">Todos</th>
+                                <th colspan="2" class="group-header group-header--yes">Money Yes</th>
+                                <th colspan="2" class="group-header group-header--no">Money No</th>
+                            </tr>
+                            <tr class="subheader">
+                                <th></th>
+                                <th>Qtd</th>
+                                <th>%</th>
+                                <th>Qtd</th>
+                                <th>%</th>
+                                <th>Qtd</th>
+                                <th>%</th>
+                            </tr>
+                        </thead>
+                        <tbody id="moneyStatusBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="funnel-block">
+                <h3 class="funnel-block__title">Funil por Canal</h3>
+                <div class="table-wrapper">
+                    <table class="data-table data-table--funnel">
+                        <thead>
+                            <tr>
+                                <th class="stage-col">Stage</th>
+                                <th colspan="2" class="group-header group-header--google">Google</th>
+                                <th colspan="2" class="group-header group-header--facebook">Facebook</th>
+                                <th colspan="2" class="group-header group-header--organic">Orgânico</th>
+                            </tr>
+                            <tr class="subheader">
+                                <th></th>
+                                <th>Qtd</th>
+                                <th>%</th>
+                                <th>Qtd</th>
+                                <th>%</th>
+                                <th>Qtd</th>
+                                <th>%</th>
+                            </tr>
+                        </thead>
+                        <tbody id="channelFunnelBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading / Error -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <div class="toast toast--error" id="errorToast">
+            <span class="toast__icon">⚠️</span>
+            <span class="toast__message" id="errorMessage">Error loading data</span>
+            <button class="toast__close" id="closeToast">×</button>
+        </div>
+
+
+        <script src="app.js"></script>
+</body>
+
+</html>
