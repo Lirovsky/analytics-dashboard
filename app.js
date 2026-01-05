@@ -4,6 +4,7 @@
 const CONFIG = {
   CAMPAIGNS_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/campaigns',
   FUNNEL_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/funnel',
+  AREAS_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/areas',
   DEFAULT_DAYS_BACK: 0, // 0 = hoje
 };
 
@@ -64,6 +65,7 @@ const dom = {
 // ========================================
 const page = document.documentElement.getAttribute('data-page') || 'metrics';
 const isStages = page === 'stages';
+const isAreas = page === 'areas';
 
 // ========================================
 // DOM Elements
@@ -112,6 +114,11 @@ const elements = {
   moneyStatusBody: dom.byId('moneyStatusBody'),
   channelFunnelBody: dom.byId('channelFunnelBody'),
 
+  // Areas (areas)
+  areasBody: dom.byId('areasBody'),
+  teamsBody: dom.byId('teamsBody'),
+
+
   // UI
   loadingOverlay: dom.byId('loadingOverlay'),
   errorToast: dom.byId('errorToast'),
@@ -130,6 +137,11 @@ const needs = {
   funnel:
     dom.exists(elements.moneyStatusBody) ||
     dom.exists(elements.channelFunnelBody),
+
+
+  areas:
+    dom.exists(elements.areasBody) ||
+    dom.exists(elements.teamsBody),
 };
 
 // ========================================
@@ -139,6 +151,12 @@ const state = {
   sort: { key: null, direction: 'desc' },
   campaignsData: null,
   funnelData: null,
+  areasData: null,
+
+  areasSort: {
+    areas: { key: 'leads', direction: 'desc' },
+    teams: { key: 'leads', direction: 'desc' },
+  },
 
   // Paginação por tabela (somente métricas)
   pagination: {
@@ -214,6 +232,23 @@ const api = {
   async fetchFunnel(paramsObj) {
     const url = this.buildUrl(CONFIG.FUNNEL_ENDPOINT, paramsObj);
     const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  },
+
+  async fetchAreas(paramsObj) {
+    // O webhook /areas está configurado para aceitar POST (e OPTIONS para preflight).
+    // Usar GET aqui pode retornar 500/405 dependendo do fluxo no n8n.
+    // Para compatibilidade com fluxos que leem "query" no n8n, enviamos as datas em:
+    // 1) querystring e 2) body JSON.
+    const url = this.buildUrl(CONFIG.AREAS_ENDPOINT, paramsObj);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(paramsObj || {}),
+    });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   },
@@ -756,6 +791,160 @@ const campaignsRender = {
 };
 
 // ========================================
+// Render: AREAS (Areas)
+// ========================================
+const areasRender = {
+  normalize(payload) {
+    const raw = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.areas)
+        ? payload.areas
+        : Array.isArray(payload?.byArea)
+          ? payload.byArea
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+
+    return raw
+      .map((row) => {
+        const area =
+          row?.area ??
+          row?.name ??
+          row?.label ??
+          row?.category ??
+          row?.field ??
+          '–';
+
+        const leads =
+          Number(row?.leads ?? row?.count ?? row?.qty ?? row?.total ?? 0) || 0;
+
+        return { area: String(area), leads };
+      })
+      .filter((r) => r.area && r.area !== '–');
+  },
+
+  table(payload) {
+    if (!elements.areasBody) return;
+
+    const rows = this.normalize(payload);
+    if (!rows.length) {
+      elements.areasBody.innerHTML = ui.renderEmptyState('Sem dados de áreas', 3);
+      return;
+    }
+
+    // dentro de areasRender.table(payload)
+    const cfg = state.areasSort.areas;
+    const dir = cfg.direction === 'asc' ? 1 : -1;
+
+    rows.sort((a, b) => {
+      if (cfg.key === 'leads') return ((a.leads || 0) - (b.leads || 0)) * dir;
+      // cfg.key === 'area'
+      return a.area.localeCompare(b.area, 'pt-BR', { sensitivity: 'base' }) * dir;
+    });
+
+    const total = rows.reduce((acc, r) => acc + (Number(r.leads) || 0), 0);
+
+    const htmlRows = rows
+      .map((r) => {
+        const pct = total > 0 ? (r.leads / total) * 100 : 0;
+        return `
+          <tr>
+            <td style="text-align:left">${r.area}</td>
+            <td>${utils.formatNumber(r.leads)}</td>
+            <td>${utils.formatPercentage(pct)}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const totalRow = `
+      <tr class="total-row">
+        <td style="text-align:left"><strong>Total</strong></td>
+        <td><strong>${utils.formatNumber(total)}</strong></td>
+        <td><strong>${utils.formatPercentage(100)}</strong></td>
+      </tr>
+    `;
+
+    elements.areasBody.innerHTML = htmlRows + totalRow;
+  },
+};
+
+const teamsRender = {
+  normalize(payload) {
+    const raw = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.teams)
+        ? payload.teams
+        : Array.isArray(payload?.byTeam)
+          ? payload.byTeam
+          : Array.isArray(payload?.data?.teams)
+            ? payload.data.teams
+            : [];
+
+    return raw
+      .map((row) => {
+        const team =
+          row?.team ??
+          row?.name ??
+          row?.label ??
+          row?.field ??
+          '–';
+
+        const leads =
+          Number(row?.leads ?? row?.count ?? row?.qty ?? row?.total ?? 0) || 0;
+
+        return { team: String(team), leads };
+      })
+      .filter((r) => r.team && r.team !== '–');
+  },
+
+  table(payload) {
+    if (!elements.teamsBody) return;
+
+    const rows = this.normalize(payload);
+    if (!rows.length) {
+      elements.teamsBody.innerHTML = ui.renderEmptyState('Sem dados de times', 3);
+      return;
+    }
+
+    const cfg = state.areasSort.teams;
+    const dir = cfg.direction === 'asc' ? 1 : -1;
+
+    rows.sort((a, b) => {
+      if (cfg.key === 'leads') return ((a.leads || 0) - (b.leads || 0)) * dir;
+      // cfg.key === 'team'
+      return a.team.localeCompare(b.team, 'pt-BR', { sensitivity: 'base' }) * dir;
+    });
+
+    const total = rows.reduce((acc, r) => acc + (Number(r.leads) || 0), 0);
+
+    const htmlRows = rows
+      .map((r) => {
+        const pct = total > 0 ? (r.leads / total) * 100 : 0;
+        return `
+          <tr>
+            <td style="text-align:left">${r.team}</td>
+            <td>${utils.formatNumber(r.leads)}</td>
+            <td>${utils.formatPercentage(pct)}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const totalRow = `
+      <tr class="total-row">
+        <td style="text-align:left"><strong>Total</strong></td>
+        <td><strong>${utils.formatNumber(total)}</strong></td>
+        <td><strong>${utils.formatPercentage(100)}</strong></td>
+      </tr>
+    `;
+
+    elements.teamsBody.innerHTML = htmlRows + totalRow;
+  },
+};
+
+
+// ========================================
 // Data loaders
 // ========================================
 async function loadStages() {
@@ -793,6 +982,41 @@ async function loadStages() {
     ui.showError(`Failed to load funnel: ${e.message}`);
     if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 7);
     if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 7);
+  } finally {
+    ui.hideLoading();
+  }
+}
+
+
+async function loadAreas() {
+  const entryStart = elements.entryStartInput?.value || '';
+  const entryEnd = elements.entryEndInput?.value || '';
+
+  if (!entryStart || !entryEnd) {
+    ui.showError('Selecione as datas de entrada');
+    return;
+  }
+
+  ui.showLoading();
+  if (elements.areasBody) elements.areasBody.innerHTML = ui.renderSkeleton(6, 3);
+  if (elements.teamsBody) elements.teamsBody.innerHTML = ui.renderSkeleton(6, 3);
+
+
+  try {
+    const params = { entry_start: entryStart, entry_end: entryEnd };
+    const res = await api.fetchAreas(params);
+    const payload = Array.isArray(res) ? res[0] : res;
+
+    state.areasData = payload;
+
+    areasRender.table(payload || null);
+    teamsRender.table(payload || null);
+
+  } catch (e) {
+    ui.showError(`Failed to load areas: ${e.message}`);
+    if (elements.areasBody) elements.areasBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 3);
+    if (elements.teamsBody) elements.teamsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 3);
+
   } finally {
     ui.hideLoading();
   }
@@ -879,6 +1103,14 @@ function clearDatesStages() {
   loadStages();
 }
 
+
+function clearDatesAreas() {
+  const today = utils.today();
+  if (elements.entryStartInput) elements.entryStartInput.value = today;
+  if (elements.entryEndInput) elements.entryEndInput.value = today;
+  loadAreas();
+}
+
 function clearDatesMetrics() {
   if (elements.entryStartInput) elements.entryStartInput.value = '2025-01-01';
   if (elements.entryEndInput) elements.entryEndInput.value = utils.today();
@@ -922,6 +1154,41 @@ function setupPaginationListeners() {
   });
 }
 
+function setupAreasSortListeners() {
+  // Tabela Áreas
+  document.querySelectorAll('#areasBody').forEach(() => {
+    const table = document.querySelector('#areasBody')?.closest('table');
+    table?.querySelectorAll('th[data-sort]')?.forEach((th) => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sort; // 'area' | 'leads'
+        const cfg = state.areasSort.areas;
+
+        if (cfg.key === key) cfg.direction = cfg.direction === 'asc' ? 'desc' : 'asc';
+        else { cfg.key = key; cfg.direction = 'desc'; }
+
+        if (state.areasData) areasRender.table(state.areasData);
+      });
+    });
+  });
+
+  // Tabela Times
+  document.querySelectorAll('#teamsBody').forEach(() => {
+    const table = document.querySelector('#teamsBody')?.closest('table');
+    table?.querySelectorAll('th[data-sort]')?.forEach((th) => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sort; // 'team' | 'leads'
+        const cfg = state.areasSort.teams;
+
+        if (cfg.key === key) cfg.direction = cfg.direction === 'asc' ? 'desc' : 'asc';
+        else { cfg.key = key; cfg.direction = 'desc'; }
+
+        if (state.areasData) teamsRender.table(state.areasData);
+      });
+    });
+  });
+}
+
+
 function setupEventListeners() {
   if (elements.closeToast) elements.closeToast.addEventListener('click', () => ui.hideError());
 
@@ -929,6 +1196,7 @@ function setupEventListeners() {
   if (elements.clearEntryDates) {
     elements.clearEntryDates.addEventListener('click', () => {
       if (isStages) clearDatesStages();
+      else if (isAreas) clearDatesAreas();
       else {
         clearDatesMetrics();
       }
@@ -940,16 +1208,26 @@ function setupEventListeners() {
     if (elements.applyEntryOnly) elements.applyEntryOnly.addEventListener('click', loadStages);
     if (elements.applyPurchaseOnly) elements.applyPurchaseOnly.addEventListener('click', loadStages);
     if (elements.applyFilters) elements.applyFilters.addEventListener('click', loadStages);
+  } else if (isAreas) {
+    if (elements.applyEntryOnly) elements.applyEntryOnly.addEventListener('click', loadAreas);
+    if (elements.applyPurchaseOnly) elements.applyPurchaseOnly.addEventListener('click', loadAreas);
+    if (elements.applyFilters) elements.applyFilters.addEventListener('click', loadAreas);
   } else {
     if (elements.applyEntryOnly) elements.applyEntryOnly.addEventListener('click', () => loadMetrics('entry'));
     if (elements.applyPurchaseOnly) elements.applyPurchaseOnly.addEventListener('click', () => loadMetrics('purchase'));
     if (elements.applyFilters) elements.applyFilters.addEventListener('click', () => loadMetrics('both'));
   }
+  if (isAreas) {
+    setupAreasSortListeners();
+  }
+
 
   // Enter
+
   const onEnter = (e) => {
     if (e.key !== 'Enter') return;
     if (isStages) loadStages();
+    else if (isAreas) loadAreas();
     else loadMetrics('both');
   };
 
@@ -993,6 +1271,8 @@ function init() {
 
   if (isStages) {
     loadStages();
+  } else if (isAreas) {
+    loadAreas();
   } else {
     loadMetrics('both');
   }
