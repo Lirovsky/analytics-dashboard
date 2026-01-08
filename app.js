@@ -117,6 +117,9 @@ const elements = {
   // Areas (areas)
   areasBody: dom.byId('areasBody'),
   teamsBody: dom.byId('teamsBody'),
+  systemsBody: dom.byId('systemsBody'),
+  challengesBody: dom.byId('challengesBody'),
+  moneyBody: dom.byId('moneyBody'),
 
 
   // UI
@@ -141,7 +144,10 @@ const needs = {
 
   areas:
     dom.exists(elements.areasBody) ||
-    dom.exists(elements.teamsBody),
+    dom.exists(elements.teamsBody) ||
+    dom.exists(elements.systemsBody) ||
+    dom.exists(elements.challengesBody) ||
+    dom.exists(elements.moneyBody),
 };
 
 // ========================================
@@ -156,6 +162,9 @@ const state = {
   areasSort: {
     areas: { key: 'leads', direction: 'desc' },
     teams: { key: 'leads', direction: 'desc' },
+    systems: { key: 'leads', direction: 'desc' },
+    challenges: { key: 'leads', direction: 'desc' },
+    money: { key: 'leads', direction: 'desc' },
   },
 
   // Paginação por tabela (somente métricas)
@@ -944,6 +953,229 @@ const teamsRender = {
 };
 
 
+
+
+const systemsRender = {
+  normalize(payload) {
+    const raw = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.systems)
+        ? payload.systems
+        : Array.isArray(payload?.bySystem)
+          ? payload.bySystem
+          : Array.isArray(payload?.data?.systems)
+            ? payload.data.systems
+            : [];
+
+    return raw
+      .map((row) => {
+        const system =
+          row?.system ??
+          row?.name ??
+          row?.label ??
+          row?.field ??
+          '–';
+
+        const leads =
+          Number(row?.leads ?? row?.count ?? row?.qty ?? row?.total ?? 0) || 0;
+
+        return { system: String(system), leads };
+      })
+      .filter((r) => r.system && r.system !== '–');
+  },
+
+  table(payload) {
+    if (!elements.systemsBody) return;
+
+    const rows = this.normalize(payload);
+    if (!rows.length) {
+      elements.systemsBody.innerHTML = ui.renderEmptyState('Sem dados de sistemas', 3);
+      return;
+    }
+
+    const cfg = state.areasSort.systems;
+    const dir = cfg.direction === 'asc' ? 1 : -1;
+
+    rows.sort((a, b) => {
+      if (cfg.key === 'leads') return ((a.leads || 0) - (b.leads || 0)) * dir;
+      // cfg.key === 'system'
+      return a.system.localeCompare(b.system, 'pt-BR', { sensitivity: 'base' }) * dir;
+    });
+
+    const total = rows.reduce((acc, r) => acc + (Number(r.leads) || 0), 0);
+
+    const htmlRows = rows
+      .map((r) => {
+        const pct = total > 0 ? (r.leads / total) * 100 : 0;
+        return `
+          <tr>
+            <td style="text-align:left">${r.system}</td>
+            <td>${utils.formatNumber(r.leads)}</td>
+            <td>${utils.formatPercentage(pct)}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const totalRow = `
+      <tr class="total-row">
+        <td style="text-align:left"><strong>Total</strong></td>
+        <td><strong>${utils.formatNumber(total)}</strong></td>
+        <td><strong>${utils.formatPercentage(100)}</strong></td>
+      </tr>
+    `;
+
+    elements.systemsBody.innerHTML = htmlRows + totalRow;
+  },
+};
+
+const challengesRender = {
+  normalize(payload) {
+    const raw = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.challenges)
+        ? payload.challenges
+        : Array.isArray(payload?.byChallenge)
+          ? payload.byChallenge
+          : Array.isArray(payload?.data?.challenges)
+            ? payload.data.challenges
+            : [];
+
+    return raw
+      .map((row) => {
+        const challenge =
+          row?.challenge ??
+          row?.name ??
+          row?.label ??
+          row?.field ??
+          '–';
+
+        const leads =
+          Number(row?.leads ?? row?.count ?? row?.qty ?? row?.total ?? 0) || 0;
+
+        return { challenge: String(challenge), leads };
+      })
+      .filter((r) => r.challenge && r.challenge !== '–');
+  },
+
+  table(payload) {
+    if (!elements.challengesBody) return;
+
+    const rows = this.normalize(payload);
+    if (!rows.length) {
+      elements.challengesBody.innerHTML = ui.renderEmptyState('Sem dados de desafios', 3);
+      return;
+    }
+
+    const cfg = state.areasSort.challenges;
+    const dir = cfg.direction === 'asc' ? 1 : -1;
+
+    rows.sort((a, b) => {
+      if (cfg.key === 'leads') return ((a.leads || 0) - (b.leads || 0)) * dir;
+      // cfg.key === 'challenge'
+      return a.challenge.localeCompare(b.challenge, 'pt-BR', { sensitivity: 'base' }) * dir;
+    });
+
+    const total = rows.reduce((acc, r) => acc + (Number(r.leads) || 0), 0);
+
+    const htmlRows = rows
+      .map((r) => {
+        const pct = total > 0 ? (r.leads / total) * 100 : 0;
+        return `
+          <tr>
+            <td style="text-align:left">${r.challenge}</td>
+            <td>${utils.formatNumber(r.leads)}</td>
+            <td>${utils.formatPercentage(pct)}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const totalRow = `
+      <tr class="total-row">
+        <td style="text-align:left"><strong>Total</strong></td>
+        <td><strong>${utils.formatNumber(total)}</strong></td>
+        <td><strong>${utils.formatPercentage(100)}</strong></td>
+      </tr>
+    `;
+
+    elements.challengesBody.innerHTML = htmlRows + totalRow;
+  },
+};
+
+const moneyRender = {
+  normalize(payload) {
+    const raw = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.money)
+        ? payload.money
+        : Array.isArray(payload?.byMoney)
+          ? payload.byMoney
+          : Array.isArray(payload?.data?.money)
+            ? payload.data.money
+            : [];
+
+    return raw
+      .map((row) => {
+        const money =
+          row?.money ??
+          row?.name ??
+          row?.label ??
+          row?.field ??
+          '–';
+
+        const leads =
+          Number(row?.leads ?? row?.count ?? row?.qty ?? row?.total ?? 0) || 0;
+
+        return { money: String(money), leads };
+      })
+      .filter((r) => r.money && r.money !== '–');
+  },
+
+  table(payload) {
+    if (!elements.moneyBody) return;
+
+    const rows = this.normalize(payload);
+    if (!rows.length) {
+      elements.moneyBody.innerHTML = ui.renderEmptyState('Sem dados financeiros', 3);
+      return;
+    }
+
+    const cfg = state.areasSort.money;
+    const dir = cfg.direction === 'asc' ? 1 : -1;
+
+    rows.sort((a, b) => {
+      if (cfg.key === 'leads') return ((a.leads || 0) - (b.leads || 0)) * dir;
+      // cfg.key === 'money'
+      return a.money.localeCompare(b.money, 'pt-BR', { sensitivity: 'base' }) * dir;
+    });
+
+    const total = rows.reduce((acc, r) => acc + (Number(r.leads) || 0), 0);
+
+    const htmlRows = rows
+      .map((r) => {
+        const pct = total > 0 ? (r.leads / total) * 100 : 0;
+        return `
+          <tr>
+            <td style="text-align:left">${r.money}</td>
+            <td>${utils.formatNumber(r.leads)}</td>
+            <td>${utils.formatPercentage(pct)}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const totalRow = `
+      <tr class="total-row">
+        <td style="text-align:left"><strong>Total</strong></td>
+        <td><strong>${utils.formatNumber(total)}</strong></td>
+        <td><strong>${utils.formatPercentage(100)}</strong></td>
+      </tr>
+    `;
+
+    elements.moneyBody.innerHTML = htmlRows + totalRow;
+  },
+};
 // ========================================
 // Data loaders
 // ========================================
@@ -1000,6 +1232,9 @@ async function loadAreas() {
   ui.showLoading();
   if (elements.areasBody) elements.areasBody.innerHTML = ui.renderSkeleton(6, 3);
   if (elements.teamsBody) elements.teamsBody.innerHTML = ui.renderSkeleton(6, 3);
+  if (elements.systemsBody) elements.systemsBody.innerHTML = ui.renderSkeleton(6, 3);
+  if (elements.challengesBody) elements.challengesBody.innerHTML = ui.renderSkeleton(6, 3);
+  if (elements.moneyBody) elements.moneyBody.innerHTML = ui.renderSkeleton(6, 3);
 
 
   try {
@@ -1011,11 +1246,17 @@ async function loadAreas() {
 
     areasRender.table(payload || null);
     teamsRender.table(payload || null);
+    systemsRender.table(payload || null);
+    challengesRender.table(payload || null);
+    moneyRender.table(payload || null);
 
   } catch (e) {
     ui.showError(`Failed to load areas: ${e.message}`);
     if (elements.areasBody) elements.areasBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 3);
     if (elements.teamsBody) elements.teamsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 3);
+    if (elements.systemsBody) elements.systemsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 3);
+    if (elements.challengesBody) elements.challengesBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 3);
+    if (elements.moneyBody) elements.moneyBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 3);
 
   } finally {
     ui.hideLoading();
@@ -1183,6 +1424,54 @@ function setupAreasSortListeners() {
         else { cfg.key = key; cfg.direction = 'desc'; }
 
         if (state.areasData) teamsRender.table(state.areasData);
+      });
+    });
+  });
+
+  // Tabela Sistemas
+  document.querySelectorAll('#systemsBody').forEach(() => {
+    const table = document.querySelector('#systemsBody')?.closest('table');
+    table?.querySelectorAll('th[data-sort]')?.forEach((th) => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sort; // 'system' | 'leads'
+        const cfg = state.areasSort.systems;
+
+        if (cfg.key === key) cfg.direction = cfg.direction === 'asc' ? 'desc' : 'asc';
+        else { cfg.key = key; cfg.direction = 'desc'; }
+
+        if (state.areasData) systemsRender.table(state.areasData);
+      });
+    });
+  });
+
+  // Tabela Desafios
+  document.querySelectorAll('#challengesBody').forEach(() => {
+    const table = document.querySelector('#challengesBody')?.closest('table');
+    table?.querySelectorAll('th[data-sort]')?.forEach((th) => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sort; // 'challenge' | 'leads'
+        const cfg = state.areasSort.challenges;
+
+        if (cfg.key === key) cfg.direction = cfg.direction === 'asc' ? 'desc' : 'asc';
+        else { cfg.key = key; cfg.direction = 'desc'; }
+
+        if (state.areasData) challengesRender.table(state.areasData);
+      });
+    });
+  });
+
+  // Tabela Money
+  document.querySelectorAll('#moneyBody').forEach(() => {
+    const table = document.querySelector('#moneyBody')?.closest('table');
+    table?.querySelectorAll('th[data-sort]')?.forEach((th) => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.sort; // 'money' | 'leads'
+        const cfg = state.areasSort.money;
+
+        if (cfg.key === key) cfg.direction = cfg.direction === 'asc' ? 'desc' : 'asc';
+        else { cfg.key = key; cfg.direction = 'desc'; }
+
+        if (state.areasData) moneyRender.table(state.areasData);
       });
     });
   });
