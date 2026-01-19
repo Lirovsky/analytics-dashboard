@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-page="leads">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analytics Dashboard • Leads</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="css/leads.css" />
+</head>
+
+<body>
+    <!-- ================= Navbar ================= -->
+    <header class="top-nav">
+        <div class="top-nav__inner">
+            <div class="top-nav__brand">Analytics</div>
+
+            <nav class="top-nav__links">
+                <a class="top-nav__link" href="metrics.html">Métricas</a>
+                <a class="top-nav__link" href="stages.html">Stages</a>
+                <a class="top-nav__link" href="areas.html">Areas</a>
+                <a class="top-nav__link is-active" href="leads.html">Leads</a>
+                <a class="top-nav__link" href="dash.html">Dash</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <!-- ================= Filtro ================= -->
+        <aside class="filter-panel">
+            <h3 class="filter-panel__title">Filtro</h3>
+
+            <div class="filter-panel__controls">
+                <div class="filter-group">
+                    <label for="entryStartDate">Entrada • Data inicial</label>
+                    <input type="date" id="entryStartDate" class="date-input" />
+                </div>
+
+                <div class="filter-group">
+                    <label for="entryEndDate">Entrada • Data final</label>
+                    <input type="date" id="entryEndDate" class="date-input" />
+                </div>
+
+                <button id="applyFilters" class="btn btn--primary">Aplicar</button>
+                <button id="clearEntryDates" class="btn btn--ghost">Limpar</button>
+
+                <div class="filter-group filter-group--search">
+                    <label for="quickSearch">Busca rápida</label>
+                    <input id="quickSearch" class="text-input" type="text"
+                        placeholder="telefone, tag, gerente, stage..." />
+                </div>
+            </div>
+        </aside>
+
+        <!-- ================= Leads ================= -->
+        <section class="section">
+            <h2 class="section__title">Leads</h2>
+
+            <div class="table-block table-block--leads">
+                <div class="table-block__header">
+                    <span class="table-block__icon">🧾</span>
+                    <h3>Lista</h3>
+                    <div class="table-block__meta">
+                        <span class="meta-pill">Total: <strong id="totalCount">–</strong></span>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="entry_date">Data de entrada <span class="sort-icon">↕</span></th>
+                                <th data-sort="purchase_date">Data de compra <span class="sort-icon">↕</span></th>
+                                <th data-sort="tag">Tag de entrada <span class="sort-icon">↕</span></th>
+                                <th data-sort="phone">Telefone <span class="sort-icon">↕</span></th>
+                                <th data-sort="manager">Gerente <span class="sort-icon">↕</span></th>
+                                <th>Link do chat</th>
+                                <th data-sort="stage">Etapa atual <span class="sort-icon">↕</span></th>
+                                <th data-sort="team">Time <span class="sort-icon">↕</span></th>
+                                <th data-sort="money">Money <span class="sort-icon">↕</span></th>
+                                <th data-sort="system">System <span class="sort-icon">↕</span></th>
+                                <th data-sort="challenge">Desafio <span class="sort-icon">↕</span></th>
+
+                            </tr>
+                        </thead>
+
+                        <tbody id="leadsBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Paginação -->
+                <div class="pagination" data-channel="leads">
+                    <button class="pg-btn" data-action="prev" type="button">‹</button>
+                    <span class="pg-info" id="leadsPageInfo">1 / 1</span>
+                    <button class="pg-btn" data-action="next" type="button">›</button>
+
+                    <span class="pg-sep"></span>
+
+                    <label class="pg-label">Linhas</label>
+                    <select class="pg-size" data-action="size">
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading / Error -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <div class="toast toast--error" id="errorToast">
+            <span class="toast__icon">⚠️</span>
+            <span class="toast__message" id="errorMessage">Error loading data</span>
+            <button class="toast__close" id="closeToast">×</button>
+        </div>
+    </div>
+
+    <script src="js/leads.js"></script>
+</body>
+
+</html>

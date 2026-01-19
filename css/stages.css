@@ -1,0 +1,604 @@
+/* ========================================
+   Stages — CSS isolado (extraído de styles.css)
+   Mantém o visual atual da página stages.html
+   ======================================== */
+
+/* ========================================
+   CSS Variables / Design System
+   ======================================== */
+:root {
+  /* Colors */
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-border-light: #f1f5f9;
+
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+
+  /* Channel Colors */
+  --color-facebook: #dbeafe;
+  --color-facebook-dark: #3b82f6;
+  --color-facebook-header: #eff6ff;
+
+  --color-google: #fef3c7;
+  --color-google-dark: #f59e0b;
+  --color-google-header: #fffbeb;
+
+  --color-organic: #f3e8ff;
+  --color-organic-dark: #a855f7;
+  --color-organic-header: #faf5ff;
+
+  --color-summary: #e8ffef;
+  --color-summary-dark: #55f768;
+  --color-summary-header: #f5fffc;
+
+  /* Status Colors */
+  --color-success: #dcfce7;
+  --color-success-dark: #22c55e;
+  --color-warning: #fef9c3;
+  --color-error: #fee2e2;
+  --color-error-dark: #ef4444;
+
+  /* Money Status Colors */
+  --color-all: #f1f5f9;
+  --color-money-yes: #dcfce7;
+  --color-money-no: #fee2e2;
+
+  /* Primary */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
+
+/* ========================================
+   Reset & Base
+   ======================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ========================================
+   Dashboard Layout
+   ======================================== */
+.dashboard {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+  display: grid;
+  gap: var(--spacing-xl);
+}
+
+/* ========================================
+   Header
+   ======================================== */
+.header {
+  text-align: center;
+  padding: var(--spacing-lg) 0;
+}
+
+.header__title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.header__subtitle {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+}
+
+/* ========================================
+   Filter Panel
+   ======================================== */
+.filter-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-panel__title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-md);
+}
+
+.filter-panel__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--spacing-md);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.filter-group label {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.date-input {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn--primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn--primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn--primary:active {
+  transform: scale(0.98);
+}
+
+.link-btn {
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: var(--spacing-sm);
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+/* ========================================
+   Section
+   ======================================== */
+.section {
+  display: grid;
+  gap: var(--spacing-lg);
+}
+
+.section__title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--color-border);
+}
+
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+/* ========================================
+   Data Table
+   ======================================== */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: right;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.data-table th:first-child,
+.data-table td:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+
+.data-table thead th {
+  background: var(--color-background);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.data-table tbody tr:hover {
+  background: var(--color-background);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Highlighted values */
+.value-highlight {
+  background: var(--color-success);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  color: var(--color-success-dark);
+}
+
+.value-negative {
+  color: var(--color-error-dark);
+}
+
+.value-positive {
+  color: var(--color-success-dark);
+}
+
+/* ========================================
+   Funnel Tables
+   ======================================== */
+.data-table--funnel .group-header {
+  text-align: center;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.data-table--funnel .group-header--all {
+  background: var(--color-all);
+}
+
+.data-table--funnel .group-header--yes {
+  background: var(--color-money-yes);
+}
+
+.data-table--funnel .group-header--no {
+  background: var(--color-money-no);
+}
+
+.data-table--funnel .group-header--google {
+  background: var(--color-google);
+}
+
+.data-table--funnel .group-header--facebook {
+  background: var(--color-facebook);
+}
+
+.data-table--funnel .group-header--organic {
+  background: var(--color-organic);
+}
+
+.data-table--funnel .subheader th {
+  font-size: 0.6rem;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-surface);
+}
+
+.data-table--funnel .stage-col {
+  min-width: 140px;
+}
+
+.data-table--funnel tbody tr.row-subscription {
+  background: var(--color-success);
+  font-weight: 600;
+}
+
+/* ========================================
+   Funnel Block
+   ======================================== */
+.funnel-block {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.funnel-block__title {
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ========================================
+   Loading & States
+   ======================================== */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+}
+
+.loading-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-border-light) 25%, var(--color-border) 50%, var(--color-border-light) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+  height: 1em;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--color-text-muted);
+}
+
+.empty-state__icon {
+  font-size: 2rem;
+  margin-bottom: var(--spacing-sm);
+}
+
+/* ========================================
+   Toast
+   ======================================== */
+.toast {
+  position: fixed;
+  bottom: var(--spacing-lg);
+  right: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  box-shadow: var(--shadow-lg);
+  z-index: 1001;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all var(--transition-normal);
+}
+
+.toast.active {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast--error {
+  background: var(--color-error);
+  border: 1px solid var(--color-error-dark);
+  color: var(--color-error-dark);
+}
+
+.toast__close {
+  background: none;
+  border: none;
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+  color: inherit;
+  padding: 0;
+  line-height: 1;
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+@media (max-width: 768px) {
+  .dashboard {
+    padding: var(--spacing-md);
+  }
+
+  .filter-panel__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .date-input {
+    width: 100%;
+  }
+
+  .data-table {
+    font-size: 0.65rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+}
+
+/* =========================
+   Linha Total (destaque)
+   ========================= */
+.total-row {
+  background-color: #eaf7ef;
+  /* verde bem suave */
+  border-top: 2px solid #4caf50;
+}
+
+.total-row td {
+  font-weight: 600;
+}
+
+/* Valores positivos na linha total */
+.total-row .value-positive {
+  color: #1e8e3e;
+}
+
+/* ROAS positivo */
+.total-row td:nth-child(6) {
+  color: #1e8e3e;
+}
+
+/* CAC – mantém neutro */
+.total-row td:nth-child(7) {
+  color: #1f2937;
+}
+
+/* ========================================
+   Navbar (topo)
+   ======================================== */
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.top-nav__inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 12px var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.top-nav__brand {
+  font-weight: 700;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  letter-spacing: 0.2px;
+}
+
+.top-nav__links {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.top-nav__link {
+  text-decoration: none;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.top-nav__link:hover {
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+.top-nav__link.is-active {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--color-primary);
+}
+

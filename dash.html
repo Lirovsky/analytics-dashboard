@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-page="dash">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics Dashboard • Dash</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/dash.css" />
+</head>
+
+<body>
+  <!-- ================= Navbar ================= -->
+  <header class="top-nav">
+    <div class="top-nav__inner">
+      <div class="top-nav__brand">Analytics</div>
+
+      <nav class="top-nav__links">
+        <a class="top-nav__link" href="metrics.html">Métricas</a>
+        <a class="top-nav__link" href="stages.html">Stages</a>
+        <a class="top-nav__link" href="areas.html">Areas</a>
+        <a class="top-nav__link" href="leads.html">Leads</a>
+        <a class="top-nav__link is-active" href="dash.html">Dash</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="dash-shell">
+    <!-- ================= Sidebar (estilo Looker) ================= -->
+    <aside class="dash-sidebar">
+
+      <!-- topo: filtro (fica no extremo superior) -->
+      <div class="dash-sidebar__top">
+        <div class="dash-range dash-range--sidebar">
+          <div class="dash-range__inputs">
+            <label class="sr-only" for="entryStartDate">Data inicial</label>
+            <input type="date" id="entryStartDate" class="dash-range__date" />
+
+            <span class="dash-range__sep" aria-hidden="true">–</span>
+
+            <label class="sr-only" for="entryEndDate">Data final</label>
+            <input type="date" id="entryEndDate" class="dash-range__date" />
+          </div>
+
+          <div class="dash-range__actions">
+            <button id="clearEntryDates" class="dash-range__btn dash-range__btn--ghost" type="button">Limpar</button>
+            <button id="applyEntryOnly" class="dash-range__btn" type="button">Aplicar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- base: KPIs (ficam no extremo inferior) -->
+      <div class="dash-sidebar__bottom">
+        <div class="dash-kpi-card">
+          <div class="dash-kpi-card__label">Assinantes</div>
+          <div class="dash-kpi-card__value" id="assistants">7.616</div>
+        </div>
+
+        <div class="dash-kpi-card dash-kpi-card--duo dash-kpi-card--small">
+          <div class="dash-kpi-duo__item">
+            <div class="dash-kpi-card__label">Vendas - Dia</div>
+            <div class="dash-kpi-card__value" id="sales-day">13</div>
+          </div>
+
+          <div class="dash-kpi-duo__item">
+            <div class="dash-kpi-card__label">Vendas - Mês</div>
+            <div class="dash-kpi-card__value" id="sales-month">100</div>
+          </div>
+        </div>
+
+        <!-- Extras que aparecem no layout de referência -->
+        <div class="dash-kpi-card dash-kpi-card--mini dash-kpi-card--duo">
+          <div class="dash-kpi-duo__item">
+            <div class="dash-kpi-card__label">Mensal</div>
+            <div class="dash-kpi-card__value" id="monthly-total">7</div>
+          </div>
+
+          <div class="dash-kpi-duo__item">
+            <div class="dash-kpi-card__label">Anual</div>
+            <div class="dash-kpi-card__value" id="annual-total">68</div>
+          </div>
+        </div>
+
+        <div class="dash-kpi-card">
+          <div class="dash-kpi-card__label">Conversão</div>
+          <div class="dash-kpi-card__value" id="conversion">5,66%</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ================= Main ================= -->
+    <main class="dash-main">
+      <!-- 2x2 grid (como no Looker) -->
+      <section class="dash-grid">
+        <!-- ================= VENDAS ================= -->
+        <article class="dash-panel">
+          <header class="dash-panel__header">
+            <h2 class="dash-panel__title">Vendas</h2>
+          </header>
+
+          <div class="dash-panel__body">
+            <div class="dash-panel__chart">
+              <canvas id="salesChart"></canvas>
+            </div>
+
+            <aside class="dash-panel__stats">
+              <div class="dash-stat">
+                <div class="dash-stat__label">CAC - Dia</div>
+                <div class="dash-stat__value" id="cac-day">R$ 163,02</div>
+              </div>
+
+              <div class="dash-stat">
+                <div class="dash-stat__label">CAC - Mês</div>
+                <div class="dash-stat__value" id="cac-month">R$ 413,52</div>
+              </div>
+
+              <div class="dash-stat">
+                <div class="dash-stat__label">CAC - Geral</div>
+                <div class="dash-stat__value" id="cac-range">R$ 413,52</div>
+              </div>
+
+            </aside>
+
+          </div>
+        </article>
+
+        <!-- ================= INVESTIMENTO ================= -->
+        <article class="dash-panel">
+          <header class="dash-panel__header">
+            <h2 class="dash-panel__title">Investimento</h2>
+          </header>
+
+          <div class="dash-panel__body">
+            <div class="dash-panel__chart">
+              <canvas id="investmentChart"></canvas>
+            </div>
+
+            <aside class="dash-panel__stats">
+              <div class="dash-stat">
+                <div class="dash-stat__label">Meta</div>
+                <div class="dash-stat__value" id="inv-meta">1.595,23</div>
+              </div>
+
+              <div class="dash-stat">
+                <div class="dash-stat__label">Google</div>
+                <div class="dash-stat__value" id="inv-google">524,05</div>
+              </div>
+
+              <div class="dash-stat">
+                <div class="dash-stat__label">Total</div>
+                <div class="dash-stat__value" id="inv-total">2.119,28</div>
+              </div>
+            </aside>
+          </div>
+        </article>
+
+        <!-- ================= CUSTO POR LEADS ================= -->
+        <article class="dash-panel dash-panel--cpl">
+          <header class="dash-panel__header">
+            <h2 class="dash-panel__title">Custo por Leads</h2>
+          </header>
+
+          <div class="dash-panel__body">
+            <div class="dash-panel__chart">
+              <canvas id="cplChart"></canvas>
+            </div>
+
+            <aside class="dash-panel__stats">
+              <div class="dash-stat">
+                <div class="dash-stat__label">CPL</div>
+                <div class="dash-stat__value" id="cpl-month">R$ 26,08</div>
+              </div>
+
+              <div class="dash-stat">
+                <div class="dash-stat__label">Cliques</div>
+                <div class="dash-stat__value" id="clicks">796</div>
+              </div>
+
+              <div class="dash-stat">
+                <div class="dash-stat__label">CPC</div>
+                <div class="dash-stat__value" id="cpc">R$ 2,66</div>
+              </div>
+
+              <div class="dash-stat">
+                <div class="dash-stat__label">CPM</div>
+                <div class="dash-stat__value" id="cpm">R$ 34,13</div>
+              </div>
+            </aside>
+          </div>
+        </article>
+
+        <!-- ================= LEADS ================= -->
+        <article class="dash-panel">
+          <header class="dash-panel__header">
+            <h2 class="dash-panel__title">Leads</h2>
+          </header>
+
+          <div class="dash-panel__body">
+            <div class="dash-panel__chart">
+              <canvas id="leadsChart"></canvas>
+            </div>
+
+            <aside class="dash-panel__stats">
+              <div class="dash-stat">
+                <div class="dash-stat__label">Total</div>
+                <div class="dash-stat__value" id="leads-month">1.902</div>
+              </div>
+
+              <div class="dash-stat">
+                <div class="dash-stat__label">CTR</div>
+                <div class="dash-stat__value" id="ctr">1,28%</div>
+              </div>
+
+              <div class="dash-stat">
+                <div class="dash-stat__label">Meta</div>
+                <div class="dash-stat__value" id="leads-goal">0,59%</div>
+              </div>
+            </aside>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <!-- Chart.js (necessário para os gráficos) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <script src="js/dash.js"></script>
+</body>
+
+</html>
