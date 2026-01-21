@@ -1,0 +1,190 @@
+/* ========================================
+   Leads por Vendedor — CSS
+   Reaproveita stages.css e adiciona apenas o que é específico
+   ======================================== */
+
+/* Botão secundário */
+.btn--ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.btn--ghost:hover {
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.section-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.pill--strong {
+  background: rgba(59, 130, 246, 0.10);
+  border-color: rgba(59, 130, 246, 0.25);
+  color: var(--color-primary);
+}
+
+/* ========================================
+   Vendor Summary (contador por vendedor)
+   1 linha só + cards menores
+   ======================================== */
+.vendor-summary {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  padding: var(--spacing-md) var(--spacing-lg);
+  padding-left: 0;
+  padding-right: 0;
+  width: 100%;
+}
+
+.vendor-summary::-webkit-scrollbar {
+  height: 8px;
+}
+
+.vendor-summary::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+
+.vendor-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+  user-select: none;
+
+  flex: 0 0 auto;
+  width: 150px;
+}
+
+.vendor-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.vendor-card.is-active {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.10);
+}
+
+.vendor-card__name {
+  font-size: 0.68rem;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.vendor-card__count {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.vendor-card__hint {
+  margin-top: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+
+/* ========================================
+   Tabela de Registros
+   ======================================== */
+.data-table--records {
+  font-size: var(--font-size-xs);
+}
+
+/* Alinha ENTRADA / ENTREGUE / VENDEDOR / PHONE à esquerda */
+.data-table--records th.col-entry,
+.data-table--records td:nth-child(1),
+.data-table--records th.col-entregue,
+.data-table--records td:nth-child(2),
+.data-table--records th.col-vendor,
+.data-table--records td:nth-child(3),
+.data-table--records th.col-phone,
+.data-table--records td:nth-child(4) {
+  text-align: left;
+  padding-left: 14px;
+  /* opcional: melhora a leitura */
+}
+
+/* Mantém LINK centralizado */
+.data-table--records th.col-link,
+.data-table--records td:nth-child(5) {
+  text-align: center;
+  padding-left: 0;
+}
+
+
+.col-entry {
+  min-width: 120px;
+}
+
+.col-entregue {
+  min-width: 120px;
+}
+
+.col-vendor {
+  min-width: 140px;
+}
+
+.col-phone {
+  min-width: 160px;
+}
+
+.col-link {
+  min-width: 260px;
+}
+
+.truncate {
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+.link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}

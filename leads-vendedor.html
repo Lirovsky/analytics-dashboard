@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-page="leads-vendedor">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics Dashboard • Leads por Vendedor</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Reaproveita o design system e componentes base da página stages -->
+  <link rel="stylesheet" href="css/leads.css" />
+
+  <!-- CSS específico da página -->
+  <link rel="stylesheet" href="css/leads-vendedor.css" />
+</head>
+
+<body>
+  <!-- ================= Navbar ================= -->
+  <header class="top-nav">
+    <div class="top-nav__inner">
+      <div class="top-nav__brand">Analytics</div>
+
+      <nav class="top-nav__links">
+        <a class="top-nav__link" href="metrics.html">Métricas</a>
+        <a class="top-nav__link" href="stages.html">Stages</a>
+        <a class="top-nav__link" href="areas.html">Areas</a>
+        <a class="top-nav__link" href="leads.html">Leads</a>
+        <a class="top-nav__link is-active" href="leads-vendedor.html">Leads • Vendedor</a>
+        <a class="top-nav__link" href="dash.html">Dash</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="dashboard">
+    <!-- ================= Filtro ================= -->
+    <aside class="filter-panel">
+      <h3 class="filter-panel__title">Filtro</h3>
+
+      <div class="filter-panel__controls">
+        <div class="filter-group">
+          <label for="entryStartDate">Entrada • Data inicial</label>
+          <input type="date" id="entryStartDate" class="date-input" />
+        </div>
+
+        <div class="filter-group">
+          <label for="entryEndDate">Entrada • Data final</label>
+          <input type="date" id="entryEndDate" class="date-input" />
+        </div>
+
+        <div class="filter-group">
+          <label for="vendorSelect">Vendedor</label>
+          <select id="vendorSelect" class="date-input">
+            <option value="">Todos</option>
+          </select>
+        </div>
+
+        <hr style="opacity:.2; width:100%; border:none; border-top:1px solid currentColor;" />
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button id="applyFilters" class="btn btn--primary">Aplicar</button>
+          <button id="clearVendor" class="btn btn--ghost">Limpar vendedor</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ================= Conteúdo ================= -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section__title">Leads por Vendedor</h2>
+
+        <div class="section-header__meta">
+          <span class="pill pill--strong" id="totalPill">Total: —</span>
+          <span class="pill" id="shownPill">Mostrando: —</span>
+        </div>
+      </div>
+
+      <div class="vendor-summary" id="vendorSummary"></div>
+
+      <div class="table-wrapper">
+        <table class="data-table data-table--records">
+          <thead>
+            <tr>
+              <th class="col-entry" data-sort="ENTRADA">Entrada <span class="sort-icon">↕</span></th>
+              <th class="col-entregue" data-sort="ENTREGUE">Entregue <span class="sort-icon">↕</span></th>
+              <th class="col-vendor" data-sort="VENDEDOR">Vendedor <span class="sort-icon">↕</span></th>
+              <th class="col-phone" data-sort="PHONE">Phone <span class="sort-icon">↕</span></th>
+              <th class="col-link" data-sort="LINK">Link <span class="sort-icon">↕</span></th>
+            </tr>
+          </thead>
+
+          <tbody id="recordsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Loading / Error -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <p>Loading data...</p>
+    </div>
+
+    <div class="toast toast--error" id="errorToast">
+      <span class="toast__icon">⚠️</span>
+      <span class="toast__message" id="errorMessage">Error loading data</span>
+      <button class="toast__close" id="closeToast">×</button>
+    </div>
+  </div>
+
+  <script src="js/leads-vendedor.js"></script>
+</body>
+
+</html>
