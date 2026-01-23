@@ -149,6 +149,33 @@
   padding-left: 0;
 }
 
+/* Link no padrão do leads.css (azul + sublinhado no hover) */
+a.table-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+a.table-link:hover {
+  text-decoration: underline;
+}
+
+
+/* Colunas extras (após LINK) */
+.data-table--records th.col-money,
+.data-table--records td:nth-child(6),
+.data-table--records th.col-area,
+.data-table--records td:nth-child(7),
+.data-table--records th.col-time,
+.data-table--records td:nth-child(8),
+.data-table--records th.col-sistema,
+.data-table--records td:nth-child(9),
+.data-table--records th.col-desafio,
+.data-table--records td:nth-child(10) {
+  text-align: left;
+  padding-left: 14px;
+}
+
 
 .col-entry {
   min-width: 120px;
@@ -167,7 +194,27 @@
 }
 
 .col-link {
-  min-width: 260px;
+  min-width: 90px;
+}
+
+.col-money {
+  min-width: 90px;
+}
+
+.col-area {
+  min-width: 140px;
+}
+
+.col-time {
+  min-width: 100px;
+}
+
+.col-sistema {
+  min-width: 160px;
+}
+
+.col-desafio {
+  min-width: 360px;
 }
 
 .truncate {
@@ -187,4 +234,29 @@
 
 .link:hover {
   text-decoration: underline;
+}
+
+/* Link estilo simples (igual leads.css) */
+a.table-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+a.table-link:hover {
+  text-decoration: underline;
+}
+
+
+/* ========================================
+   Gráfico de barras — Leads por vendedor
+   (aumenta área e permite números dentro das colunas)
+   ======================================== */
+#chartVendor {
+  height: 260px !important;
+}
+
+/* aumenta só o primeiro card (onde fica o gráfico de vendedor) */
+.charts-grid .chart-card:first-child {
+  min-height: 380px;
 }
