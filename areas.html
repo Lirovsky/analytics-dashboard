@@ -9,8 +9,52 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+    <script src="js/theme.js"></script>
     <link rel="stylesheet" href="css/areas.css" />
+    <link rel="stylesheet" href="css/theme.css" />
+
+    <style>
+        .table-pagination {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .table-pagination .pagination__info {
+            font-size: 12px;
+            opacity: .8;
+            margin: 0 4px;
+            white-space: nowrap;
+        }
+
+        .table-pagination button.pagination__btn {
+            padding: 6px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(127, 127, 127, 0.25);
+            background: rgba(127, 127, 127, 0.08);
+            color: inherit;
+            cursor: pointer;
+            font: inherit;
+            line-height: 1;
+        }
+
+        .table-pagination button.pagination__btn[disabled] {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        .table-pagination button.pagination__btn.is-active {
+            border-color: rgba(127, 127, 127, 0.55);
+            background: rgba(127, 127, 127, 0.18);
+            font-weight: 600;
+        }
+    </style>
+
 </head>
 
 <body>
@@ -79,6 +123,7 @@
                         <tbody id="areasBody"></tbody>
                     </table>
                 </div>
+                <div class="table-pagination" id="areasPagination"></div>
             </div>
             <div class="table-block table-block--summary">
                 <div class="table-block__header">
@@ -117,6 +162,7 @@
                         <tbody id="systemsBody"></tbody>
                     </table>
                 </div>
+                <div class="table-pagination" id="systemsPagination"></div>
             </div>
 
             <div class="table-block table-block--summary">

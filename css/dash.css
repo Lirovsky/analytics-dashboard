@@ -78,6 +78,27 @@
 }
 
 /* ========================================
+   Dark Theme (para TV)
+   Ative com: <html data-theme="dark">
+   ======================================== */
+html[data-theme="dark"] {
+  --color-background: #0b1220;
+  --color-surface: #0f172a;
+  --color-border: #1e293b;
+  --color-border-light: #1e293b;
+
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  /* Ajuste leve de sombras no escuro */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.55);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.55), 0 2px 4px -2px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+}
+
+
+/* ========================================
    Reset & Base
    ======================================== */
 *,
@@ -154,6 +175,35 @@ body {
   gap: 10px;
   align-items: center;
 }
+
+/* Ações do header (ex.: tema escuro) */
+.top-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-nav__theme-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.top-nav__theme-btn:hover {
+  background: var(--color-background);
+}
+
+.top-nav__theme-btn:active {
+  transform: scale(0.98);
+}
+
 
 .top-nav__link {
   text-decoration: none;
@@ -635,10 +685,12 @@ body {
     width: 100%;
   }
 }
+
 /* ========================================
    Fit 4 gráficos sem scroll (desktop)
    ======================================== */
 @media (min-width: 981px) {
+
   html,
   body {
     height: 100%;

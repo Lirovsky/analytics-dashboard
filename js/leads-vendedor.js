@@ -83,6 +83,28 @@
     return 'unknown';
   }
 
+
+  function normalizeStage(value) {
+    // Normaliza valores vindos do Sheets/n8n (pode vir PT, EN, com acento, ou até "negociation")
+    const raw = String(value ?? '').trim();
+    if (!raw) return 'presentation'; // default para dados antigos/sem stage
+
+    const s = raw
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // remove acentos
+
+    // presentation
+    if (s.includes('present') || s.includes('apres') || s.startsWith('pres')) return 'presentation';
+
+    // negotiation (aceita typo "negociation")
+    if (s.includes('nego') || s.includes('negoci')) return 'negotiation';
+
+    // fallback seguro
+    return 'presentation';
+  }
+
+
   function getSelectedValues(selectEl) {
     if (!selectEl) return [];
     return Array.from(selectEl.selectedOptions || []).map((o) => o.value).filter((v) => String(v).trim() !== '');
@@ -221,6 +243,7 @@
     areaSelect: dom.byId('areaSelect'),
     timeSelect: dom.byId('timeSelect'),
     sistemaSelect: dom.byId('sistemaSelect'),
+    stageSelect: dom.byId('stageSelect'),
     desafioSelect: dom.byId('desafioSelect'),
     globalSearch: dom.byId('globalSearch'),
     preset7: dom.byId('preset7'),
@@ -436,7 +459,9 @@
     const time = getField(raw, ['TIME', 'Time', 'time']);
     const sistema = getField(raw, ['SISTEMA', 'Sistema', 'sistema', 'SYSTEM', 'system']);
     const desafio = getField(raw, ['DESAFIO', 'Desafio', 'desafio', 'CHALLENGE', 'challenge']);
-    const origem = getField(raw, ['ORIGEM', 'Origem', 'origem', 'ORIGIN', 'origin', 'source', 'SOURCE', 'channel', 'CHANNEL']);
+    const origem = getField(raw, ['ORIGEM', 'origem']);
+    const stageRaw = getField(raw, ['STAGE', 'stage']);
+    const stage = normalizeStage(stageRaw);
 
     return {
       row_number: rowNumber,
@@ -457,6 +482,7 @@
       SISTEMA: sistema,
       DESAFIO: desafio,
       ORIGEM: origem,
+      STAGE: stage,
     };
   }
 
@@ -482,7 +508,7 @@
       if (!elements.recordsBody) return;
 
       if (!rows || rows.length === 0) {
-        elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 11);
+        elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 12);
         return;
       }
 
@@ -506,6 +532,7 @@
           const sistema = utils.escapeHtml(r.SISTEMA ?? '');
           const desafio = utils.escapeHtml(r.DESAFIO ?? '');
           const origem = utils.escapeHtml(r.ORIGEM ?? '');
+          const stage = utils.escapeHtml(r.STAGE ?? '');
 
           return `
             <tr>
@@ -520,6 +547,7 @@
               <td>${sistema || '—'}</td>
               <td>${desafio || '—'}</td>
               <td>${origem || '—'}</td>
+              <td>${stage || '—'}</td>
             </tr>
           `;
         })
@@ -559,6 +587,7 @@
   function applyAllFiltersAndRender({ resetPage = false } = {}) {
     if (resetPage) state.pagination.page = 1;
     const selectedVendor = (elements.vendorSelect?.value || '').trim();
+    const selectedStage = (elements.stageSelect?.value || 'presentation').trim() || 'presentation';
 
     const entryStart = elements.entryStartInput?.value || '';
     const entryEnd = elements.entryEndInput?.value || '';
@@ -572,6 +601,11 @@
     const q = String(elements.globalSearch?.value || '').trim().toLowerCase();
 
     let out = [...state.rows];
+
+    // Stage é um filtro hard (Apresentação vs Negociação)
+    if (selectedStage) {
+      out = out.filter((r) => normalizeStage(r.STAGE) === selectedStage);
+    }
 
     if (selectedVendor) {
       out = out.filter((r) => String(r.VENDEDOR || '').trim() === selectedVendor);
@@ -601,6 +635,7 @@
           r.ENTREGUE,
           r.MONEY,
           r.ORIGEM,
+          r.STAGE,
         ]
           .map((x) => String(x ?? '').toLowerCase())
           .join(' | ');
@@ -1061,6 +1096,76 @@
     });
   }
 
+  function cssVar(name, fallback = "") {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  function getLegendColor() {
+    // Se quiser "branco no dark e preto no light" de forma explícita:
+    const theme = document.documentElement.getAttribute("data-theme");
+    if (theme === "dark") return "#fff";
+    return "#000";
+    // Alternativa melhor (segue teus tokens do theme.css):
+    // return cssVar("--color-text-primary", theme === "dark" ? "#fff" : "#000");
+  }
+
+  function cssVar(name, fallback = "") {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  function getLegendColor() {
+    const theme = document.documentElement.getAttribute("data-theme");
+    return theme === "dark" ? "#fff" : "#000";
+  }
+
+  function applyThemeToChart(chart) {
+    // garante que é Chart (não canvas)
+    const opts = chart?.options || chart?.config?.options;
+    if (!opts) return;
+
+    const legendColor = getLegendColor();
+    const tickColor = cssVar("--color-text-secondary", legendColor);
+    const gridColor = cssVar("--color-border", "rgba(0,0,0,.1)");
+
+    // Legenda
+    opts.plugins = opts.plugins || {};
+    opts.plugins.legend = opts.plugins.legend || {};
+    opts.plugins.legend.labels = opts.plugins.legend.labels || {};
+    opts.plugins.legend.labels.color = legendColor;
+
+    // Eixos (para barras/stacked)
+    if (opts.scales) {
+      Object.values(opts.scales).forEach((axis) => {
+        axis.ticks = axis.ticks || {};
+        axis.grid = axis.grid || {};
+        axis.ticks.color = tickColor;
+        axis.grid.color = gridColor;
+      });
+    }
+
+    chart.update("none");
+  }
+
+  function registerChartThemeSync(getCharts) {
+    const applyAll = () => {
+      const charts = typeof getCharts === "function" ? getCharts() : [];
+      (charts || []).forEach(applyThemeToChart);
+    };
+
+    applyAll();
+
+    const obs = new MutationObserver(applyAll);
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+  }
+
+
+  registerChartThemeSync(() => Object.values(state.charts));
+
 
 
   // ========================================
@@ -1076,7 +1181,7 @@
     }
 
     ui.showLoading();
-    if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 11);
+    if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 12);
 
     try {
       const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
@@ -1098,7 +1203,7 @@
       applyAllFiltersAndRender({ resetPage: true });
     } catch (e) {
       ui.showError(`Failed to load leads: ${e.message}`);
-      if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 11);
+      if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 12);
 
     } finally {
       ui.hideLoading();
@@ -1135,7 +1240,7 @@
 
     const onAnyFilterChange = () => applyAllFiltersAndRender({ resetPage: true });
 
-    [elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect]
+    [elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.stageSelect, elements.desafioSelect]
       .filter(Boolean)
       .forEach((el) => el.addEventListener('change', onAnyFilterChange));
 
@@ -1167,6 +1272,7 @@
       elements.clearAllFilters.addEventListener('click', () => {
         if (elements.vendorSelect) elements.vendorSelect.value = '';
         if (elements.moneySelect) elements.moneySelect.value = '';
+        if (elements.stageSelect) elements.stageSelect.value = 'presentation';
         if (elements.globalSearch) elements.globalSearch.value = '';
 
         [elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect]

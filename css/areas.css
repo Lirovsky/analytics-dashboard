@@ -121,6 +121,7 @@ body {
   display: grid;
   gap: var(--spacing-xl);
 }
+
 .filter-panel {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -224,6 +225,7 @@ body {
   padding-bottom: var(--spacing-sm);
   border-bottom: 2px solid var(--color-border);
 }
+
 .table-block {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -306,6 +308,7 @@ body {
 .data-table tbody tr:last-child td {
   border-bottom: none;
 }
+
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -443,6 +446,7 @@ body {
     padding: var(--spacing-xs) var(--spacing-sm);
   }
 }
+
 .table-block--summary {
   padding: 0;
 }
@@ -452,6 +456,7 @@ body {
   background: var(--color-summary-header);
   border-bottom: 2px solid var(--color-summary-dark);
 }
+
 .data-table th[data-sort] {
   cursor: pointer;
   user-select: none;
@@ -467,6 +472,7 @@ body {
   opacity: 1;
   font-weight: 700;
 }
+
 .total-row {
   background-color: #eaf7ef;
   /* verde bem suave */
@@ -476,6 +482,7 @@ body {
 .total-row td {
   font-weight: 600;
 }
+
 .top-nav {
   position: sticky;
   top: 0;
@@ -526,4 +533,64 @@ body {
 .top-nav__link.is-active {
   background: rgba(59, 130, 246, 0.12);
   color: var(--color-primary);
+}
+
+/* ========================================
+   Pagination (tabelas de métricas)
+   ======================================== */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px var(--spacing-lg);
+  border-top: 1px solid var(--color-border-light);
+  background: var(--color-surface);
+}
+
+.pg-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-md);
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.pg-btn:hover {
+  background: var(--color-background);
+}
+
+.pg-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pg-info {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  min-width: 80px;
+  text-align: center;
+}
+
+.pg-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--color-border);
+  opacity: 0.8;
+  margin: 0 4px;
+}
+
+.pg-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.pg-size {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: var(--font-size-xs);
 }

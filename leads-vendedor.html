@@ -9,12 +9,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-  <!-- Reaproveita o design system e componentes base da página stages -->
   <link rel="stylesheet" href="css/leads.css" />
 
-  <!-- CSS específico da página -->
+
+  <script src="js/chart-theme.js"></script>
+  <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/leads-vendedor.css" />
+  <link rel="stylesheet" href="css/theme.css" />
+
+
 
   <style>
     .analytics-block {
@@ -144,6 +149,14 @@
         </div>
 
         <div class="filter-group">
+          <label for="stageSelect">Stage</label>
+          <select id="stageSelect" class="date-input">
+            <option value="presentation" selected>Apresentação</option>
+            <option value="negotiation">Negociação</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
           <label for="vendorSelect">Vendedor</label>
           <select id="vendorSelect" class="date-input">
             <option value="">Todos</option>
@@ -173,12 +186,7 @@
           </select>
         </div>
 
-        <div class="filter-group">
-          <label for="sistemaSelect">Sistema</label>
-          <select id="sistemaSelect" class="date-input">
-            <option value="">Todos</option>
-          </select>
-        </div>
+
 
         <div class="filter-group">
           <label for="desafioSelect">Desafio</label>
@@ -290,6 +298,7 @@
                 <th class="col-sistema" data-sort="SISTEMA">Sistema <span class="sort-icon">↕</span></th>
                 <th class="col-desafio" data-sort="DESAFIO">Desafio <span class="sort-icon">↕</span></th>
                 <th class="col-origem" data-sort="ORIGEM">Origem <span class="sort-icon">↕</span></th>
+                <th class="col-stage" data-sort="STAGE">Stage <span class="sort-icon">↕</span></th>
               </tr>
             </thead>
 
@@ -307,7 +316,7 @@
 
           <label class="pg-label">Linhas</label>
           <select class="pg-size" id="recordsPageSize">
-            <option value="25" selected>25</option>
+            <option value="20" selected>20</option>
             <option value="50">50</option>
             <option value="100">100</option>
             <option value="200">200</option>

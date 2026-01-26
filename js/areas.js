@@ -54,6 +54,10 @@
     challengesBody: dom.byId('challengesBody'),
     moneyBody: dom.byId('moneyBody'),
 
+    // Paginação (somente Área e Sistema)
+    areasPagination: dom.byId('areasPagination'),
+    systemsPagination: dom.byId('systemsPagination'),
+
     // UI
     loadingOverlay: dom.byId('loadingOverlay'),
     errorToast: dom.byId('errorToast'),
@@ -73,7 +77,12 @@
       challenges: { key: 'leads', direction: 'desc' },
       money: { key: 'leads', direction: 'desc' },
     },
+    pagination: {
+      areas: { page: 1, perPage: 10 },
+      systems: { page: 1, perPage: 10 },
+    },
   };
+
 
   // ========================================
   // UI Helpers
@@ -117,6 +126,144 @@
       `;
     },
   };
+  // ========================================
+  // Pagination (somente Área e Sistema)
+  // ========================================
+  const paginationUI = {
+    getContainer(key) {
+      if (key === 'areas') return elements.areasPagination;
+      if (key === 'systems') return elements.systemsPagination;
+      return null;
+    },
+
+    clear(key) {
+      const el = this.getContainer(key);
+      if (!el) return;
+      el.innerHTML = '';
+      el.dataset.totalItems = '0';
+      // Mantém o listener (dataset.bound) para evitar múltiplos binds
+    },
+
+    clamp(key, totalItems) {
+      const st = state.pagination?.[key] || { page: 1, perPage: 10 };
+
+      const perPage = Math.min(10, Math.max(1, Number(st.perPage) || 10));
+      const total = Math.max(0, Number(totalItems) || 0);
+      const totalPages = Math.max(1, Math.ceil(total / perPage));
+
+      let page = Number(st.page) || 1;
+      if (page < 1) page = 1;
+      if (page > totalPages) page = totalPages;
+
+      st.page = page;
+      st.perPage = perPage;
+      state.pagination[key] = st;
+
+      return { page, perPage, totalPages };
+    },
+
+    pageList(page, totalPages) {
+      if (totalPages <= 7) {
+        return Array.from({ length: totalPages }, (_, i) => i + 1);
+      }
+
+      const list = [1];
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+
+      if (start > 2) list.push('…');
+      for (let p = start; p <= end; p++) list.push(p);
+      if (end < totalPages - 1) list.push('…');
+
+      list.push(totalPages);
+      return list;
+    },
+
+    rerender(key) {
+      if (!state.areasData) return;
+      if (key === 'areas') areasRender.table(state.areasData);
+      if (key === 'systems') systemsRender.table(state.areasData);
+    },
+
+    render(key, totalItems) {
+      const el = this.getContainer(key);
+      if (!el) return;
+
+      // Guarda o total atual no dataset (usado no click handler)
+      el.dataset.totalItems = String(Number(totalItems) || 0);
+
+      const total = Number(totalItems) || 0;
+      const { page, perPage, totalPages } = this.clamp(key, total);
+
+      if (total <= 0) {
+        el.innerHTML = '';
+        return;
+      }
+
+      // Aplica o mesmo estilo de paginação usado em outras páginas (metrics)
+      el.classList.add('pagination');
+
+      const prevDisabled = page <= 1;
+      const nextDisabled = page >= totalPages;
+
+      el.innerHTML = `
+        <button class="pg-btn" data-page="prev" ${prevDisabled ? 'disabled' : ''} aria-label="Página anterior">‹</button>
+        <span class="pg-info">${page} / ${totalPages}</span>
+        <button class="pg-btn" data-page="next" ${nextDisabled ? 'disabled' : ''} aria-label="Próxima página">›</button>
+        <span class="pg-sep" aria-hidden="true"></span>
+        <span class="pg-label">Linhas</span>
+        <select class="pg-size" data-role="perPage" aria-label="Linhas por página">
+          <option value="10" ${perPage === 10 ? 'selected' : ''}>10</option>
+        </select>
+      `;
+
+      if (el.dataset.bound === '1') return;
+      el.dataset.bound = '1';
+
+      el.addEventListener('click', (e) => {
+        const btn = e.target?.closest?.('button[data-page]');
+        if (!btn || btn.disabled) return;
+
+        const value = btn.getAttribute('data-page');
+        const st = state.pagination?.[key];
+        if (!st) return;
+
+        const totalNow = Number(el.dataset.totalItems) || 0;
+        const per = Math.min(10, Math.max(1, Number(st.perPage) || 10));
+        const totalPagesNow = Math.max(1, Math.ceil(totalNow / per));
+
+        if (value === 'prev') st.page = Math.max(1, (Number(st.page) || 1) - 1);
+        else if (value === 'next') st.page = Math.min(totalPagesNow, (Number(st.page) || 1) + 1);
+
+        state.pagination[key] = st;
+        this.rerender(key);
+      });
+
+      el.addEventListener('change', (e) => {
+        const sel = e.target?.closest?.('select[data-role="perPage"]');
+        if (!sel) return;
+
+        const st = state.pagination?.[key];
+        if (!st) return;
+
+        const v = Math.min(10, Math.max(1, Number(sel.value) || 10));
+        st.perPage = v;
+        st.page = 1;
+        state.pagination[key] = st;
+
+        this.rerender(key);
+      });
+    },
+
+
+    reset(keys = []) {
+      keys.forEach((k) => {
+        if (!state.pagination?.[k]) state.pagination[k] = { page: 1, perPage: 10 };
+        state.pagination[k].page = 1;
+      });
+    },
+  };
+
 
   // ========================================
   // API
@@ -195,6 +342,7 @@
       const rows = this.normalize(payload);
       if (!rows.length) {
         elements.areasBody.innerHTML = ui.renderEmptyState('Sem dados de áreas', 3);
+        paginationUI.clear('areas');
         return;
       }
 
@@ -208,7 +356,12 @@
 
       const total = rows.reduce((acc, r) => acc + (Number(r.leads) || 0), 0);
 
-      const htmlRows = rows
+      const { page, perPage } = paginationUI.clamp('areas', rows.length);
+
+      const startIdx = (page - 1) * perPage;
+      const pageRows = rows.slice(startIdx, startIdx + perPage);
+
+      const htmlRows = pageRows
         .map((r) => {
           const pct = total > 0 ? (r.leads / total) * 100 : 0;
           return `
@@ -230,6 +383,8 @@
       `;
 
       elements.areasBody.innerHTML = htmlRows + totalRow;
+
+      paginationUI.render('areas', rows.length);
     },
   };
 
@@ -339,6 +494,7 @@
       const rows = this.normalize(payload);
       if (!rows.length) {
         elements.systemsBody.innerHTML = ui.renderEmptyState('Sem dados de sistemas', 3);
+        paginationUI.clear('systems');
         return;
       }
 
@@ -352,7 +508,12 @@
 
       const total = rows.reduce((acc, r) => acc + (Number(r.leads) || 0), 0);
 
-      const htmlRows = rows
+      const { page, perPage } = paginationUI.clamp('systems', rows.length);
+
+      const startIdx = (page - 1) * perPage;
+      const pageRows = rows.slice(startIdx, startIdx + perPage);
+
+      const htmlRows = pageRows
         .map((r) => {
           const pct = total > 0 ? (r.leads / total) * 100 : 0;
           return `
@@ -374,6 +535,8 @@
       `;
 
       elements.systemsBody.innerHTML = htmlRows + totalRow;
+
+      paginationUI.render('systems', rows.length);
     },
   };
 
@@ -540,12 +703,18 @@
     if (elements.challengesBody) elements.challengesBody.innerHTML = ui.renderSkeleton(6, 3);
     if (elements.moneyBody) elements.moneyBody.innerHTML = ui.renderSkeleton(6, 3);
 
+
+    paginationUI.clear('areas');
+    paginationUI.clear('systems');
+
     try {
       const params = { entry_start: entryStart, entry_end: entryEnd };
       const res = await api.fetchAreas(params);
       const payload = Array.isArray(res) ? res[0] : res;
 
       state.areasData = payload;
+
+      paginationUI.reset(['areas', 'systems']);
 
       areasRender.table(payload || null);
       teamsRender.table(payload || null);
@@ -554,6 +723,8 @@
       moneyRender.table(payload || null);
     } catch (e) {
       ui.showError(`Failed to load areas: ${e.message}`);
+      paginationUI.clear('areas');
+      paginationUI.clear('systems');
       if (elements.areasBody) elements.areasBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 3);
       if (elements.teamsBody) elements.teamsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 3);
       if (elements.systemsBody) elements.systemsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 3);
@@ -595,6 +766,8 @@
           if (cfg.key === key) cfg.direction = cfg.direction === 'asc' ? 'desc' : 'asc';
           else { cfg.key = key; cfg.direction = 'desc'; }
 
+          state.pagination.areas.page = 1;
+
           if (state.areasData) areasRender.table(state.areasData);
         });
       });
@@ -626,6 +799,8 @@
 
           if (cfg.key === key) cfg.direction = cfg.direction === 'asc' ? 'desc' : 'asc';
           else { cfg.key = key; cfg.direction = 'desc'; }
+
+          state.pagination.systems.page = 1;
 
           if (state.areasData) systemsRender.table(state.areasData);
         });

@@ -516,7 +516,7 @@
     renderLeadsDailyChart(leadsDaily);
   }
 
-  
+
   // ========================================
   // Render: KPIs derivados (CPL/CPC/CPM) — sempre do período filtrado
   // ========================================
@@ -545,7 +545,7 @@
     }
   }
 
-function renderLeadsDailyChart(leadsDailyRaw) {
+  function renderLeadsDailyChart(leadsDailyRaw) {
     if (!elements.leadsCanvas || !window.Chart) return;
 
     const rows = (Array.isArray(leadsDailyRaw) ? leadsDailyRaw : [])
