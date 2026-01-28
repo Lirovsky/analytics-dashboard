@@ -654,7 +654,12 @@
     const totalShown = state.filtered.length || 0;
     const pct = totalShown ? Math.round((yes / totalShown) * 100) : 0;
 
-    if (elements.kpiTotal) elements.kpiTotal.textContent = String(state.rows.length);
+
+    const rowsByStage = state.rows.filter(
+      (r) => normalizeStage(r.STAGE) === selectedStage
+    );
+    if (elements.kpiTotal) elements.kpiTotal.textContent = String(rowsByStage.length);
+
     if (elements.kpiShown) elements.kpiShown.textContent = String(totalShown);
     if (elements.kpiMoneyPct) elements.kpiMoneyPct.textContent = totalShown ? `${pct}%` : '—';
     // KPIs removidos: Áreas/Sistemas/Desafios
