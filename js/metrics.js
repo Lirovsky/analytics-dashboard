@@ -78,6 +78,9 @@ const elements = {
     totalCplGeneral: dom.byId('totalCplGeneral'),
     totalTicketMedioGeneral: dom.byId('totalTicketMedioGeneral'),
     totalAvgGeneral: dom.byId('totalAvgGeneral'),
+    totalCplIcp: dom.byId('totalCplIcp'),
+
+
 
     loadingOverlay: dom.byId('loadingOverlay'),
     errorToast: dom.byId('errorToast'),
@@ -241,6 +244,23 @@ const campaignsRender = {
         if (elements.totalValue) elements.totalValue.textContent = utils.formatCurrency(totals.value);
         if (elements.totalInvestment) elements.totalInvestment.textContent = utils.formatCurrency(totals.investment);
         if (elements.totalCplGeneral) elements.totalCplGeneral.textContent = utils.formatCurrency(utils.safeDivide(totals.investment, totals.leads));
+
+        const totalLeadsICP = Number(data?.entrySummary?.total_leads_ICP) || 0;
+
+        elements.totalCplIcp.textContent = utils.formatCurrency(
+            utils.safeDivide(totals.investment, totalLeadsICP)
+        );
+
+        console.log('[CPL DEBUG]', {
+            investment: totals.investment,
+            leadsTotal: totals.leads,
+            totalLeadsICP_raw: data?.entrySummary?.total_leads_ICP,
+            totalLeadsICP_num: Number(data?.entrySummary?.total_leads_ICP),
+            keysEntrySummary: Object.keys(data?.entrySummary || {})
+        });
+        console.log('[CPL DEBUG] element totalCplIcp exists?', !!elements.totalCplIcp);
+
+
         if (elements.totalTicketMedioGeneral) elements.totalTicketMedioGeneral.textContent = utils.formatCurrency(utils.safeDivide(totals.value, totals.sales));
         if (elements.totalAvgGeneral) elements.totalAvgGeneral.textContent = utils.formatDays(totals.weight > 0 ? totals.weightedSum / totals.weight : null);
     }
