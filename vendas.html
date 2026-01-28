@@ -38,78 +38,94 @@
             <h3 class="filter-panel__title">Filtro</h3>
 
             <div class="filter-panel__controls">
-                <div class="filter-group">
-                    <label for="entryStartDate">Vendas • Data inicial</label>
-                    <input type="date" id="entryStartDate" class="date-input" />
-                </div>
+                <!-- 1ª linha: Data + atalhos -->
+                <div class="filter-row filter-row--date">
+                    <div class="filter-group">
+                        <label for="entryStartDate">Vendas • Data inicial</label>
+                        <input type="date" id="entryStartDate" class="date-input" />
+                    </div>
 
-                <div class="filter-group">
-                    <label for="entryEndDate">Vendas • Data final</label>
-                    <input type="date" id="entryEndDate" class="date-input" />
-                </div>
+                    <div class="filter-group">
+                        <label for="entryEndDate">Vendas • Data final</label>
+                        <input type="date" id="entryEndDate" class="date-input" />
+                    </div>
 
-                <div class="filter-group">
-                    <label for="managerSelect">Vendedor</label>
-                    <select id="managerSelect" class="date-input">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="moneySelect">Money</label>
-                    <select id="moneySelect" class="date-input">
-                        <option value="">Todos</option>
-                        <option value="yes">Sim</option>
-                        <option value="no">Não</option>
-                        <option value="unknown">Não informado</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="areaSelect">Área</label>
-                    <select id="areaSelect" class="date-input">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="timeSelect">Time</label>
-                    <select id="timeSelect" class="date-input">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="sistemaSelect">Sistema</label>
-                    <select id="sistemaSelect" class="date-input">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="desafioSelect">Desafio</label>
-                    <select id="desafioSelect" class="date-input">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-
-                <div class="filter-group" style="min-width:260px;">
-                    <label>Atalhos</label>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button id="preset7" class="btn btn--ghost" type="button">Últimos 7d</button>
-                        <button id="preset14" class="btn btn--ghost" type="button">14d</button>
-                        <button id="preset30" class="btn btn--ghost" type="button">30d</button>
+                    <div class="filter-group filter-group--shortcuts">
+                        <label>Atalhos</label>
+                        <div class="filter-shortcuts">
+                            <button id="presetPrevDay" class="btn btn--ghost" type="button">Último dia</button>
+                            <button id="presetNextDay" class="btn btn--ghost" type="button">Próximo dia</button>
+                            <button id="preset7" class="btn btn--ghost" type="button">7 dias</button>
+                            <button id="preset14" class="btn btn--ghost" type="button">14 dias</button>
+                            <button id="preset30" class="btn btn--ghost" type="button">30 dias</button>
+                        </div>
                     </div>
                 </div>
 
+                <!-- 2ª linha: filtros -->
+                <div class="filter-row filter-row--main">
+                    <div class="filter-group">
+                        <label for="managerSelect">Vendedor</label>
+                        <select id="managerSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="moneySelect">Money</label>
+                        <select id="moneySelect" class="date-input">
+                            <option value="">Todos</option>
+                            <option value="yes">Sim</option>
+                            <option value="no">Não</option>
+                            <option value="unknown">Não informado</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="areaSelect">Área</label>
+                        <select id="areaSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="timeSelect">Time</label>
+                        <select id="timeSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="sistemaSelect">Sistema</label>
+                        <select id="sistemaSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="desafioSelect">Desafio</label>
+                        <select id="desafioSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group filter-group--search">
+                        <label for="globalSearch">Busca</label>
+                        <input type="text" id="globalSearch" class="text-input"
+                            placeholder="Buscar por contato / link umbler" />
+                    </div>
+                </div>
+
+                <!-- 3ª linha: botões -->
                 <hr class="filter-sep" />
 
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <div class="filter-row filter-row--actions">
                     <button id="applyFilters" class="btn btn--primary">Aplicar</button>
-                    <button id="clearEntryDates" class="btn btn--ghost" type="button">Limpar datas</button>
-                    <button id="clearAllFilters" class="btn btn--ghost" type="button">Limpar filtros</button>
+                    <button id="clearVendor" class="btn btn--ghost" type="button">Limpar vendedor</button>
+                    <button id="clearAllFilters" class="btn btn--ghost" type="button">Limpar tudo</button>
                 </div>
             </div>
+
         </aside>
 
         <!-- ================= Vendas ================= -->

@@ -29,11 +29,15 @@
   // ========================================
   const utils = {
     getDateString(date) {
-      return date.toISOString().split('T')[0];
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
     },
     today() {
       return this.getDateString(new Date());
     },
+
     escapeHtml(value) {
       return String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -246,6 +250,9 @@
     stageSelect: dom.byId('stageSelect'),
     desafioSelect: dom.byId('desafioSelect'),
     globalSearch: dom.byId('globalSearch'),
+    presetPrevDay: dom.byId('presetPrevDay'),
+    presetNextDay: dom.byId('presetNextDay'),
+
     preset7: dom.byId('preset7'),
     preset14: dom.byId('preset14'),
     preset30: dom.byId('preset30'),
@@ -1267,6 +1274,52 @@
       if (elements.entryEndInput) elements.entryEndInput.value = utils.getDateString(end);
       loadData();
     };
+
+    // Próximo dia (navegação dia-a-dia)
+    const applyNextDay = () => {
+      const startStr = elements.entryStartInput?.value || '';
+      const endStr = elements.entryEndInput?.value || '';
+
+      let baseStr = startStr || endStr || utils.today();
+      if (startStr && endStr && startStr === endStr) baseStr = startStr;
+
+      const baseDate = utils.parseAnyDate(baseStr) || new Date();
+      baseDate.setDate(baseDate.getDate() + 1);
+
+      const next = utils.getDateString(baseDate);
+      if (elements.entryStartInput) elements.entryStartInput.value = next;
+      if (elements.entryEndInput) elements.entryEndInput.value = next;
+
+      loadData();
+    };
+
+    if (elements.presetNextDay) {
+      elements.presetNextDay.addEventListener('click', applyNextDay);
+    }
+
+
+    // Dia anterior (navegação dia-a-dia)
+    const applyPreviousDay = () => {
+      // Se start=end, usa esse dia como base. Caso contrário, usa o start se existir, senão hoje.
+      const startStr = elements.entryStartInput?.value || '';
+      const endStr = elements.entryEndInput?.value || '';
+
+      let baseStr = startStr || endStr || utils.today();
+      if (startStr && endStr && startStr === endStr) baseStr = startStr;
+
+      const baseDate = utils.parseAnyDate(baseStr) || new Date();
+      baseDate.setDate(baseDate.getDate() - 1);
+
+      const prev = utils.getDateString(baseDate);
+      if (elements.entryStartInput) elements.entryStartInput.value = prev;
+      if (elements.entryEndInput) elements.entryEndInput.value = prev;
+
+      loadData();
+    };
+
+    if (elements.presetPrevDay) {
+      elements.presetPrevDay.addEventListener('click', applyPreviousDay);
+    }
 
     if (elements.preset7) elements.preset7.addEventListener('click', () => applyPresetDays(7));
     if (elements.preset14) elements.preset14.addEventListener('click', () => applyPresetDays(14));

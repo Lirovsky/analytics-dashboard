@@ -229,7 +229,7 @@ body {
 .btn--ghost {
     background: transparent;
     border: 1px solid var(--color-border);
-    color: var(--color-text-primary);
+    color: var(--color-text-secondary);
 }
 
 .btn--ghost:hover {
@@ -603,4 +603,62 @@ a.table-link:hover {
     color: var(--color-text-secondary);
     text-transform: uppercase;
     letter-spacing: .05em;
+}
+
+/* ========================================
+   Filtro — layout em 3 linhas (Data / Filtros / Botões)
+   ======================================== */
+
+.filter-panel__controls {
+    display: grid;
+    gap: 12px;
+}
+
+.filter-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    width: 100%;
+}
+
+.filter-row--date .filter-group {
+    flex: 0 0 180px;
+    min-width: 180px;
+}
+
+.filter-row--date .filter-group--shortcuts {
+    flex: 1 1 320px;
+    min-width: 320px;
+}
+
+.filter-row--main .filter-group {
+    flex: 1 1 180px;
+    min-width: 180px;
+}
+
+.filter-row--main .filter-group--search {
+    flex: 2 1 320px;
+    min-width: 280px;
+}
+
+.filter-shortcuts {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-row--actions {
+    justify-content: flex-start;
+}
+
+@media (max-width: 520px) {
+
+    .filter-row--date .filter-group,
+    .filter-row--main .filter-group,
+    .filter-row--date .filter-group--shortcuts,
+    .filter-row--main .filter-group--search {
+        min-width: 100%;
+        flex: 1 1 100%;
+    }
 }

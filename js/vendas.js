@@ -27,11 +27,15 @@
     // ========================================
     const utils = {
         getDateString(date) {
-            return date.toISOString().split('T')[0];
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
         },
         today() {
             return this.getDateString(new Date());
         },
+
         parseDateTime(value) {
             if (!value) return null;
             const s = String(value).trim();
@@ -283,7 +287,11 @@
         sistemaSelect: dom.byId('sistemaSelect'),
         desafioSelect: dom.byId('desafioSelect'),
 
-        quickSearch: dom.byId('quickSearch'),
+        quickSearch: dom.byId('globalSearch'),
+
+        presetPrevDay: dom.byId('presetPrevDay'),
+        presetNextDay: dom.byId('presetNextDay'),
+        clearVendor: dom.byId('clearVendor'),
 
         preset7: dom.byId('preset7'),
         preset14: dom.byId('preset14'),
@@ -576,13 +584,31 @@
 
         if (elements.applyFilters) elements.applyFilters.addEventListener('click', loadSales);
 
-        if (elements.clearEntryDates) {
-            elements.clearEntryDates.addEventListener('click', () => {
-                if (elements.entryStartInput) elements.entryStartInput.value = '2025-01-01';
-                if (elements.entryEndInput) elements.entryEndInput.value = utils.today();
+        if (elements.clearVendor) {
+            elements.clearVendor.addEventListener('click', () => {
+                if (elements.managerSelect) elements.managerSelect.value = '';
+                applyAllFiltersAndRender();
+            });
+        }
+
+        if (elements.clearAllFilters) {
+            elements.clearAllFilters.addEventListener('click', () => {
+                const today = utils.today();
+
+                if (elements.entryStartInput) elements.entryStartInput.value = today;
+                if (elements.entryEndInput) elements.entryEndInput.value = today;
+
+                if (elements.moneySelect) elements.moneySelect.value = '';
+                if (elements.quickSearch) elements.quickSearch.value = '';
+
+                [elements.managerSelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect]
+                    .filter(Boolean)
+                    .forEach((sel) => { sel.value = ''; });
+
                 loadSales();
             });
         }
+
 
         if (elements.clearAllFilters) {
             elements.clearAllFilters.addEventListener('click', () => {
@@ -621,6 +647,26 @@
         if (elements.preset7) elements.preset7.addEventListener('click', () => applyPresetDays(7));
         if (elements.preset14) elements.preset14.addEventListener('click', () => applyPresetDays(14));
         if (elements.preset30) elements.preset30.addEventListener('click', () => applyPresetDays(30));
+
+        const applyRelativeDay = (delta) => {
+            const startStr = elements.entryStartInput?.value || '';
+            const endStr = elements.entryEndInput?.value || '';
+            let baseStr = startStr || endStr || utils.today();
+            if (startStr && endStr && startStr === endStr) baseStr = startStr;
+
+            const baseDate = utils.parseDateTime(baseStr) || new Date();
+            baseDate.setDate(baseDate.getDate() + delta);
+
+            const ds = utils.getDateString(baseDate);
+            if (elements.entryStartInput) elements.entryStartInput.value = ds;
+            if (elements.entryEndInput) elements.entryEndInput.value = ds;
+
+            loadSales();
+        };
+
+        if (elements.presetPrevDay) elements.presetPrevDay.addEventListener('click', () => applyRelativeDay(-1));
+        if (elements.presetNextDay) elements.presetNextDay.addEventListener('click', () => applyRelativeDay(1));
+
 
         if (elements.closeToast) elements.closeToast.addEventListener('click', () => ui.hideError());
 

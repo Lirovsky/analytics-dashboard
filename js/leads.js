@@ -32,11 +32,15 @@
     // ========================================
     const utils = {
         getDateString(date) {
-            return date.toISOString().split('T')[0];
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
         },
         today() {
             return this.getDateString(new Date());
         },
+
         toBRDate(isoLike) {
             if (!isoLike) return '–';
             const s = String(isoLike).slice(0, 10); // YYYY-MM-DD
@@ -383,10 +387,9 @@
         entryStartInput: dom.byId('entryStartDate'),
         entryEndInput: dom.byId('entryEndDate'),
         applyFilters: dom.byId('applyFilters'),
-        clearEntryDates: dom.byId('clearEntryDates'),
         clearAllFilters: dom.byId('clearAllFilters'),
 
-        quickSearch: dom.byId('quickSearch'),
+        quickSearch: dom.byId('globalSearch'),
 
         moneySelect: dom.byId('moneySelect'),
         areaSelect: dom.byId('areaSelect'),
@@ -397,6 +400,9 @@
         preset7: dom.byId('preset7'),
         preset14: dom.byId('preset14'),
         preset30: dom.byId('preset30'),
+        presetPrevDay: dom.byId('presetPrevDay'),
+        presetNextDay: dom.byId('presetNextDay'),
+
 
         leadsBody: dom.byId('leadsBody'),
         totalCount: dom.byId('totalCount'),
@@ -760,17 +766,13 @@
         // Load
         if (elements.applyFilters) elements.applyFilters.addEventListener('click', loadLeads);
 
-        if (elements.clearEntryDates) {
-            elements.clearEntryDates.addEventListener('click', () => {
-                // mantém o comportamento original: abrir o range "grande"
-                if (elements.entryStartInput) elements.entryStartInput.value = '2025-01-01';
-                if (elements.entryEndInput) elements.entryEndInput.value = utils.today();
-                loadLeads();
-            });
-        }
-
         if (elements.clearAllFilters) {
             elements.clearAllFilters.addEventListener('click', () => {
+                const today = utils.today();
+
+                if (elements.entryStartInput) elements.entryStartInput.value = today;
+                if (elements.entryEndInput) elements.entryEndInput.value = today;
+
                 if (elements.moneySelect) elements.moneySelect.value = '';
                 if (elements.quickSearch) elements.quickSearch.value = '';
 
@@ -785,9 +787,10 @@
                         }
                     });
 
-                applyAllFiltersAndRender({ resetPage: true });
+                loadLeads();
             });
         }
+
 
         // On change: filter locally
         const onAnyFilterChange = () => applyAllFiltersAndRender({ resetPage: true });
@@ -816,6 +819,27 @@
         if (elements.preset7) elements.preset7.addEventListener('click', () => applyPresetDays(7));
         if (elements.preset14) elements.preset14.addEventListener('click', () => applyPresetDays(14));
         if (elements.preset30) elements.preset30.addEventListener('click', () => applyPresetDays(30));
+
+        const applyRelativeDay = (delta) => {
+            const startStr = elements.entryStartInput?.value || '';
+            const endStr = elements.entryEndInput?.value || '';
+
+            let baseStr = startStr || endStr || utils.today();
+            if (startStr && endStr && startStr === endStr) baseStr = startStr;
+
+            const baseDate = utils.parseDateTime(baseStr) || new Date();
+            baseDate.setDate(baseDate.getDate() + delta);
+
+            const ds = utils.getDateString(baseDate);
+            if (elements.entryStartInput) elements.entryStartInput.value = ds;
+            if (elements.entryEndInput) elements.entryEndInput.value = ds;
+
+            loadLeads();
+        };
+
+        if (elements.presetPrevDay) elements.presetPrevDay.addEventListener('click', () => applyRelativeDay(-1));
+        if (elements.presetNextDay) elements.presetNextDay.addEventListener('click', () => applyRelativeDay(1));
+
 
         if (elements.closeToast) elements.closeToast.addEventListener('click', () => ui.hideError());
 

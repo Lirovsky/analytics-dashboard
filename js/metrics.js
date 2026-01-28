@@ -10,11 +10,15 @@ const CONFIG = {
 // ========================================
 const utils = {
     getDateString(date) {
-        return date.toISOString().split('T')[0];
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
     },
     today() {
         return this.getDateString(new Date());
     },
+
     formatNumber(value) {
         if (value === null || value === undefined || isNaN(value)) return '–';
         return new Intl.NumberFormat('pt-BR').format(value);
