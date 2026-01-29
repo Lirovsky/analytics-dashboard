@@ -9,13 +9,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <link rel="stylesheet" href="css/vendas.css" />
 </head>
 
 <body>
-    <!-- ================= Navbar ================= -->
     <header class="top-nav">
         <div class="top-nav__inner">
             <div class="top-nav__brand">Analytics</div>
@@ -33,12 +31,10 @@
     </header>
 
     <div class="dashboard">
-        <!-- ================= Filtro ================= -->
         <aside class="filter-panel">
             <h3 class="filter-panel__title">Filtro</h3>
 
             <div class="filter-panel__controls">
-                <!-- 1ª linha: Data + atalhos -->
                 <div class="filter-row filter-row--date">
                     <div class="filter-group">
                         <label for="entryStartDate">Vendas • Data inicial</label>
@@ -62,7 +58,6 @@
                     </div>
                 </div>
 
-                <!-- 2ª linha: filtros -->
                 <div class="filter-row filter-row--main">
                     <div class="filter-group">
                         <label for="managerSelect">Vendedor</label>
@@ -116,19 +111,16 @@
                     </div>
                 </div>
 
-                <!-- 3ª linha: botões -->
                 <hr class="filter-sep" />
 
                 <div class="filter-row filter-row--actions">
-                    <button id="applyFilters" class="btn btn--primary">Aplicar</button>
+                    <button id="applyFilters" class="btn btn--primary" type="button">Aplicar</button>
                     <button id="clearVendor" class="btn btn--ghost" type="button">Limpar vendedor</button>
                     <button id="clearAllFilters" class="btn btn--ghost" type="button">Limpar tudo</button>
                 </div>
             </div>
-
         </aside>
 
-        <!-- ================= Vendas ================= -->
         <section class="section">
             <div class="section__header">
                 <h2 class="section__title">Vendas</h2>
@@ -137,7 +129,6 @@
                 </div>
             </div>
 
-            <!-- ================= Gráficos ================= -->
             <div class="analytics-block" id="analyticsBlock">
                 <div class="charts-grid">
                     <div class="chart-card">
@@ -183,7 +174,6 @@
             </div>
         </section>
 
-        <!-- Loading / Error -->
         <div class="loading-overlay" id="loadingOverlay">
             <div class="spinner"></div>
             <p>Loading data...</p>
@@ -192,7 +182,7 @@
         <div class="toast toast--error" id="errorToast">
             <span class="toast__icon">⚠️</span>
             <span class="toast__message" id="errorMessage">Error loading data</span>
-            <button class="toast__close" id="closeToast">×</button>
+            <button class="toast__close" id="closeToast" type="button">×</button>
         </div>
     </div>
 

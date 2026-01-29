@@ -2,31 +2,19 @@
   const page = document.documentElement.getAttribute('data-page');
   if (page !== 'leads-vendedor') return;
 
-  // ========================================
-  // Configuration
-  // ========================================
   const CONFIG = {
     ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor',
   };
   const NAO_INFORMADO_VALUE = '__nao_informado__';
 
-
-
-
-  // ========================================
-  // Chart.js plugins
-  // ========================================
   if (window.Chart && window.ChartDataLabels && typeof window.Chart.register === 'function') {
     window.Chart.register(window.ChartDataLabels);
-    // Desliga por padrão (ativamos só nos gráficos de pizza)
+
     window.Chart.defaults.plugins = window.Chart.defaults.plugins || {};
     window.Chart.defaults.plugins.datalabels = window.Chart.defaults.plugins.datalabels || {};
     window.Chart.defaults.plugins.datalabels.display = false;
   }
 
-  // ========================================
-  // Utilities
-  // ========================================
   const utils = {
     getDateString(date) {
       const y = date.getFullYear();
@@ -50,16 +38,13 @@
       if (!s) return null;
       const str = String(s).trim();
 
-      // YYYY-MM-DD
       if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(str + 'T00:00:00');
 
-      // YYYY/MM/DD
       if (/^\d{4}\/\d{2}\/\d{2}$/.test(str)) {
         const [yyyy, mm, dd] = str.split('/');
         return new Date(`${yyyy}-${mm}-${dd}T00:00:00`);
       }
 
-      // DD/MM/YYYY
       if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
         const [dd, mm, yyyy] = str.split('/');
         return new Date(`${yyyy}-${mm}-${dd}T00:00:00`);
@@ -78,7 +63,6 @@
     },
   };
 
-
   function normalizeMoney(value) {
     const v = String(value ?? '').trim().toLowerCase();
     if (!v) return 'unknown';
@@ -87,9 +71,8 @@
     return 'unknown';
   }
 
-
   function normalizeStage(value) {
-    // Normaliza valores vindos do Sheets/n8n (pode vir PT, EN, com acento, ou até "negociation")
+
     const raw = String(value ?? '').trim();
     if (!raw) return 'presentation'; // default para dados antigos/sem stage
 
@@ -98,16 +81,12 @@
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, ''); // remove acentos
 
-    // presentation
     if (s.includes('present') || s.includes('apres') || s.startsWith('pres')) return 'presentation';
 
-    // negotiation (aceita typo "negociation")
     if (s.includes('nego') || s.includes('negoci')) return 'negotiation';
 
-    // fallback seguro
     return 'presentation';
   }
-
 
   function getSelectedValues(selectEl) {
     if (!selectEl) return [];
@@ -147,7 +126,6 @@
     }
   }
 
-
   function uniqueSorted(rows, key) {
     const set = new Set();
     rows.forEach((r) => {
@@ -186,9 +164,6 @@
     if (state.charts[id]) {
       const chart = state.charts[id];
 
-      // Preserve pie slice visibility by LABEL (not by index).
-      // Chart.js stores hidden state by index; when labels change order (e.g. ao filtrar vendedor),
-      // o índice escondido pode acabar escondendo outra categoria.
       const isPieLike = ['pie', 'doughnut', 'polarArea'].includes(chart.config?.type);
       const prevLabels = Array.isArray(chart.data?.labels) ? chart.data.labels : [];
       const hiddenLabelKeys = new Set();
@@ -203,14 +178,12 @@
       chart.config.options = config.options;
 
       if (isPieLike && hiddenLabelKeys.size && Array.isArray(config?.data?.labels)) {
-        // Reset hidden indices, then re-apply hidden status by label.
-        // (internal, but stable enough for this use case)
-        // Clear previous hidden indices (even if the internal object wasn't created yet)
+
         chart._hiddenIndices = {};
 
         config.data.labels.forEach((lbl, i) => {
           if (hiddenLabelKeys.has(normalizeLabelKey(lbl))) {
-            // ensure hidden
+
             if (typeof chart.getDataVisibility === 'function' && chart.getDataVisibility(i)) {
               chart.toggleDataVisibility(i);
             }
@@ -226,16 +199,12 @@
     return state.charts[id];
   }
 
-
   const dom = {
     byId(id) {
       return document.getElementById(id);
     },
   };
 
-  // ========================================
-  // DOM Elements
-  // ========================================
   const elements = {
     entryStartInput: dom.byId('entryStartDate'),
     entryEndInput: dom.byId('entryEndDate'),
@@ -261,12 +230,11 @@
     kpiTotal: dom.byId('kpiTotal'),
     kpiShown: dom.byId('kpiShown'),
     kpiMoneyPct: dom.byId('kpiMoneyPct'),
-    // KPIs removidos: Áreas/Sistemas/Desafios
+
     rangePill: dom.byId('rangePill'),
 
     recordsBody: dom.byId('recordsBody'),
 
-    // Paginação (Registros)
     recordsPrev: dom.byId('recordsPrev'),
     recordsNext: dom.byId('recordsNext'),
     recordsPageInfo: dom.byId('recordsPageInfo'),
@@ -278,9 +246,6 @@
     closeToast: dom.byId('closeToast'),
   };
 
-  // ========================================
-  // State
-  // ========================================
   const state = {
     rows: [],
     filtered: [],
@@ -295,9 +260,6 @@
     },
   };
 
-  // ========================================
-  // Pagination helpers
-  // ========================================
   function clamp(n, min, max) {
     return Math.min(max, Math.max(min, n));
   }
@@ -323,10 +285,6 @@
     return rows.slice(start, start + size);
   }
 
-
-  // ========================================
-  // UI Helpers
-  // ========================================
   const ui = {
     showLoading() {
       if (elements.loadingOverlay) elements.loadingOverlay.classList.add('active');
@@ -370,9 +328,6 @@
     },
   };
 
-  // ========================================
-  // API
-  // ========================================
   const api = {
     buildUrl(base, paramsObj) {
       const params = new URLSearchParams();
@@ -388,7 +343,6 @@
 
       const response = await fetch(url, { cache: 'no-store' });
 
-      // O webhook pode responder vazio (204/200 sem body) e isso quebra response.json()
       const rawText = await response.text();
 
       if (!response.ok) {
@@ -408,9 +362,6 @@
     },
   };
 
-  // ========================================
-  // Normalização do payload (n8n pode devolver array direto)
-  // ========================================
   function extractRows(payload) {
     if (Array.isArray(payload)) return payload;
     if (payload?.data && Array.isArray(payload.data)) return payload.data;
@@ -460,7 +411,6 @@
     const phone = getField(raw, ['PHONE', 'Phone', 'phone', 'Contato', 'contato']);
     const link = getField(raw, ['LINK', 'Link', 'link']);
 
-    // campos extras (do Sheets / n8n)
     const money = getField(raw, ['MONEY', 'Money', 'money', 'tem_money', 'temMoney']);
     const area = getField(raw, ['AREA', 'Área', 'area']);
     const time = getField(raw, ['TIME', 'Time', 'time']);
@@ -476,7 +426,7 @@
 
       ENTRADA: entrada,
       ENTREGUE: entregue,
-      // compat: antes a UI usava "DATA" como coluna de data
+
       DATA: entregue,
 
       VENDEDOR: vendedor,
@@ -493,9 +443,6 @@
     };
   }
 
-  // ========================================
-  // Render
-  // ========================================
   const render = {
     vendorSelectOptions(vendors, keepSelected = true) {
       if (!elements.vendorSelect) return;
@@ -564,9 +511,6 @@
     },
   };
 
-  // ========================================
-  // Filtering + Counters
-  // ========================================
   function computeVendorCounts(rows) {
     return rows.reduce((acc, r) => {
       const v = String(r.VENDEDOR || '').trim() || 'Sem vendedor';
@@ -579,7 +523,6 @@
     return Object.keys(counts || {}).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }
 
-
   function matchesSelectValue(rowValue, selectedValues) {
     if (!selectedValues || !selectedValues.length) return true;
 
@@ -589,7 +532,6 @@
     if (!v) return wantsNaoInformado;
     return selectedValues.includes(v);
   }
-
 
   function applyAllFiltersAndRender({ resetPage = false } = {}) {
     if (resetPage) state.pagination.page = 1;
@@ -609,7 +551,6 @@
 
     let out = [...state.rows];
 
-    // Stage é um filtro hard (Apresentação vs Negociação)
     if (selectedStage) {
       out = out.filter((r) => normalizeStage(r.STAGE) === selectedStage);
     }
@@ -626,7 +567,6 @@
     if (times.length) out = out.filter((r) => matchesSelectValue(r.TIME, times));
     if (sistemas.length) out = out.filter((r) => matchesSelectValue(r.SISTEMA, sistemas));
     if (desafios.length) out = out.filter((r) => matchesSelectValue(r.DESAFIO, desafios));
-
 
     if (q) {
       out = out.filter((r) => {
@@ -661,7 +601,6 @@
     const totalShown = state.filtered.length || 0;
     const pct = totalShown ? Math.round((yes / totalShown) * 100) : 0;
 
-
     const rowsByStage = state.rows.filter(
       (r) => normalizeStage(r.STAGE) === selectedStage
     );
@@ -669,7 +608,6 @@
 
     if (elements.kpiShown) elements.kpiShown.textContent = String(totalShown);
     if (elements.kpiMoneyPct) elements.kpiMoneyPct.textContent = totalShown ? `${pct}%` : '—';
-    // KPIs removidos: Áreas/Sistemas/Desafios
 
     updateCharts();
   }
@@ -680,7 +618,6 @@
 
     const asText = (v) => String(v ?? '').toLowerCase();
 
-    // Datas: ordenar por data real (aceita DD/MM/YYYY, YYYY-MM-DD, etc.)
     if (key === 'ENTRADA' || key === 'ENTREGUE' || key === 'DATA') {
       return [...items].sort((a, b) => {
         const aTime = utils.parseAnyDate(a?.[key])?.getTime?.() || 0;
@@ -689,17 +626,11 @@
       });
     }
 
-    // Outros campos: texto
     return [...items].sort((a, b) => {
       return asText(a?.[key]).localeCompare(asText(b?.[key]), 'pt-BR') * dir;
     });
   }
 
-
-
-  // ========================================
-  // Charts + Pivot
-  // ========================================
   function buildDailySeries(rows, dateKey) {
     const map = new Map();
     rows.forEach((r) => {
@@ -722,8 +653,6 @@
     };
   }
 
-
-
   function buildPieFromCounts(counts, topN = 8, minPct = 0.02) {
     const entries = Object.entries(counts || {}).sort((a, b) => (b[1] || 0) - (a[1] || 0));
     const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0);
@@ -740,8 +669,6 @@
 
       const pct = v / total;
 
-      // Mantém "Não informado" mesmo se for pequeno (não aplica minPct),
-      // mas respeita o limite topN.
       const isNaoInformado =
         k.toLowerCase() === 'não informado' ||
         k.toLowerCase() === 'nao informado' ||
@@ -763,11 +690,6 @@
     return { labels, data };
   }
 
-
-
-  // ========================================
-  // Pie chart sizing + % labels + cores especiais
-  // ========================================
   const COLOR_NAO_INFORMADO = '#000000';
   const COLOR_OUTROS = '#ffffff';
   const COLOR_OUTROS_BORDER = '#cbd5e1';
@@ -807,7 +729,7 @@
   }
 
   function pieBorderForLabel(label) {
-    // "Outros" é branco, então precisa borda cinza para aparecer
+
     if (isOutrosLabel(label)) return COLOR_OUTROS_BORDER;
     return '#ffffff';
   }
@@ -847,10 +769,6 @@
     layout: { padding: { top: 18, right: 18, bottom: 22, left: 18 } },
   };
 
-
-  // ========================================
-  // Bar chart options (Leads por vendedor)
-  // ========================================
   const BAR_VENDOR_OPTIONS = {
     responsive: true,
     maintainAspectRatio: false,
@@ -910,7 +828,6 @@
   function updateCharts() {
     const rows = state.filtered;
 
-    // Leads por vendedor (mantém em barras)
     const vendorCounts = countBy(rows, 'VENDEDOR');
     const vendorTop = Object.entries(vendorCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
 
@@ -923,7 +840,6 @@
       options: BAR_VENDOR_OPTIONS,
     });
 
-    // Leads por área (pizza)
     const areaPie = buildPieFromCounts(countBy(rows, 'AREA'), 7);
     ensureChart('chartArea', {
       type: 'pie',
@@ -931,8 +847,6 @@
       options: PIE_OPTIONS,
     });
 
-
-    // Leads por time (pizza)
     const timePie = buildPieFromCounts(countBy(rows, 'TIME'), 8);
     ensureChart('chartTime', {
       type: 'pie',
@@ -940,8 +854,6 @@
       options: PIE_OPTIONS,
     });
 
-
-    // Leads por sistema (pizza)
     const sysPie = buildPieFromCounts(countBy(rows, 'SISTEMA'), 8);
     ensureChart('chartSistema', {
       type: 'pie',
@@ -949,8 +861,6 @@
       options: PIE_OPTIONS,
     });
 
-
-    // Leads por Money (pizza)
     const moneyCounts = countBy(rows, 'MONEY', { normalizeFn: normalizeMoney });
     ensureChart('chartMoney', {
       type: 'pie',
@@ -961,9 +871,6 @@
       options: PIE_OPTIONS,
     });
 
-
-
-    // Leads por origem (pizza)
     const origemPie = buildPieFromCounts(countBy(rows, 'ORIGEM'), 8);
     ensureChart('chartOrigem', {
       type: 'pie',
@@ -971,7 +878,6 @@
       options: PIE_OPTIONS,
     });
 
-    // Leads por desafio (pizza)
     const desPie = buildPieFromCounts(countBy(rows, 'DESAFIO'), 8);
     ensureChart('chartDesafio', {
       type: 'pie',
@@ -979,8 +885,6 @@
       options: PIE_OPTIONS_NO_LEGEND,
     });
 
-
-    // Money por vendedor (stacked)
     const vendors = Object.keys(countBy(rows, 'VENDEDOR')).sort((a, b) => a.localeCompare(b, 'pt-BR'));
     const moneyByVendor = { yes: {}, no: {}, unknown: {} };
 
@@ -1007,7 +911,6 @@
       },
     });
 
-    // Áreas por vendedor (stacked Top 6)
     const topAreas = topNFromCounts(countBy(rows, 'AREA'), 6).map(([k]) => k);
     const areaByVendor = {};
 
@@ -1038,7 +941,6 @@
       },
     });
 
-    // Sistemas por área (stacked Top 6, áreas Top 10)
     const topAreas2 = topNFromCounts(countBy(rows, 'AREA'), 10).map(([k]) => k);
     const topSistemas = topNFromCounts(countBy(rows, 'SISTEMA'), 6).map(([k]) => k);
     const sysByArea = {};
@@ -1073,7 +975,6 @@
       },
     });
 
-    // Desafios por área (stacked Top 6, áreas Top 10)
     const topDesafios = topNFromCounts(countBy(rows, 'DESAFIO'), 6).map(([k]) => k);
     const desByArea = {};
 
@@ -1114,26 +1015,12 @@
   }
 
   function getLegendColor() {
-    // Se quiser "branco no dark e preto no light" de forma explícita:
-    const theme = document.documentElement.getAttribute("data-theme");
-    if (theme === "dark") return "#fff";
-    return "#000";
-    // Alternativa melhor (segue teus tokens do theme.css):
-    // return cssVar("--color-text-primary", theme === "dark" ? "#fff" : "#000");
-  }
-
-  function cssVar(name, fallback = "") {
-    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return v || fallback;
-  }
-
-  function getLegendColor() {
     const theme = document.documentElement.getAttribute("data-theme");
     return theme === "dark" ? "#fff" : "#000";
   }
 
   function applyThemeToChart(chart) {
-    // garante que é Chart (não canvas)
+
     const opts = chart?.options || chart?.config?.options;
     if (!opts) return;
 
@@ -1141,13 +1028,11 @@
     const tickColor = cssVar("--color-text-secondary", legendColor);
     const gridColor = cssVar("--color-border", "rgba(0,0,0,.1)");
 
-    // Legenda
     opts.plugins = opts.plugins || {};
     opts.plugins.legend = opts.plugins.legend || {};
     opts.plugins.legend.labels = opts.plugins.legend.labels || {};
     opts.plugins.legend.labels.color = legendColor;
 
-    // Eixos (para barras/stacked)
     if (opts.scales) {
       Object.values(opts.scales).forEach((axis) => {
         axis.ticks = axis.ticks || {};
@@ -1175,14 +1060,8 @@
     });
   }
 
-
   registerChartThemeSync(() => Object.values(state.charts));
 
-
-
-  // ========================================
-  // Data loader
-  // ========================================
   async function loadData() {
     const entryStart = elements.entryStartInput?.value || '';
     const entryEnd = elements.entryEndInput?.value || '';
@@ -1205,12 +1084,10 @@
       const vendors = getVendorsFromCounts(state.vendorCounts);
       render.vendorSelectOptions(vendors, true);
 
-      // Options for multi-select filters (from the loaded period)
       setOptions(elements.areaSelect, uniqueSorted(rows, 'AREA'), { keepSelected: true, includeNotInformed: true });
       setOptions(elements.timeSelect, uniqueSorted(rows, 'TIME'), { keepSelected: true, includeNotInformed: true });
       setOptions(elements.sistemaSelect, uniqueSorted(rows, 'SISTEMA'), { keepSelected: true, includeNotInformed: true });
       setOptions(elements.desafioSelect, uniqueSorted(rows, 'DESAFIO'), { keepSelected: true, includeNotInformed: true });
-
 
       applyAllFiltersAndRender({ resetPage: true });
     } catch (e) {
@@ -1222,18 +1099,12 @@
     }
   }
 
-  // ========================================
-  // Dates
-  // ========================================
   function initializeDates() {
     const today = utils.today();
     if (elements.entryStartInput) elements.entryStartInput.value = today;
     if (elements.entryEndInput) elements.entryEndInput.value = today;
   }
 
-  // ========================================
-  // Events
-  // ========================================
   function setupEventListeners() {
     if (elements.closeToast) elements.closeToast.addEventListener('click', () => ui.hideError());
 
@@ -1256,7 +1127,6 @@
       .filter(Boolean)
       .forEach((el) => el.addEventListener('change', onAnyFilterChange));
 
-    // Search (debounced)
     let searchTimer = null;
     if (elements.globalSearch) {
       elements.globalSearch.addEventListener('input', () => {
@@ -1265,7 +1135,6 @@
       });
     }
 
-    // Presets (adjust Entrada range)
     const applyPresetDays = (days) => {
       const end = new Date();
       const start = new Date();
@@ -1275,7 +1144,6 @@
       loadData();
     };
 
-    // Próximo dia (navegação dia-a-dia)
     const applyNextDay = () => {
       const startStr = elements.entryStartInput?.value || '';
       const endStr = elements.entryEndInput?.value || '';
@@ -1297,10 +1165,8 @@
       elements.presetNextDay.addEventListener('click', applyNextDay);
     }
 
-
-    // Dia anterior (navegação dia-a-dia)
     const applyPreviousDay = () => {
-      // Se start=end, usa esse dia como base. Caso contrário, usa o start se existir, senão hoje.
+
       const startStr = elements.entryStartInput?.value || '';
       const endStr = elements.entryEndInput?.value || '';
 
@@ -1325,7 +1191,6 @@
     if (elements.preset14) elements.preset14.addEventListener('click', () => applyPresetDays(14));
     if (elements.preset30) elements.preset30.addEventListener('click', () => applyPresetDays(30));
 
-    // Clear all filters (keeps date range)
     if (elements.clearAllFilters) {
       elements.clearAllFilters.addEventListener('click', () => {
         if (elements.vendorSelect) elements.vendorSelect.value = '';
@@ -1341,8 +1206,6 @@
       });
     }
 
-    // Clique nos cards (contador por vendedor)
-
     const onEnter = (e) => {
       if (e.key !== 'Enter') return;
       loadData();
@@ -1351,7 +1214,6 @@
     if (elements.entryStartInput) elements.entryStartInput.addEventListener('keypress', onEnter);
     if (elements.entryEndInput) elements.entryEndInput.addEventListener('keypress', onEnter);
 
-    // Paginação (Registros)
     if (elements.recordsPrev) {
       elements.recordsPrev.addEventListener('click', () => {
         state.pagination.page = Math.max(1, (state.pagination.page || 1) - 1);
@@ -1372,7 +1234,6 @@
       });
     }
 
-    // Ordenação (clique no header)
     document.querySelectorAll('.data-table--records th[data-sort]').forEach((th) => {
       th.addEventListener('click', () => {
         const key = th.dataset.sort;
@@ -1388,15 +1249,11 @@
       });
     });
 
-    // Header ativo default
     const defaultTh = document.querySelector('.data-table--records th[data-sort="ENTREGUE"]');
     defaultTh?.classList.add('active');
 
   }
 
-  // ========================================
-  // Init
-  // ========================================
   function init() {
     initializeDates();
     setupEventListeners();

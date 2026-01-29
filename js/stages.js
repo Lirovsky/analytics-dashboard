@@ -1,387 +1,328 @@
-(() => {
-  const page = document.documentElement.getAttribute('data-page');
-  if (page !== 'stages') return;
+const CONFIG = {
+  FUNNEL_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/funnel",
+};
 
-  // ========================================
-  // Configuration
-  // ========================================
-  const CONFIG = {
-    FUNNEL_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/funnel',
-  };
+const formatters = {
+  number: new Intl.NumberFormat("pt-BR"),
+};
 
-  // ========================================
-  // Utilities
-  // ========================================
-  const utils = {
-    getDateString(date) {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    },
-    today() {
-      return this.getDateString(new Date());
-    },
+const utils = {
+  getDateString(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  },
+  today() {
+    return this.getDateString(new Date());
+  },
+  safeNumber(value) {
+    if (value === null || value === undefined || isNaN(value)) return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  },
+  formatNumber(value) {
+    const n = this.safeNumber(value);
+    return n === null ? "–" : formatters.number.format(n);
+  },
+  formatPercentage(value) {
+    const n = this.safeNumber(value);
+    return n === null ? "–" : `${n.toFixed(2)}%`;
+  },
+  safeDivide(numerator, denominator) {
+    const n = Number(numerator);
+    const d = Number(denominator);
+    if (!Number.isFinite(n) || !Number.isFinite(d) || d === 0) return null;
+    return n / d;
+  },
+};
 
-    formatNumber(value) {
-      if (value === null || value === undefined || isNaN(value)) return '–';
-      return new Intl.NumberFormat('pt-BR').format(value);
-    },
-    formatPercentage(value) {
-      if (value === null || value === undefined || isNaN(value)) return '–';
-      return `${Number(value).toFixed(2)}%`;
-    },
-    safeDivide(numerator, denominator) {
-      const n = Number(numerator);
-      const d = Number(denominator);
-      if (!Number.isFinite(n) || !Number.isFinite(d) || d === 0) return null;
-      return n / d;
-    },
-  };
+const $id = (id) => document.getElementById(id);
 
-  const dom = {
-    byId(id) {
-      return document.getElementById(id);
-    },
-  };
+const elements = {
+  entryStartInput: $id("entryStartDate"),
+  entryEndInput: $id("entryEndDate"),
+  stageSelect: $id("stageSelect"),
+  applyEntryOnly: $id("applyEntryOnly"),
 
-  // ========================================
-  // DOM Elements (somente Stages)
-  // ========================================
-  const elements = {
-    // Filtro de entrada
-    entryStartInput: dom.byId('entryStartDate'),
-    entryEndInput: dom.byId('entryEndDate'),
-    stageSelect: dom.byId('stageSelect'),
+  moneyStatusBody: $id("moneyStatusBody"),
+  channelFunnelBody: $id("channelFunnelBody"),
 
-    // Botão
-    applyEntryOnly: dom.byId('applyEntryOnly'),
+  loadingOverlay: $id("loadingOverlay"),
+  errorToast: $id("errorToast"),
+  errorMessage: $id("errorMessage"),
+  closeToast: $id("closeToast"),
+};
 
-    // Tabelas (funil)
-    moneyStatusBody: dom.byId('moneyStatusBody'),
-    channelFunnelBody: dom.byId('channelFunnelBody'),
+const state = {
+  funnelData: null,
+};
 
-    // UI
-    loadingOverlay: dom.byId('loadingOverlay'),
-    errorToast: dom.byId('errorToast'),
-    errorMessage: dom.byId('errorMessage'),
-    closeToast: dom.byId('closeToast'),
-  };
+const ui = {
+  showLoading() {
+    elements.loadingOverlay?.classList.add("active");
+  },
+  hideLoading() {
+    elements.loadingOverlay?.classList.remove("active");
+  },
+  showError(message) {
+    if (!elements.errorToast) return;
+    if (elements.errorMessage) elements.errorMessage.textContent = message;
+    elements.errorToast.classList.add("active");
+    setTimeout(() => this.hideError(), 4500);
+  },
+  hideError() {
+    elements.errorToast?.classList.remove("active");
+  },
+  renderSkeleton(count, colspan) {
+    return Array(count)
+      .fill(0)
+      .map(
+        () =>
+          `<tr><td colspan="${colspan}"><div class="skeleton" style="width:100%;height:20px;"></div></td></tr>`
+      )
+      .join("");
+  },
+  renderEmptyState(message, colspan) {
+    return `
+      <tr>
+        <td colspan="${colspan}">
+          <div class="empty-state">
+            <div class="empty-state__icon">📊</div>
+            <p>${message}</p>
+          </div>
+        </td>
+      </tr>
+    `;
+  },
+};
 
-  // ========================================
-  // State
-  // ========================================
-  const state = {
-    funnelData: null,
-  };
+const api = {
+  buildUrl(base, paramsObj) {
+    const params = new URLSearchParams();
+    Object.entries(paramsObj || {}).forEach(([k, v]) => {
+      if (v !== null && v !== undefined && String(v).trim() !== "") params.set(k, v);
+    });
+    params.set("_ts", Date.now());
+    return `${base}?${params.toString()}`;
+  },
 
-  // ========================================
-  // UI Helpers
-  // ========================================
-  const ui = {
-    showLoading() {
-      if (elements.loadingOverlay) elements.loadingOverlay.classList.add('active');
-    },
-    hideLoading() {
-      if (elements.loadingOverlay) elements.loadingOverlay.classList.remove('active');
-    },
-    showError(message) {
-      if (!elements.errorToast || !elements.errorMessage) return;
-      elements.errorMessage.textContent = message;
-      elements.errorToast.classList.add('active');
-      setTimeout(() => this.hideError(), 4500);
-    },
-    hideError() {
-      if (!elements.errorToast) return;
-      elements.errorToast.classList.remove('active');
-    },
-    renderSkeleton(count = 6, colspan = 7) {
-      return Array(count)
-        .fill(0)
-        .map(
-          () =>
-            `<tr><td colspan="${colspan}"><div class="skeleton" style="width:100%;height:20px;"></div></td></tr>`
-        )
-        .join('');
-    },
-    renderEmptyState(message = 'Sem dados', colspan = 7) {
-      return `
-        <tr>
-          <td colspan="${colspan}">
-            <div class="empty-state">
-              <div class="empty-state__icon">📊</div>
-              <p>${message}</p>
-            </div>
-          </td>
-        </tr>
-      `;
-    },
-  };
+  async fetchFunnel(paramsObj) {
+    const url = this.buildUrl(CONFIG.FUNNEL_ENDPOINT, paramsObj);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  },
+};
 
-  // ========================================
-  // API
-  // ========================================
-  const api = {
-    buildUrl(base, paramsObj) {
-      const params = new URLSearchParams();
-      Object.entries(paramsObj || {}).forEach(([k, v]) => {
-        if (v !== null && v !== undefined && String(v).trim() !== '') params.set(k, v);
-      });
-      params.set('_ts', Date.now());
-      return `${base}?${params.toString()}`;
-    },
+const STAGE_VALUE_MAP = {
+  Assinou: "Assinatura",
+};
 
-    async fetchFunnel(paramsObj) {
-      const url = this.buildUrl(CONFIG.FUNNEL_ENDPOINT, paramsObj);
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
-    },
-  };
+const STAGES_ORDER = [
+  "Lead",
+  "1ª Interação",
+  "Apresentação",
+  "Proposta Enviada",
+  "Pagamento Pendente",
+  "Assinatura",
+];
 
-  // ========================================
-  // Render: FUNNEL (Stages)
-  // ========================================
-  const funnelRender = {
-    funnelRow(stage, groups, highlight = false) {
-      const cls = highlight ? 'row-subscription' : '';
-      const cells = groups
-        .map(
-          (g) => `
-            <td>${utils.formatNumber(g.count)}</td>
-            <td>${utils.formatPercentage(g.percentage)}</td>
-          `
-        )
-        .join('');
+const funnelRender = {
+  row(stage, groups, highlight = false) {
+    const cls = highlight ? "row-subscription" : "";
+    const cells = groups
+      .map(
+        (g) => `
+          <td>${utils.formatNumber(g.count)}</td>
+          <td>${utils.formatPercentage(g.percentage)}</td>
+        `
+      )
+      .join("");
 
-      return `
-        <tr class="${cls}">
-          <td>${stage}</td>
-          ${cells}
-        </tr>
-      `;
-    },
+    return `
+      <tr class="${cls}">
+        <td>${stage}</td>
+        ${cells}
+      </tr>
+    `;
+  },
 
-    funnelTotalRowNoPercent(stage, counts) {
-      const cells = counts
-        .map((count) => `<td><strong>${utils.formatNumber(count)}</strong></td><td></td>`)
-        .join('');
+  totalRow(stage, groups) {
+    const cells = groups
+      .map(
+        (g) => `
+          <td><strong>${utils.formatNumber(g.count)}</strong></td>
+          <td><strong>${utils.formatPercentage(g.percentage)}</strong></td>
+        `
+      )
+      .join("");
 
-      return `
-        <tr class="total-row">
-          <td><strong>${stage}</strong></td>
-          ${cells}
-        </tr>
-      `;
-    },
+    return `
+      <tr class="total-row">
+        <td><strong>${stage}</strong></td>
+        ${cells}
+      </tr>
+    `;
+  },
 
-    funnelTotalRow(stage, groups) {
-      const cells = groups
-        .map(
-          (g) => `
-            <td><strong>${utils.formatNumber(g.count)}</strong></td>
-            <td><strong>${utils.formatPercentage(g.percentage)}</strong></td>
-          `
-        )
-        .join('');
+  totalRowCountsOnly(stage, counts) {
+    const cells = counts.map((c) => `<td><strong>${utils.formatNumber(c)}</strong></td><td></td>`).join("");
+    return `
+      <tr class="total-row">
+        <td><strong>${stage}</strong></td>
+        ${cells}
+      </tr>
+    `;
+  },
 
-      return `
-        <tr class="total-row">
-          <td><strong>${stage}</strong></td>
-          ${cells}
-        </tr>
-      `;
-    },
+  buildTotalByChannelCountsOnly(stages) {
+    const keys = ["google", "facebook", "organic"];
+    return keys.map((k) => STAGES_ORDER.reduce((acc, s) => acc + (stages?.[s]?.[k]?.count || 0), 0));
+  },
 
-    buildTotalByChannelCountsOnly(stages) {
-      const sumStages = ['Lead', '1ª Interação', 'Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
-      const keys = ['google', 'facebook', 'organic'];
+  buildTotalMoneyStatus(stages) {
+    const allCount = STAGES_ORDER.reduce((acc, s) => acc + (stages?.[s]?.all?.count || 0), 0);
+    const yesCount = STAGES_ORDER.reduce((acc, s) => acc + (stages?.[s]?.moneyYes?.count || 0), 0);
+    const noCount = STAGES_ORDER.reduce((acc, s) => acc + (stages?.[s]?.moneyNo?.count || 0), 0);
+    const otherCount = STAGES_ORDER.reduce((acc, s) => acc + (stages?.[s]?.moneyOther?.count || 0), 0);
 
-      return keys.map((k) => sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.count || 0), 0));
-    },
+    const pct = (count) => {
+      const v = utils.safeDivide(count, allCount);
+      return v === null ? 0 : Number((v * 100).toFixed(2));
+    };
 
-    buildTotalMoneyStatus(stages) {
-      const sumStages = ['Lead', '1ª Interação', 'Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
+    return [
+      { count: allCount, percentage: 100 },
+      { count: yesCount, percentage: pct(yesCount) },
+      { count: noCount, percentage: pct(noCount) },
+      { count: otherCount, percentage: pct(otherCount) },
+    ];
+  },
 
-      const allCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.all?.count || 0), 0);
-      const yesCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.moneyYes?.count || 0), 0);
-      const noCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.moneyNo?.count || 0), 0);
-      const otherCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.moneyOther?.count || 0), 0);
+  buildConversandoMoneyStatus(stages) {
+    const sumStages = ["Apresentação", "Proposta Enviada", "Pagamento Pendente", "Assinatura"];
+    const keys = ["all", "moneyYes", "moneyNo", "moneyOther"];
 
-      return [
-        { count: allCount, percentage: 100 },
-        { count: yesCount, percentage: Number((utils.safeDivide(yesCount, allCount) * 100).toFixed(2)) },
-        { count: noCount, percentage: Number((utils.safeDivide(noCount, allCount) * 100).toFixed(2)) },
-        { count: otherCount, percentage: Number((utils.safeDivide(otherCount, allCount) * 100).toFixed(2)) },
-      ];
-    },
+    return keys.map((k) => {
+      const pct = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.percentage || 0), 0);
+      const count = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.count || 0), 0);
+      return { count, percentage: Number(pct.toFixed(2)) };
+    });
+  },
 
-    buildConversandoMoneyStatus(stages) {
-      const sumStages = ['Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
-      const keys = ['all', 'moneyYes', 'moneyNo', 'moneyOther'];
+  buildConversandoByChannel(stages) {
+    const sumStages = ["Apresentação", "Proposta Enviada", "Pagamento Pendente", "Assinatura"];
+    const keys = ["google", "facebook", "organic"];
 
-      return keys.map((k) => {
-        const pct = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.percentage || 0), 0);
-        const count = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.count || 0), 0);
-        return { count, percentage: Number(pct.toFixed(2)) };
-      });
-    },
+    return keys.map((k) => {
+      const pct = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.percentage || 0), 0);
+      const count = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.count || 0), 0);
+      return { count, percentage: Number(pct.toFixed(2)) };
+    });
+  },
 
-    buildConversandoByChannel(stages) {
-      const sumStages = ['Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
-      const keys = ['google', 'facebook', 'organic'];
+  moneyStatusTable(data) {
+    if (!elements.moneyStatusBody) return;
 
-      return keys.map((k) => {
-        const pct = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.percentage || 0), 0);
-        const count = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.count || 0), 0);
-        return { count, percentage: Number(pct.toFixed(2)) };
-      });
-    },
-
-    moneyStatusTable(data) {
-      if (!elements.moneyStatusBody) return;
-
-      if (!data?.stages) {
-        // 1 (Stage) + 4 grupos (2 colunas cada) = 9
-        elements.moneyStatusBody.innerHTML = ui.renderEmptyState('Sem dados de funil', 9);
-        return;
-      }
-
-      const stages = ['Lead', '1ª Interação', 'Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
-
-      const rows = stages
-        .map((stage) => {
-          const s = data.stages[stage] || {};
-          const groups = [
-            s.all || { count: 0, percentage: 0 },
-            s.moneyYes || { count: 0, percentage: 0 },
-            s.moneyNo || { count: 0, percentage: 0 },
-            s.moneyOther || { count: 0, percentage: 0 },
-          ];
-          return this.funnelRow(stage, groups, stage === 'Assinatura');
-        })
-        .join('');
-
-      const conversando = this.funnelRow('Conversando', this.buildConversandoMoneyStatus(data.stages));
-      const total = this.funnelTotalRow('Total', this.buildTotalMoneyStatus(data.stages));
-
-      elements.moneyStatusBody.innerHTML = rows + conversando + total;
-    },
-
-    channelTable(data) {
-      if (!elements.channelFunnelBody) return;
-
-      if (!data?.stages) {
-        elements.channelFunnelBody.innerHTML = ui.renderEmptyState('Sem dados de funil', 7);
-        return;
-      }
-
-      const stages = ['Lead', '1ª Interação', 'Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
-
-      const rows = stages
-        .map((stage) => {
-          const s = data.stages[stage] || {};
-          const groups = [
-            s.google || { count: 0, percentage: 0 },
-            s.facebook || { count: 0, percentage: 0 },
-            s.organic || { count: 0, percentage: 0 },
-          ];
-          return this.funnelRow(stage, groups, stage === 'Assinatura');
-        })
-        .join('');
-
-      const conversando = this.funnelRow('Conversando', this.buildConversandoByChannel(data.stages));
-      const total = this.funnelTotalRowNoPercent('Total', this.buildTotalByChannelCountsOnly(data.stages));
-
-      elements.channelFunnelBody.innerHTML = rows + conversando + total;
-    },
-  };
-
-  // ========================================
-  // Data loader (Stages)
-  // ========================================
-  const STAGE_VALUE_MAP = {
-    // stages.html usa "Assinou" no select, mas o funil/render usa "Assinatura"
-    Assinou: 'Assinatura',
-  };
-
-  async function loadStages() {
-    const entryStart = elements.entryStartInput?.value || '';
-    const entryEnd = elements.entryEndInput?.value || '';
-
-    if (!entryStart || !entryEnd) {
-      ui.showError('Selecione as datas de entrada');
+    if (!data?.stages) {
+      elements.moneyStatusBody.innerHTML = ui.renderEmptyState("Sem dados de funil", 9);
       return;
     }
 
-    ui.showLoading();
-    if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderSkeleton(6, 9);
-    if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderSkeleton(6, 7);
+    const rows = STAGES_ORDER.map((stage) => {
+      const s = data.stages[stage] || {};
+      const groups = [
+        s.all || { count: 0, percentage: 0 },
+        s.moneyYes || { count: 0, percentage: 0 },
+        s.moneyNo || { count: 0, percentage: 0 },
+        s.moneyOther || { count: 0, percentage: 0 },
+      ];
+      return this.row(stage, groups, stage === "Assinatura");
+    }).join("");
 
-    try {
-      const params = { entry_start: entryStart, entry_end: entryEnd };
+    const conversando = this.row("Conversando", this.buildConversandoMoneyStatus(data.stages));
+    const total = this.totalRow("Total", this.buildTotalMoneyStatus(data.stages));
 
-      const sel = elements.stageSelect;
-      const rawValue = sel?.value?.trim() || '';
+    elements.moneyStatusBody.innerHTML = rows + conversando + total;
+  },
 
-      if (rawValue) {
-        params.stage = STAGE_VALUE_MAP[rawValue] || rawValue;
-      }
+  channelTable(data) {
+    if (!elements.channelFunnelBody) return;
 
-      const res = await api.fetchFunnel(params);
-      const payload = Array.isArray(res) ? res[0] : res;
-
-      state.funnelData = payload;
-
-      funnelRender.moneyStatusTable(payload?.moneyStatus || null);
-      funnelRender.channelTable(payload?.byChannel || null);
-    } catch (e) {
-      ui.showError(`Failed to load funnel: ${e.message}`);
-      if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 9);
-      if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 7);
-    } finally {
-      ui.hideLoading();
+    if (!data?.stages) {
+      elements.channelFunnelBody.innerHTML = ui.renderEmptyState("Sem dados de funil", 7);
+      return;
     }
+
+    const rows = STAGES_ORDER.map((stage) => {
+      const s = data.stages[stage] || {};
+      const groups = [
+        s.google || { count: 0, percentage: 0 },
+        s.facebook || { count: 0, percentage: 0 },
+        s.organic || { count: 0, percentage: 0 },
+      ];
+      return this.row(stage, groups, stage === "Assinatura");
+    }).join("");
+
+    const conversando = this.row("Conversando", this.buildConversandoByChannel(data.stages));
+    const total = this.totalRowCountsOnly("Total", this.buildTotalByChannelCountsOnly(data.stages));
+
+    elements.channelFunnelBody.innerHTML = rows + conversando + total;
+  },
+};
+
+async function loadStages() {
+  const entryStart = elements.entryStartInput?.value || "";
+  const entryEnd = elements.entryEndInput?.value || "";
+
+  if (!entryStart || !entryEnd) {
+    ui.showError("Selecione as datas de entrada");
+    return;
   }
 
-  // ========================================
-  // Dates
-  // ========================================
-  function initializeDates() {
-    const today = utils.today();
-    if (elements.entryStartInput) elements.entryStartInput.value = today;
-    if (elements.entryEndInput) elements.entryEndInput.value = today;
+  ui.showLoading();
+  if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderSkeleton(6, 9);
+  if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderSkeleton(6, 7);
+
+  try {
+    const params = { entry_start: entryStart, entry_end: entryEnd };
+
+    const rawStage = elements.stageSelect?.value?.trim() || "";
+    if (rawStage) params.stage = STAGE_VALUE_MAP[rawStage] || rawStage;
+
+    const res = await api.fetchFunnel(params);
+    const payload = Array.isArray(res) ? res[0] : res;
+
+    state.funnelData = payload;
+
+    funnelRender.moneyStatusTable(payload?.moneyStatus || null);
+    funnelRender.channelTable(payload?.byChannel || null);
+  } catch (e) {
+    ui.showError(`Failed to load funnel: ${e.message}`);
+    if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderEmptyState("Erro ao carregar", 9);
+    if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderEmptyState("Erro ao carregar", 7);
+  } finally {
+    ui.hideLoading();
   }
+}
 
-  // ========================================
-  // Events
-  // ========================================
-  function setupEventListeners() {
-    if (elements.closeToast) elements.closeToast.addEventListener('click', () => ui.hideError());
+function init() {
+  const today = utils.today();
+  if (elements.entryStartInput) elements.entryStartInput.value = today;
+  if (elements.entryEndInput) elements.entryEndInput.value = today;
 
-    if (elements.applyEntryOnly) elements.applyEntryOnly.addEventListener('click', loadStages);
+  elements.closeToast?.addEventListener("click", () => ui.hideError());
+  elements.applyEntryOnly?.addEventListener("click", loadStages);
 
-    const onEnter = (e) => {
-      if (e.key !== 'Enter') return;
-      loadStages();
-    };
+  const onEnter = (e) => {
+    if (e.key === "Enter") loadStages();
+  };
 
-    if (elements.entryStartInput) elements.entryStartInput.addEventListener('keypress', onEnter);
-    if (elements.entryEndInput) elements.entryEndInput.addEventListener('keypress', onEnter);
-  }
+  elements.entryStartInput?.addEventListener("keypress", onEnter);
+  elements.entryEndInput?.addEventListener("keypress", onEnter);
 
-  // ========================================
-  // Init
-  // ========================================
-  function init() {
-    initializeDates();
-    setupEventListeners();
-    loadStages();
-  }
+  loadStages();
+}
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
+document.addEventListener("DOMContentLoaded", init);

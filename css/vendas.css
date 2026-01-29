@@ -1,4 +1,3 @@
-/* (copiado do leads.css para manter o padrão visual) */
 :root {
     --color-background: #f8fafc;
     --color-surface: #ffffff;
@@ -12,27 +11,24 @@
     --color-primary: #3b82f6;
     --color-primary-hover: #2563eb;
 
-    --color-success: #dcfce7;
-    --color-success-dark: #22c55e;
-    --color-warning: #fef9c3;
     --color-error: #fee2e2;
     --color-error-dark: #ef4444;
 
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / .05);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / .1), 0 4px 6px -4px rgb(0 0 0 / .1);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 
-    --spacing-xs: .25rem;
-    --spacing-sm: .5rem;
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
     --spacing-md: 1rem;
     --spacing-lg: 1.5rem;
     --spacing-xl: 2rem;
 
-    --radius-md: .5rem;
-    --radius-lg: .75rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
 
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-size-xs: .75rem;
-    --font-size-sm: .875rem;
+    --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
     --font-size-base: 1rem;
     --font-size-xl: 1.25rem;
 
@@ -40,16 +36,18 @@
     --transition-normal: 250ms ease;
 }
 
-* {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     margin: 0;
-    padding: 0
+    padding: 0;
 }
 
 html {
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -84,14 +82,14 @@ body {
 .top-nav__brand {
     font-weight: 700;
     font-size: var(--font-size-base);
-    color: var(--color-text-primary)
+    color: var(--color-text-primary);
 }
 
 .top-nav__links {
     display: flex;
     gap: 10px;
     align-items: center;
-    flex-wrap: wrap
+    flex-wrap: wrap;
 }
 
 .top-nav__link {
@@ -106,12 +104,12 @@ body {
 
 .top-nav__link:hover {
     background: var(--color-background);
-    color: var(--color-text-primary)
+    color: var(--color-text-primary);
 }
 
 .top-nav__link.is-active {
-    background: rgba(59, 130, 246, .12);
-    color: var(--color-primary)
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--color-primary);
 }
 
 /* Layout */
@@ -125,7 +123,7 @@ body {
 
 .section {
     display: grid;
-    gap: var(--spacing-lg)
+    gap: var(--spacing-lg);
 }
 
 .section__header {
@@ -140,13 +138,13 @@ body {
 .section__title {
     font-size: var(--font-size-xl);
     font-weight: 600;
-    color: var(--color-text-primary)
+    color: var(--color-text-primary);
 }
 
 .section__meta {
     display: flex;
     gap: 8px;
-    align-items: center
+    align-items: center;
 }
 
 /* Filter Panel */
@@ -163,27 +161,33 @@ body {
     font-weight: 600;
     color: var(--color-text-secondary);
     text-transform: uppercase;
-    letter-spacing: .05em;
+    letter-spacing: 0.05em;
     margin-bottom: var(--spacing-md);
 }
 
 .filter-panel__controls {
+    display: grid;
+    gap: 12px;
+}
+
+.filter-row {
     display: flex;
+    gap: 12px;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: var(--spacing-md);
+    width: 100%;
 }
 
 .filter-group {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-xs)
+    gap: var(--spacing-xs);
 }
 
 .filter-group label {
     font-size: var(--font-size-xs);
     font-weight: 500;
-    color: var(--color-text-secondary)
+    color: var(--color-text-secondary);
 }
 
 .date-input,
@@ -202,12 +206,50 @@ body {
 .text-input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, .1);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .filter-group--search {
     min-width: 320px;
-    flex: 1
+    flex: 1;
+}
+
+/* 3-line filter layout sizing */
+.filter-row--date .filter-group {
+    flex: 0 0 180px;
+    min-width: 180px;
+}
+
+.filter-row--date .filter-group--shortcuts {
+    flex: 1 1 320px;
+    min-width: 320px;
+}
+
+.filter-row--main .filter-group {
+    flex: 1 1 180px;
+    min-width: 180px;
+}
+
+.filter-row--main .filter-group--search {
+    flex: 2 1 320px;
+    min-width: 280px;
+}
+
+.filter-shortcuts {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-row--actions {
+    justify-content: flex-start;
+}
+
+.filter-sep {
+    opacity: 0.2;
+    width: 100%;
+    border: none;
+    border-top: 1px solid currentColor;
 }
 
 /* Buttons */
@@ -224,21 +266,21 @@ body {
 
 .btn--primary {
     background: var(--color-primary);
-    color: #fff
+    color: #fff;
 }
 
 .btn--primary:hover {
-    background: var(--color-primary-hover)
+    background: var(--color-primary-hover);
 }
 
 .btn--ghost {
     background: transparent;
     border: 1px solid var(--color-border);
-    color: var(--color-text-secondary)
+    color: var(--color-text-secondary);
 }
 
 .btn--ghost:hover {
-    background: var(--color-background)
+    background: var(--color-background);
 }
 
 .meta-pill {
@@ -251,16 +293,9 @@ body {
 }
 
 /* Charts */
-.filter-sep {
-    opacity: .2;
-    width: 100%;
-    border: none;
-    border-top: 1px solid currentColor;
-}
-
 .analytics-block {
     display: grid;
-    gap: var(--spacing-lg)
+    gap: var(--spacing-lg);
 }
 
 .charts-grid {
@@ -293,18 +328,18 @@ body {
 }
 
 .chart-title {
-    font-size: .7rem;
+    font-size: 0.7rem;
     font-weight: 800;
     color: var(--color-text-secondary);
     text-transform: uppercase;
-    letter-spacing: .05em;
+    letter-spacing: 0.05em;
 }
 
 /* Loading / Toast */
 .loading-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(255, 255, 255, .9);
+    background: rgba(255, 255, 255, 0.9);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -318,7 +353,7 @@ body {
 
 .loading-overlay.active {
     opacity: 1;
-    pointer-events: auto
+    pointer-events: auto;
 }
 
 .spinner {
@@ -327,12 +362,12 @@ body {
     border: 3px solid var(--color-border);
     border-top-color: var(--color-primary);
     border-radius: 50%;
-    animation: spin .8s linear infinite;
+    animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
     to {
-        transform: rotate(360deg)
+        transform: rotate(360deg);
     }
 }
 
@@ -354,13 +389,13 @@ body {
 
 .toast.active {
     transform: translateY(0);
-    opacity: 1
+    opacity: 1;
 }
 
 .toast--error {
     background: var(--color-error);
     border: 1px solid var(--color-error-dark);
-    color: var(--color-error-dark)
+    color: var(--color-error-dark);
 }
 
 .toast__close {
@@ -373,84 +408,23 @@ body {
     line-height: 1;
 }
 
-/* Responsive */
+/* Small screens: keep existing 3-line layout behavior */
 @media (max-width: 768px) {
     .dashboard {
-        padding: var(--spacing-md)
-    }
-
-    .filter-panel__controls {
-        flex-direction: column;
-        align-items: stretch
-    }
-
-    .filter-group {
-        width: 100%
-    }
-
-    .date-input,
-    .text-input {
-        width: 100%
+        padding: var(--spacing-md);
     }
 
     .section__header {
         flex-direction: column;
-        align-items: flex-start
+        align-items: flex-start;
     }
-}
-
-/* ========================================
-   Filtro — layout em 3 linhas (Data / Filtros / Botões)
-   ======================================== */
-
-.filter-panel__controls {
-    display: grid;
-    gap: 12px;
-}
-
-.filter-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    width: 100%;
-}
-
-.filter-row--date .filter-group {
-    flex: 0 0 180px;
-    min-width: 180px;
-}
-
-.filter-row--date .filter-group--shortcuts {
-    flex: 1 1 320px;
-    min-width: 320px;
-}
-
-.filter-row--main .filter-group {
-    flex: 1 1 180px;
-    min-width: 180px;
-}
-
-.filter-row--main .filter-group--search {
-    flex: 2 1 320px;
-    min-width: 280px;
-}
-
-.filter-shortcuts {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.filter-row--actions {
-    justify-content: flex-start;
 }
 
 @media (max-width: 520px) {
 
     .filter-row--date .filter-group,
-    .filter-row--main .filter-group,
     .filter-row--date .filter-group--shortcuts,
+    .filter-row--main .filter-group,
     .filter-row--main .filter-group--search {
         min-width: 100%;
         flex: 1 1 100%;

@@ -2,24 +2,15 @@
     const page = document.documentElement.getAttribute('data-page');
     if (page !== 'leads') return;
 
-    // ========================================
-    // Configuration
-    // ========================================
     const CONFIG = {
         LEADS_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads',
-        // Se o external_id for o id do chat no UmblerTalk, monta o link assim:
         CHAT_URL_PREFIX: 'https://app-utalk.umbler.com/chats/',
-        // Opcional: mapear manager_id -> nome/email (se quiser igual ao Sheets)
         MANAGER_MAP: {
-            // 14: 'zedles@clinicaexperts.com.br',
         },
     };
 
     const NAO_INFORMADO_VALUE = '__nao_informado__';
 
-    // ========================================
-    // Chart.js plugin (datalabels)
-    // ========================================
     if (window.Chart && window.ChartDataLabels && typeof window.Chart.register === 'function') {
         window.Chart.register(window.ChartDataLabels);
         window.Chart.defaults.plugins = window.Chart.defaults.plugins || {};
@@ -27,9 +18,6 @@
         window.Chart.defaults.plugins.datalabels.display = false;
     }
 
-    // ========================================
-    // Utilities
-    // ========================================
     const utils = {
         getDateString(date) {
             const y = date.getFullYear();
@@ -53,25 +41,21 @@
             const s = String(value).trim();
             if (!s) return null;
 
-            // ISO com T (ex: 2026-01-01T11:41:43Z ou 2026-01-01T11:41:43)
             if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
                 const d = new Date(s);
                 return isNaN(d) ? null : d;
             }
 
-            // "YYYY-MM-DD HH:mm:ss" (ex: 2026-01-01 11:41:43)
             if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(:\d{2})?$/.test(s)) {
                 const d = new Date(s.replace(' ', 'T'));
                 return isNaN(d) ? null : d;
             }
 
-            // "YYYY-MM-DD"
             if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
                 const d = new Date(`${s}T00:00:00`);
                 return isNaN(d) ? null : d;
             }
 
-            // "YYYY/MM/DD"
             if (/^\d{4}\/\d{2}\/\d{2}$/.test(s)) {
                 const [y, m, d] = s.split('/');
                 const dt = new Date(`${y}-${m}-${d}T00:00:00`);
@@ -139,10 +123,6 @@
             const low = raw.toLowerCase();
             const noAccents = this.removeDiacritics(low);
 
-            // Ordem de prioridade:
-            // 1) Trial (começa com "trial")
-            // 2) LP (termina com _facebook ou _google)
-            // 3) Orgânico (contém "organico"/"orgânico" ou fallback)
             if (low.startsWith('trial')) return 'Trial';
             if (low.endsWith('_facebook') || low.endsWith('_google')) return 'LP';
             if (noAccents.includes('organico')) return 'Orgânico';
@@ -247,9 +227,6 @@
         return { labels, data };
     }
 
-    // ========================================
-    // Pie colors + options
-    // ========================================
     const COLOR_NAO_INFORMADO = '#000000';
     const COLOR_OUTROS = '#ffffff';
     const COLOR_OUTROS_BORDER = '#cbd5e1';
@@ -345,7 +322,6 @@
         if (state.charts[id]) {
             const chart = state.charts[id];
 
-            // Preserve pie slice visibility by LABEL (not by index)
             const isPieLike = ['pie', 'doughnut', 'polarArea'].includes(chart.config?.type);
             const prevLabels = Array.isArray(chart.data?.labels) ? chart.data.labels : [];
             const hiddenLabelKeys = new Set();
@@ -378,9 +354,6 @@
         return state.charts[id];
     }
 
-    // ========================================
-    // DOM Elements
-    // ========================================
     const dom = { byId: (id) => document.getElementById(id) };
 
     const elements = {
@@ -403,7 +376,6 @@
         presetPrevDay: dom.byId('presetPrevDay'),
         presetNextDay: dom.byId('presetNextDay'),
 
-
         leadsBody: dom.byId('leadsBody'),
         totalCount: dom.byId('totalCount'),
         leadsPageInfo: dom.byId('leadsPageInfo'),
@@ -414,9 +386,6 @@
         closeToast: dom.byId('closeToast'),
     };
 
-    // ========================================
-    // State
-    // ========================================
     const state = {
         sort: { key: 'entry_date', direction: 'desc' },
         leadsData: [],
@@ -425,9 +394,6 @@
         charts: {},
     };
 
-    // ========================================
-    // UI Helpers
-    // ========================================
     const ui = {
         showLoading() {
             elements.loadingOverlay?.classList.add('active');
@@ -449,9 +415,6 @@
         },
     };
 
-    // ========================================
-    // Transform (payload -> row)
-    // ========================================
     function getField(obj, keys) {
         for (const k of keys) {
             if (obj && obj[k] !== undefined && obj[k] !== null) return obj[k];
@@ -471,7 +434,6 @@
 
         const tag = getField(l, ['tag', 'TAG']) ?? null;
         const origem = utils.originFromTag(tag);
-
 
         const team = getField(l, ['team', 'time', 'TIME', 'Time']) ?? null;
         const area = getField(l, ['area', 'AREA', 'Área', 'Area']) ?? null;
@@ -502,9 +464,6 @@
         };
     }
 
-    // ========================================
-    // Sorting & Pagination
-    // ========================================
     function sortRows(items) {
         const { key, direction } = state.sort;
         const dir = direction === 'asc' ? 1 : -1;
@@ -513,7 +472,6 @@
             const d = utils.parseDateTime(v);
             return d ? d.getTime() : 0;
         };
-
 
         return [...items].sort((a, b) => {
             const aVal = a[key];
@@ -541,9 +499,6 @@
         });
     }
 
-    // ========================================
-    // Render
-    // ========================================
     function renderTable() {
         const sorted = sortRows(state.filtered);
 
@@ -591,7 +546,6 @@
     function updateCharts() {
         const rows = state.filtered || [];
 
-        // Origem (Trial / LP / Orgânico)
         const origemLabels = ['Trial', 'LP', 'Orgânico'];
         const origemCounts = { Trial: 0, LP: 0, 'Orgânico': 0 };
 
@@ -611,8 +565,6 @@
             options: PIE_OPTIONS,
         });
 
-
-        // Área
         const areaPie = buildPieFromCounts(countBy(rows, 'area'), 7);
         ensureChart('chartArea', {
             type: 'pie',
@@ -620,7 +572,6 @@
             options: PIE_OPTIONS,
         });
 
-        // Sistema
         const sysPie = buildPieFromCounts(countBy(rows, 'system'), 8);
         ensureChart('chartSistema', {
             type: 'pie',
@@ -628,7 +579,6 @@
             options: PIE_OPTIONS,
         });
 
-        // Time
         const timePie = buildPieFromCounts(countBy(rows, 'team'), 8);
         ensureChart('chartTime', {
             type: 'pie',
@@ -636,7 +586,6 @@
             options: PIE_OPTIONS,
         });
 
-        // Desafio
         const desPie = buildPieFromCounts(countBy(rows, 'challenge'), 8);
         ensureChart('chartDesafio', {
             type: 'pie',
@@ -644,7 +593,6 @@
             options: PIE_OPTIONS_NO_LEGEND,
         });
 
-        // Money
         const moneyCounts = countBy(rows, 'money', { normalizeFn: utils.normalizeMoney });
         const moneyLabels = ['Sim', 'Não', 'Não informado'];
         ensureChart('chartMoney', {
@@ -657,9 +605,6 @@
         });
     }
 
-    // ========================================
-    // Filtering
-    // ========================================
     function applyAllFiltersAndRender({ resetPage = false } = {}) {
         if (resetPage) state.pagination.page = 1;
 
@@ -715,9 +660,6 @@
         setOptions(elements.desafioSelect, uniqueSorted(rows, 'challenge'), { keepSelected: true, includeNotInformed: true });
     }
 
-    // ========================================
-    // Data Loading
-    // ========================================
     async function loadLeads() {
         const params = {
             entry_start: elements.entryStartInput?.value || '',
@@ -755,15 +697,11 @@
         }
     }
 
-    // ========================================
-    // Initialization
-    // ========================================
     function init() {
         const today = utils.today();
         if (elements.entryStartInput) elements.entryStartInput.value = today;
         if (elements.entryEndInput) elements.entryEndInput.value = today;
 
-        // Load
         if (elements.applyFilters) elements.applyFilters.addEventListener('click', loadLeads);
 
         if (elements.clearAllFilters) {
@@ -791,14 +729,11 @@
             });
         }
 
-
-        // On change: filter locally
         const onAnyFilterChange = () => applyAllFiltersAndRender({ resetPage: true });
         [elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect]
             .filter(Boolean)
             .forEach((el) => el.addEventListener('change', onAnyFilterChange));
 
-        // Search (debounced)
         let searchTimer = null;
         if (elements.quickSearch) {
             elements.quickSearch.addEventListener('input', () => {
@@ -807,7 +742,6 @@
             });
         }
 
-        // Presets (adjust Entrada range)
         const applyPresetDays = (days) => {
             const end = new Date();
             const start = new Date();
@@ -840,10 +774,8 @@
         if (elements.presetPrevDay) elements.presetPrevDay.addEventListener('click', () => applyRelativeDay(-1));
         if (elements.presetNextDay) elements.presetNextDay.addEventListener('click', () => applyRelativeDay(1));
 
-
         if (elements.closeToast) elements.closeToast.addEventListener('click', () => ui.hideError());
 
-        // Paginação
         document.querySelectorAll('.pagination[data-channel="leads"]').forEach((wrap) => {
             wrap.addEventListener('click', (e) => {
                 const btn = e.target.closest('.pg-btn');
@@ -862,7 +794,6 @@
             }
         });
 
-        // Ordenação
         document.querySelectorAll('th[data-sort]').forEach((th) => {
             th.addEventListener('click', () => {
                 const key = th.dataset.sort;
@@ -877,7 +808,6 @@
             });
         });
 
-        // default active sort header
         const defaultTh = document.querySelector('th[data-sort="entry_date"]');
         defaultTh?.classList.add('active');
 

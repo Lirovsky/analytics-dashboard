@@ -9,13 +9,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <link rel="stylesheet" href="css/stages.css" />
 </head>
 
 <body>
-    <!-- ================= Navbar ================= -->
     <header class="top-nav">
         <div class="top-nav__inner">
             <div class="top-nav__brand">Analytics</div>
@@ -33,7 +31,6 @@
     </header>
 
     <div class="dashboard">
-        <!-- ================= Filtro ================= -->
         <aside class="filter-panel">
             <h3 class="filter-panel__title">Filtro</h3>
 
@@ -61,22 +58,20 @@
                     </select>
                 </div>
 
-                <!-- <button id="clearEntryDates" class="btn btn--primary">Limpar</button> -->
+                <hr class="filter-sep" />
 
-                <hr style="opacity:.2; width:100%; border:none; border-top:1px solid currentColor;" />
-
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button id="applyEntryOnly" class="btn btn--primary">Aplicar</button>
+                <div class="filter-actions">
+                    <button id="applyEntryOnly" class="btn btn--primary" type="button">Aplicar</button>
                 </div>
             </div>
         </aside>
 
-        <!-- ================= Funil ================= -->
         <section class="section section--funnel">
             <h2 class="section__title">Funil / Stages</h2>
 
             <div class="funnel-block">
                 <h3 class="funnel-block__title">Funil por Money Status</h3>
+
                 <div class="table-wrapper">
                     <table class="data-table data-table--funnel">
                         <thead>
@@ -106,6 +101,7 @@
 
             <div class="funnel-block">
                 <h3 class="funnel-block__title">Funil por Canal</h3>
+
                 <div class="table-wrapper">
                     <table class="data-table data-table--funnel">
                         <thead>
@@ -131,7 +127,6 @@
             </div>
         </section>
 
-        <!-- Loading / Error -->
         <div class="loading-overlay" id="loadingOverlay">
             <div class="spinner"></div>
             <p>Loading data...</p>
@@ -140,11 +135,11 @@
         <div class="toast toast--error" id="errorToast">
             <span class="toast__icon">⚠️</span>
             <span class="toast__message" id="errorMessage">Error loading data</span>
-            <button class="toast__close" id="closeToast">×</button>
+            <button class="toast__close" id="closeToast" type="button">×</button>
         </div>
+    </div>
 
-
-        <script src="js/stages.js"></script>
+    <script src="js/stages.js"></script>
 </body>
 
 </html>

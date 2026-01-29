@@ -1,79 +1,69 @@
 (() => {
-  const page = document.documentElement.getAttribute('data-page');
-  if (page !== 'dash') return;
+  const page = document.documentElement.getAttribute("data-page");
+  if (page !== "dash") return;
 
-  // ========================================
-  // Configuration
-  // ========================================
   const CONFIG = {
-    DASH_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/dash',
-    DEFAULT_DAYS_BACK: 0, // 0 = hoje
+    DASH_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/dash",
     MONEY_IS_CENTS: true,
   };
 
-  // ========================================
-  // Utilities
-  // ========================================
+  const formatters = {
+    int: new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }),
+    percent2: new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    brl: new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+  };
+
   const utils = {
     getDateString(date) {
-      // Formato local YYYY-MM-DD (evita bug de fuso do toISOString)
       const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
       return `${y}-${m}-${d}`;
     },
     today() {
       return this.getDateString(new Date());
-    },
-    getDateDaysBack(daysBack = 0) {
-      const d = new Date();
-      d.setDate(d.getDate() - Number(daysBack || 0));
-      return this.getDateString(d);
     },
     firstDayOfMonth() {
       const d = new Date();
       d.setDate(1);
       return this.getDateString(d);
     },
-
-
     toNumber(v) {
       const n = Number(v);
       return Number.isFinite(n) ? n : 0;
     },
-
     normalizeMoney(v) {
       const n = this.toNumber(v);
-      return CONFIG.MONEY_IS_CENTS ? (n / 100) : n;
+      return CONFIG.MONEY_IS_CENTS ? n / 100 : n;
     },
-
     formatBRL(v) {
-      const n = this.toNumber(v);
-      return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(n);
+      return formatters.brl.format(this.toNumber(v));
     },
-
-    formatIntBR(v) {
-      const n = this.toNumber(v);
-      return new Intl.NumberFormat('pt-BR', {
-        maximumFractionDigits: 0,
-      }).format(n);
+    formatInt(v) {
+      return formatters.int.format(this.toNumber(v));
     },
-
+    formatPercent(v, decimals = 2) {
+      const n = this.toNumber(v);
+      return (
+        new Intl.NumberFormat("pt-BR", {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        }).format(n) + "%"
+      );
+    },
     dateLabel(dateLike) {
-      if (!dateLike) return '';
+      if (!dateLike) return "";
       const s = String(dateLike);
       return s.length >= 10 ? s.slice(0, 10) : s;
     },
-
     formatDayMonth(dateLike) {
       const iso = this.dateLabel(dateLike);
-      // Espera 'YYYY-MM-DD' (ou prefixo disso). Converte para 'DD/MM'.
-      const parts = iso.split('-');
+      const parts = iso.split("-");
       if (parts.length >= 3) {
         const mm = parts[1];
         const dd = String(parts[2]).slice(0, 2);
@@ -81,161 +71,111 @@
       }
       return iso;
     },
-
     getCssVar(name, fallback) {
       try {
         const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
         return v || fallback;
-      } catch (_) {
+      } catch {
         return fallback;
       }
     },
-    formatPercentBR(v, decimals = 2) {
-      const n = this.toNumber(v);
-      return (
-        new Intl.NumberFormat('pt-BR', {
-          minimumFractionDigits: decimals,
-          maximumFractionDigits: decimals,
-        }).format(n) + '%'
-      );
-    },
-
   };
 
-  const dom = {
-    byId(id) {
-      return document.getElementById(id);
-    },
+  const $id = (id) => document.getElementById(id);
+
+  const el = {
+    entryStartInput: $id("entryStartDate"),
+    entryEndInput: $id("entryEndDate"),
+    applyEntryOnly: $id("applyEntryOnly"),
+    clearEntryDates: $id("clearEntryDates"),
+
+    salesCanvas: $id("salesChart"),
+    cacDay: $id("cac-day"),
+    cacMonth: $id("cac-month"),
+    cacRange: $id("cac-range"),
+
+    investmentCanvas: $id("investmentChart"),
+    invMeta: $id("inv-meta"),
+    invGoogle: $id("inv-google"),
+    invTotal: $id("inv-total"),
+
+    cplCanvas: $id("cplChart"),
+    cplValue: $id("cpl-month"),
+    clicksValue: $id("clicks"),
+    cpcValue: $id("cpc"),
+    cpmValue: $id("cpm"),
+
+    leadsCanvas: $id("leadsChart"),
+    leadsTotalValue: $id("leads-month"),
+    ctrValue: $id("ctr"),
+    leadsGoalValue: $id("leads-goal"),
+
+    kpiSubscribers: $id("assistants"),
+    kpiSalesDay: $id("sales-day"),
+    kpiSalesMonth: $id("sales-month"),
+    kpiMonthly: $id("monthly-total"),
+    kpiAnnual: $id("annual-total"),
+    conversionValue: $id("conversion"),
   };
 
-  // ========================================
-  // DOM Elements (Dash)
-  // ========================================
-  const elements = {
-    entryStartInput: dom.byId('entryStartDate'),
-    entryEndInput: dom.byId('entryEndDate'),
-    applyEntryOnly: dom.byId('applyEntryOnly'),
-    clearEntryDates: dom.byId('clearEntryDates'),
-
-    // Vendas
-    salesCanvas: dom.byId('salesChart'),
-    cacDay: dom.byId('cac-day'),
-    cacMonth: dom.byId('cac-month'),
-    cacRange: dom.byId('cac-range'),
-
-    // Custo por Leads
-    cplCanvas: dom.byId('cplChart'),
-    cplMonthValue: dom.byId('cpl-month'),
-    cpcValue: dom.byId('cpc'),
-    cpmValue: dom.byId('cpm'),
-
-
-    // Investimento
-    investmentCanvas: dom.byId('investmentChart'),
-    invMeta: dom.byId('inv-meta'),
-    invGoogle: dom.byId('inv-google'),
-    invTotal: dom.byId('inv-total'),
-
-    // Leads
-    leadsCanvas: dom.byId('leadsChart'),
-    leadsTotalValue: dom.byId('leads-month'),
-
-    // KPIs Sidebar
-    kpiSubscribers: dom.byId('assistants'),
-    kpiSalesDay: dom.byId('sales-day'),
-    kpiSalesMonth: dom.byId('sales-month'),
-    kpiMonthly: dom.byId('monthly-total'),
-    kpiAnnual: dom.byId('annual-total'),
-    clicksValue: dom.byId('clicks'),
-    ctrValue: dom.byId('ctr'),
-    leadsGoalValue: dom.byId('leads-goal'),
-    conversionValue: dom.byId('conversion'),
-
-  };
-
-  // ========================================
-  // Charts (Chart.js)
-  // ========================================
   const charts = {
     investment: null,
     leadsDaily: null,
     salesDaily: null,
     cplDaily: null,
-
-    destroyCplDaily() {
-      if (!this.cplDaily) return;
-      try { this.cplDaily.destroy(); } catch (_) { }
-      this.cplDaily = null;
-    },
-
-
-    destroyInvestment() {
-      if (!this.investment) return;
-      try { this.investment.destroy(); } catch (_) { }
-      this.investment = null;
-    },
-
-    destroyLeadsDaily() {
-      if (!this.leadsDaily) return;
-      try { this.leadsDaily.destroy(); } catch (_) { }
-      this.leadsDaily = null;
-    },
-
-    destroySalesDaily() {
-      if (!this.salesDaily) return;
-      try { this.salesDaily.destroy(); } catch (_) { }
-      this.salesDaily = null;
+    destroy(key) {
+      const c = this[key];
+      if (!c) return;
+      try { c.destroy(); } catch { }
+      this[key] = null;
     },
   };
 
-  // ========================================
-  // API
-  // ========================================
-  const api = {
-    buildUrl(base, paramsObj) {
-      const params = new URLSearchParams();
-      Object.entries(paramsObj || {}).forEach(([k, v]) => {
-        if (v !== null && v !== undefined && String(v).trim() !== '') params.set(k, v);
-      });
-      params.set('_ts', Date.now());
-      return `${base}?${params.toString()}`;
-    },
-
-    async sendDashQuery(paramsObj, abortSignal) {
-      const url = this.buildUrl(CONFIG.DASH_ENDPOINT, paramsObj);
-      const response = await fetch(url, { signal: abortSignal });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
-    },
-  };
-
-  // ========================================
-  // State
-  // ========================================
   const state = {
-    lastParams: null,
-    lastResponse: null,
     abortController: null,
     totals: {
-      investment_total: 0, // BRL
+      investment_total: 0,
       leads_total: 0,
       clicks_total: 0,
       impressions_total: 0,
     },
   };
 
-  // ========================================
-  // Helpers: normalização do payload (n8n)
-  // ========================================
+  const api = {
+    buildUrl(base, paramsObj) {
+      const params = new URLSearchParams();
+      Object.entries(paramsObj || {}).forEach(([k, v]) => {
+        if (v !== null && v !== undefined && String(v).trim() !== "") params.set(k, v);
+      });
+      params.set("_ts", Date.now());
+      return `${base}?${params.toString()}`;
+    },
+    async fetchDash(paramsObj, signal) {
+      const url = this.buildUrl(CONFIG.DASH_ENDPOINT, paramsObj);
+      const res = await fetch(url, { signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    },
+  };
+
+  function getFirstResultObject(res) {
+    if (res && typeof res === "object" && Array.isArray(res.res) && res.res[0] && typeof res.res[0] === "object") {
+      return res.res[0];
+    }
+    if (Array.isArray(res) && res[0] && typeof res[0] === "object") return res[0];
+    if (res && typeof res === "object") return res;
+    return null;
+  }
+
   function normalizeRows(payload) {
     if (Array.isArray(payload)) {
       const first = payload[0];
-      if (first && typeof first === 'object' && Array.isArray(first.investment)) return first.investment;
+      if (first && typeof first === "object" && Array.isArray(first.investment)) return first.investment;
       return payload;
     }
-
-    if (!payload || typeof payload !== 'object') return [];
+    if (!payload || typeof payload !== "object") return [];
     if (Array.isArray(payload.investment)) return payload.investment;
+
     if (Array.isArray(payload.res)) {
       const first = payload.res[0];
       if (first && Array.isArray(first.investment)) return first.investment;
@@ -247,145 +187,38 @@
     if (Array.isArray(payload.result)) return payload.result;
 
     const vals = Object.values(payload);
-    if (vals.length && vals.every((v) => v && typeof v === 'object' && !Array.isArray(v))) return vals;
-
+    if (vals.length && vals.every((v) => v && typeof v === "object" && !Array.isArray(v))) return vals;
     return [];
   }
 
-  function getFirstResultObject(res) {
-    if (res && typeof res === 'object' && Array.isArray(res.res) && res.res[0] && typeof res.res[0] === 'object') {
-      return res.res[0];
-    }
-    if (Array.isArray(res) && res[0] && typeof res[0] === 'object') return res[0];
-    if (res && typeof res === 'object') return res;
-    return null;
-  }
-
-  // ========================================
-  // Render: KPIs (Assinantes / Vendas / Planos)
-  // ========================================
   function renderKpis(res) {
     const first = getFirstResultObject(res);
     if (!first) return;
 
     const kpis = first.kpis || {};
-    const cacDia = utils.toNumber(kpis.cac_diario);
-    if (elements.cacDay) elements.cacDay.textContent = utils.formatBRL(cacDia);
-    const cacMes = utils.toNumber(kpis.cac_mes);
-    if (elements.cacMonth) elements.cacMonth.textContent = utils.formatBRL(cacMes);
-    const cacRange = utils.toNumber(kpis.cac_range);
-    if (elements.cacRange) elements.cacRange.textContent = utils.formatBRL(cacRange);
 
-    const subscribersArr = Array.isArray(first.subscribers) ? first.subscribers : [];
-    const subscribers = subscribersArr[0] || {};
+    if (el.cacDay) el.cacDay.textContent = utils.formatBRL(kpis.cac_diario);
+    if (el.cacMonth) el.cacMonth.textContent = utils.formatBRL(kpis.cac_mes);
+    if (el.cacRange) el.cacRange.textContent = utils.formatBRL(kpis.cac_range);
 
-    const totalSubscribers = utils.toNumber(subscribers.total_subscribers);
-    if (elements.kpiSubscribers) elements.kpiSubscribers.textContent = utils.formatIntBR(totalSubscribers);
+    const subs = (Array.isArray(first.subscribers) ? first.subscribers : [])[0] || {};
+    if (el.kpiSubscribers) el.kpiSubscribers.textContent = utils.formatInt(subs.total_subscribers);
 
-    const vendasDia = utils.toNumber(kpis.vendas_hoje);
-    if (elements.kpiSalesDay) elements.kpiSalesDay.textContent = utils.formatIntBR(vendasDia);
+    if (el.kpiSalesDay) el.kpiSalesDay.textContent = utils.formatInt(kpis.vendas_hoje);
+    if (el.kpiSalesMonth) el.kpiSalesMonth.textContent = utils.formatInt(kpis.vendas_mes);
+    if (el.kpiMonthly) el.kpiMonthly.textContent = utils.formatInt(kpis.planos_mensais);
+    if (el.kpiAnnual) el.kpiAnnual.textContent = utils.formatInt(kpis.planos_anuais);
 
-    const vendasMes = utils.toNumber(kpis.vendas_mes);
-    if (elements.kpiSalesMonth) elements.kpiSalesMonth.textContent = utils.formatIntBR(vendasMes);
-
-    const mensal = utils.toNumber(kpis.planos_mensais);
-    if (elements.kpiMonthly) elements.kpiMonthly.textContent = utils.formatIntBR(mensal);
-
-    const anual = utils.toNumber(kpis.planos_anuais);
-    if (elements.kpiAnnual) elements.kpiAnnual.textContent = utils.formatIntBR(anual);
-
-    const conversionPct = utils.toNumber(kpis.conversion_pct);
-    if (elements.conversionValue) elements.conversionValue.textContent = utils.formatPercentBR(conversionPct, 2);
-
+    if (el.conversionValue) el.conversionValue.textContent = utils.formatPercent(kpis.conversion_pct, 2);
   }
 
-  // ========================================
-  // Render: Vendas (gráfico sales_daily)
-  // ========================================
-  function renderSales(res) {
+  function renderInvestment(res) {
     const first = getFirstResultObject(res);
-    if (!first) return;
+    const investmentRaw =
+      first && Array.isArray(first.investment) ? first.investment :
+        (res && Array.isArray(res.investment) ? res.investment : (res?.investment ?? res));
 
-    const salesDaily = Array.isArray(first.sales_daily) ? first.sales_daily : [];
-    renderSalesDailyChart(salesDaily);
-  }
-
-  function renderSalesDailyChart(salesDailyRaw) {
-    if (!elements.salesCanvas || !window.Chart) return;
-
-    const rows = (Array.isArray(salesDailyRaw) ? salesDailyRaw : [])
-      .map((r) => ({
-        day: utils.dateLabel(r?.day),
-        records_count: utils.toNumber(r?.records_count),
-      }))
-      .filter((r) => r.day)
-      .sort((a, b) => String(a.day).localeCompare(String(b.day)));
-
-    const labels = rows.map((r) => utils.formatDayMonth(r.day));
-    const data = rows.map((r) => r.records_count);
-
-    charts.destroySalesDaily();
-
-    const lineColor = utils.getCssVar('--color-purple-dark', utils.getCssVar('--color-purple', '#7c3aed')); // roxo forte
-
-
-
-    const ctx = elements.salesCanvas.getContext('2d');
-    charts.salesDaily = new window.Chart(ctx, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Vendas',
-            data,
-            tension: 0.25,
-            borderColor: lineColor,
-            backgroundColor: lineColor,
-
-            borderWidth: 2,
-            pointRadius: 2,
-            pointHoverRadius: 4,
-            fill: false,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        plugins: {
-          legend: { display: true, position: 'bottom' },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const v = utils.toNumber(ctx.parsed?.y);
-                return `${ctx.dataset.label}: ${utils.formatIntBR(v)}`;
-              },
-            },
-          },
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { maxRotation: 0, autoSkip: true },
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (v) => utils.formatIntBR(v),
-            },
-          },
-        },
-      },
-    });
-  }
-
-  // ========================================
-  // Render: Investimento (Facebook x Google)
-  // ========================================
-  function renderInvestment(rowsRaw) {
-    const rows = normalizeRows(rowsRaw)
+    const rows = normalizeRows(investmentRaw)
       .map((r) => ({
         created_at: r?.created_at,
         facebook_amount: utils.normalizeMoney(r?.facebook_amount),
@@ -394,38 +227,34 @@
       .filter((r) => r.created_at)
       .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
 
-    // Atualiza cards laterais (soma no período)
     const totalFacebook = rows.reduce((acc, r) => acc + utils.toNumber(r.facebook_amount), 0);
     const totalGoogle = rows.reduce((acc, r) => acc + utils.toNumber(r.google_amount), 0);
     const total = totalFacebook + totalGoogle;
 
-    // Totais do período (para KPIs derivados como CPL/CPC/CPM)
-    try { state.totals.investment_total = total; } catch (_) { }
+    state.totals.investment_total = total;
 
-    if (elements.invMeta) elements.invMeta.textContent = utils.formatBRL(totalFacebook);
-    if (elements.invGoogle) elements.invGoogle.textContent = utils.formatBRL(totalGoogle);
-    if (elements.invTotal) elements.invTotal.textContent = utils.formatBRL(total);
+    if (el.invMeta) el.invMeta.textContent = utils.formatBRL(totalFacebook);
+    if (el.invGoogle) el.invGoogle.textContent = utils.formatBRL(totalGoogle);
+    if (el.invTotal) el.invTotal.textContent = utils.formatBRL(total);
 
-    // Sem canvas ou sem Chart.js
-    if (!elements.investmentCanvas || !window.Chart) return;
+    if (!el.investmentCanvas || !window.Chart) return;
 
     const labels = rows.map((r) => utils.formatDayMonth(r.created_at));
     const facebookData = rows.map((r) => utils.toNumber(r.facebook_amount));
     const googleData = rows.map((r) => utils.toNumber(r.google_amount));
 
-    charts.destroyInvestment();
+    charts.destroy("investment");
 
-    const facebookColor = utils.getCssVar('--color-facebook-dark', '#3b82f6');
-    const googleColor = utils.getCssVar('--color-google-dark', '#f59e0b');
+    const facebookColor = utils.getCssVar("--color-facebook-dark", "#3b82f6");
+    const googleColor = utils.getCssVar("--color-google-dark", "#f59e0b");
 
-    const ctx = elements.investmentCanvas.getContext('2d');
-    charts.investment = new window.Chart(ctx, {
-      type: 'line',
+    charts.investment = new window.Chart(el.investmentCanvas.getContext("2d"), {
+      type: "line",
       data: {
         labels,
         datasets: [
           {
-            label: 'Meta',
+            label: "Meta",
             data: facebookData,
             tension: 0.25,
             borderColor: facebookColor,
@@ -436,7 +265,7 @@
             fill: false,
           },
           {
-            label: 'Google',
+            label: "Google",
             data: googleData,
             tension: 0.35,
             borderColor: googleColor,
@@ -451,127 +280,89 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
+        interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: { display: true, position: 'bottom' },
+          legend: { display: true, position: "bottom" },
           tooltip: {
             callbacks: {
-              label: (ctx) => {
-                const v = utils.toNumber(ctx.parsed?.y);
-                return `${ctx.dataset.label}: ${utils.formatBRL(v)}`;
-              },
+              label: (ctx) => `${ctx.dataset.label}: ${utils.formatBRL(ctx.parsed?.y)}`,
             },
           },
         },
         scales: {
-          x: {
-            grid: { display: false },
-            ticks: { maxRotation: 0, autoSkip: true },
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (v) => utils.formatBRL(v),
-            },
-          },
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
+          y: { beginAtZero: true, ticks: { callback: (v) => utils.formatBRL(v) } },
         },
       },
     });
   }
 
-  // ========================================
-  // Render: Leads (KPI total_leads + gráfico leads_daily)
-  // ========================================
   function renderLeads(res) {
     const first = getFirstResultObject(res);
     if (!first) return;
 
     const kpis = first.kpis || {};
 
-    // KPI: total_leads dentro do card "Leads" da seção Leads
     const totalLeads = utils.toNumber(kpis.total_leads);
-    try { state.totals.leads_total = totalLeads; } catch (_) { }
-    if (elements.leadsTotalValue) elements.leadsTotalValue.textContent = utils.formatIntBR(totalLeads);
+    state.totals.leads_total = totalLeads;
+    if (el.leadsTotalValue) el.leadsTotalValue.textContent = utils.formatInt(totalLeads);
 
-    // KPI: clicks_total (card "Cliques" em Custo por Leads)
     const clicksTotal = utils.toNumber(kpis.clicks_total);
-    try { state.totals.clicks_total = clicksTotal; } catch (_) { }
+    state.totals.clicks_total = clicksTotal;
+    if (el.clicksValue) el.clicksValue.textContent = utils.formatInt(clicksTotal);
 
-    // (Opcional) Impressões para CPM, se vier no payload
     const impressionsTotal = utils.toNumber(kpis.impressions_total);
-    try { state.totals.impressions_total = impressionsTotal; } catch (_) { }
-    if (elements.clicksValue) elements.clicksValue.textContent = utils.formatIntBR(clicksTotal);
+    state.totals.impressions_total = impressionsTotal;
 
-    // KPI: ctr_pct (card "CTR" em Leads) — já vem em %
-    const ctrPct = utils.toNumber(kpis.ctr_pct);
-    if (elements.ctrValue) elements.ctrValue.textContent = utils.formatPercentBR(ctrPct, 2);
+    if (el.ctrValue) el.ctrValue.textContent = utils.formatPercent(kpis.ctr_pct, 2);
+    if (el.leadsGoalValue) el.leadsGoalValue.textContent = utils.formatPercent(kpis.meta_pct, 2);
 
-    // KPI: meta_pct (card "% Meta" em Leads) — vem em %
-    const metaPct = utils.toNumber(kpis.meta_pct);
-    if (elements.leadsGoalValue) elements.leadsGoalValue.textContent = utils.formatPercentBR(metaPct, 2);
-
-
-    // Gráfico: leads_daily
     const leadsDaily = Array.isArray(first.leads_daily) ? first.leads_daily : [];
     renderLeadsDailyChart(leadsDaily);
   }
 
+  function renderSales(res) {
+    const first = getFirstResultObject(res);
+    if (!first) return;
 
-  // ========================================
-  // Render: KPIs derivados (CPL/CPC/CPM) — sempre do período filtrado
-  // ========================================
+    const salesDaily = Array.isArray(first.sales_daily) ? first.sales_daily : [];
+    renderSalesDailyChart(salesDaily);
+  }
+
   function renderCostKpis() {
-    const inv = utils.toNumber(state.totals?.investment_total);
-    const leads = utils.toNumber(state.totals?.leads_total);
-    const clicks = utils.toNumber(state.totals?.clicks_total);
-    const impressions = utils.toNumber(state.totals?.impressions_total);
+    const inv = utils.toNumber(state.totals.investment_total);
+    const leads = utils.toNumber(state.totals.leads_total);
+    const clicks = utils.toNumber(state.totals.clicks_total);
+    const impressions = utils.toNumber(state.totals.impressions_total);
 
-    // CPL do período = investimento_total / total_leads
-    if (elements.cplMonthValue) {
-      const cpl = leads > 0 ? (inv / leads) : 0;
-      elements.cplMonthValue.textContent = utils.formatBRL(cpl);
-    }
+    if (el.cplValue) el.cplValue.textContent = utils.formatBRL(leads > 0 ? inv / leads : 0);
+    if (el.cpcValue) el.cpcValue.textContent = utils.formatBRL(clicks > 0 ? inv / clicks : 0);
 
-    // CPC do período = investimento_total / cliques_total
-    if (elements.cpcValue) {
-      const cpc = clicks > 0 ? (inv / clicks) : 0;
-      elements.cpcValue.textContent = utils.formatBRL(cpc);
-    }
-
-    // CPM do período = investimento_total / impressões_total * 1000 (se houver)
-    if (elements.cpmValue && impressions > 0) {
-      const cpm = (inv / impressions) * 1000;
-      elements.cpmValue.textContent = utils.formatBRL(cpm);
+    if (el.cpmValue) {
+      el.cpmValue.textContent = impressions > 0 ? utils.formatBRL((inv / impressions) * 1000) : "–";
     }
   }
 
   function renderLeadsDailyChart(leadsDailyRaw) {
-    if (!elements.leadsCanvas || !window.Chart) return;
+    if (!el.leadsCanvas || !window.Chart) return;
 
     const rows = (Array.isArray(leadsDailyRaw) ? leadsDailyRaw : [])
-      .map((r) => ({
-        day: utils.dateLabel(r?.day),
-        leads_count: utils.toNumber(r?.leads_count),
-      }))
+      .map((r) => ({ day: utils.dateLabel(r?.day), leads_count: utils.toNumber(r?.leads_count) }))
       .filter((r) => r.day)
       .sort((a, b) => String(a.day).localeCompare(String(b.day)));
 
-    const labels = rows.map((r) => utils.formatDayMonth(r.day));
-    const data = rows.map((r) => r.leads_count);
+    charts.destroy("leadsDaily");
 
-    charts.destroyLeadsDaily();
+    const lineColor = utils.getCssVar("--color-success-dark", "#22c55e");
 
-    const lineColor = utils.getCssVar('--color-success-dark', utils.getCssVar('--color-success', '#22c55e'));
-
-    const ctx = elements.leadsCanvas.getContext('2d');
-    charts.leadsDaily = new window.Chart(ctx, {
-      type: 'line',
+    charts.leadsDaily = new window.Chart(el.leadsCanvas.getContext("2d"), {
+      type: "line",
       data: {
-        labels,
+        labels: rows.map((r) => utils.formatDayMonth(r.day)),
         datasets: [
           {
-            label: 'Leads',
-            data,
+            label: "Leads",
+            data: rows.map((r) => r.leads_count),
             tension: 0.25,
             borderColor: lineColor,
             backgroundColor: lineColor,
@@ -585,37 +376,73 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
+        interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: { display: true, position: 'bottom' },
+          legend: { display: true, position: "bottom" },
           tooltip: {
             callbacks: {
-              label: (ctx) => {
-                const v = utils.toNumber(ctx.parsed?.y);
-                return `${ctx.dataset.label}: ${utils.formatIntBR(v)}`;
-              },
+              label: (ctx) => `Leads: ${utils.formatInt(ctx.parsed?.y)}`,
             },
           },
         },
         scales: {
-          x: {
-            grid: { display: false },
-            ticks: { maxRotation: 0, autoSkip: true },
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (v) => utils.formatIntBR(v),
-            },
-          },
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
+          y: { beginAtZero: true, ticks: { callback: (v) => utils.formatInt(v) } },
         },
       },
     });
   }
 
-  // ========================================
-  // Render: Custo por Leads (gráfico cpl_daily)
-  // ========================================
+  function renderSalesDailyChart(salesDailyRaw) {
+    if (!el.salesCanvas || !window.Chart) return;
+
+    const rows = (Array.isArray(salesDailyRaw) ? salesDailyRaw : [])
+      .map((r) => ({ day: utils.dateLabel(r?.day), records_count: utils.toNumber(r?.records_count) }))
+      .filter((r) => r.day)
+      .sort((a, b) => String(a.day).localeCompare(String(b.day)));
+
+    charts.destroy("salesDaily");
+
+    const lineColor = utils.getCssVar("--color-purple-dark", utils.getCssVar("--color-purple", "#7c3aed"));
+
+    charts.salesDaily = new window.Chart(el.salesCanvas.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: rows.map((r) => utils.formatDayMonth(r.day)),
+        datasets: [
+          {
+            label: "Vendas",
+            data: rows.map((r) => r.records_count),
+            tension: 0.25,
+            borderColor: lineColor,
+            backgroundColor: lineColor,
+            borderWidth: 2,
+            pointRadius: 2,
+            pointHoverRadius: 4,
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: true, position: "bottom" },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `Vendas: ${utils.formatInt(ctx.parsed?.y)}`,
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
+          y: { beginAtZero: true, ticks: { callback: (v) => utils.formatInt(v) } },
+        },
+      },
+    });
+  }
+
   function renderCpl(res) {
     const first = getFirstResultObject(res);
     if (!first) return;
@@ -625,34 +452,25 @@
   }
 
   function renderCplDailyChart(cplDailyRaw) {
-    if (!elements.cplCanvas || !window.Chart) return;
+    if (!el.cplCanvas || !window.Chart) return;
 
     const rows = (Array.isArray(cplDailyRaw) ? cplDailyRaw : [])
-      .map((r) => ({
-        day: utils.dateLabel(r?.day),
-        cpl: utils.toNumber(r?.cpl),
-      }))
+      .map((r) => ({ day: utils.dateLabel(r?.day), cpl: utils.toNumber(r?.cpl) }))
       .filter((r) => r.day)
       .sort((a, b) => String(a.day).localeCompare(String(b.day)));
 
-    const labels = rows.map((r) => utils.formatDayMonth(r.day));
-    const data = rows.map((r) => r.cpl);
+    charts.destroy("cplDaily");
 
-    charts.destroyCplDaily();
+    const lineColor = utils.getCssVar("--color-warning-dark", utils.getCssVar("--color-warning", "#f50b70"));
 
-    const lineColor = utils.getCssVar('--color-warning-dark', utils.getCssVar('--color-warning', '#f50b70')); // amarelo forte
-
-
-
-    const ctx = elements.cplCanvas.getContext('2d');
-    charts.cplDaily = new window.Chart(ctx, {
-      type: 'line',
+    charts.cplDaily = new window.Chart(el.cplCanvas.getContext("2d"), {
+      type: "line",
       data: {
-        labels,
+        labels: rows.map((r) => utils.formatDayMonth(r.day)),
         datasets: [
           {
-            label: 'CPL',
-            data,
+            label: "CPL",
+            data: rows.map((r) => r.cpl),
             tension: 0.25,
             borderColor: lineColor,
             backgroundColor: lineColor,
@@ -660,151 +478,86 @@
             pointRadius: 2,
             pointHoverRadius: 4,
             fill: false,
-            borderColor: lineColor,
-            backgroundColor: lineColor,
-
           },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
+        interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: { display: true, position: 'bottom' },
+          legend: { display: true, position: "bottom" },
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${utils.formatBRL(utils.toNumber(ctx.parsed?.y))}`,
+              label: (ctx) => `CPL: ${utils.formatBRL(ctx.parsed?.y)}`,
             },
           },
         },
         scales: {
           x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
-          y: {
-            beginAtZero: true,
-            ticks: { callback: (v) => utils.formatBRL(v) },
-          },
+          y: { beginAtZero: true, ticks: { callback: (v) => utils.formatBRL(v) } },
         },
       },
     });
   }
 
-
-  // ========================================
-  // Core: enviar datas para n8n
-  // ========================================
   async function sendDatesToN8n() {
-    const entryStart = elements.entryStartInput?.value || '';
-    const entryEnd = elements.entryEndInput?.value || '';
+    const entryStart = el.entryStartInput?.value || "";
+    const entryEnd = el.entryEndInput?.value || "";
+    if (!entryStart || !entryEnd) return;
 
-    if (!entryStart || !entryEnd) {
-      console.warn('[dash] Datas não preenchidas (entry_start/entry_end).');
-      return;
-    }
-
-    // Cancela request anterior se o usuário clicar várias vezes
     if (state.abortController) {
-      try { state.abortController.abort(); } catch (_) { }
+      try { state.abortController.abort(); } catch { }
     }
     state.abortController = new AbortController();
 
     const params = { entry_start: entryStart, entry_end: entryEnd };
-    state.lastParams = params;
 
     try {
-      const res = await api.sendDashQuery(params, state.abortController.signal);
+      const res = await api.fetchDash(params, state.abortController.signal);
 
-      // Debug
-      state.lastResponse = res;
-      window.__dashLastParams = params;
-      window.__dashLastResponse = res;
-
-      // KPIs Sidebar
       renderKpis(res);
-
-      // Investimento (facebook_amount / google_amount)
-      const investmentRaw =
-        (res && Array.isArray(res.res) && res.res[0] && Array.isArray(res.res[0].investment))
-          ? res.res[0].investment
-          : (res?.investment ?? res);
-
-      renderInvestment(investmentRaw);
-
-      // Leads (KPI total_leads + gráfico leads_daily)
+      renderInvestment(res);
       renderLeads(res);
-
-      // KPIs derivados no período (CPL/CPC/CPM)
       renderCostKpis();
-
-      // Vendas (gráfico sales_daily)
       renderSales(res);
-      // Custo por Leads (gráfico cpl_daily)
       renderCpl(res);
-
-
-      console.info('[dash] n8n response received', { params, res });
     } catch (err) {
-      // Abort é esperado quando troca rápido de data
-      if (err?.name === 'AbortError') return;
-      console.error('[dash] Failed to fetch dash data', err);
+      if (err?.name === "AbortError") return;
     }
   }
 
-  // ========================================
-  // Dates
-  // ========================================
   function initializeDates() {
     const start = utils.firstDayOfMonth();
     const end = utils.today();
-
-    if (elements.entryStartInput) elements.entryStartInput.value = start;
-    if (elements.entryEndInput) elements.entryEndInput.value = end;
+    if (el.entryStartInput) el.entryStartInput.value = start;
+    if (el.entryEndInput) el.entryEndInput.value = end;
   }
 
   function clearDates() {
-    const start = utils.firstDayOfMonth();
-    const end = utils.today();
-
-    if (elements.entryStartInput) elements.entryStartInput.value = start;
-    if (elements.entryEndInput) elements.entryEndInput.value = end;
-
+    initializeDates();
     sendDatesToN8n();
   }
 
-
-  // ========================================
-  // Events
-  // ========================================
   function setupEventListeners() {
-    if (elements.applyEntryOnly) {
-      elements.applyEntryOnly.addEventListener('click', sendDatesToN8n);
-    }
-    if (elements.clearEntryDates) {
-      elements.clearEntryDates.addEventListener('click', clearDates);
-    }
+    el.applyEntryOnly?.addEventListener("click", sendDatesToN8n);
+    el.clearEntryDates?.addEventListener("click", clearDates);
 
     const onEnter = (e) => {
-      if (e.key !== 'Enter') return;
+      if (e.key !== "Enter") return;
       sendDatesToN8n();
     };
 
-    if (elements.entryStartInput) elements.entryStartInput.addEventListener('keypress', onEnter);
-    if (elements.entryEndInput) elements.entryEndInput.addEventListener('keypress', onEnter);
+    el.entryStartInput?.addEventListener("keypress", onEnter);
+    el.entryEndInput?.addEventListener("keypress", onEnter);
   }
 
-  // ========================================
-  // Init
-  // ========================================
   function init() {
     initializeDates();
     setupEventListeners();
-    // Ao abrir a página, já dispara a consulta com a data de hoje
     sendDatesToN8n();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
 })();

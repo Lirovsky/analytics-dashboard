@@ -1,9 +1,176 @@
-/* ========================================
-   Leads por Vendedor — CSS
-   Reaproveita stages.css e adiciona apenas o que é específico
-   ======================================== */
+.analytics-block {
+  display: grid;
+  gap: var(--spacing-lg);
+}
 
-/* Botão secundário */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1300px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.kpi-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kpi-label {
+  font-size: .72rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 700;
+}
+
+.kpi-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1400px) {
+  .charts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 950px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.chart-card--full {
+  grid-column: 1 / -1;
+}
+
+.chart-title {
+  font-size: .7rem;
+  font-weight: 800;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1300px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.kpi-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kpi-label {
+  font-size: .72rem;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 700;
+}
+
+.kpi-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1400px) {
+  .charts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 950px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.chart-card--full {
+  grid-column: 1 / -1;
+}
+
+.chart-title {
+  font-size: .7rem;
+  font-weight: 800;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
 .btn--ghost {
   background: transparent;
   color: var(--color-text-secondary);
@@ -49,10 +216,6 @@
   color: var(--color-primary);
 }
 
-/* ========================================
-   Vendor Summary (contador por vendedor)
-   1 linha só + cards menores
-   ======================================== */
 .vendor-summary {
   display: flex;
   gap: 10px;
@@ -120,15 +283,10 @@
   color: var(--color-text-muted);
 }
 
-
-/* ========================================
-   Tabela de Registros
-   ======================================== */
 .data-table--records {
   font-size: var(--font-size-xs);
 }
 
-/* Alinha ENTRADA / ENTREGUE / VENDEDOR / PHONE à esquerda */
 .data-table--records th.col-entry,
 .data-table--records td:nth-child(1),
 .data-table--records th.col-entregue,
@@ -139,17 +297,15 @@
 .data-table--records td:nth-child(4) {
   text-align: left;
   padding-left: 14px;
-  /* opcional: melhora a leitura */
+
 }
 
-/* Mantém LINK centralizado */
 .data-table--records th.col-link,
 .data-table--records td:nth-child(5) {
   text-align: center;
   padding-left: 0;
 }
 
-/* Link no padrão do leads.css (azul + sublinhado no hover) */
 a.table-link {
   color: var(--color-primary);
   text-decoration: none;
@@ -160,8 +316,6 @@ a.table-link:hover {
   text-decoration: underline;
 }
 
-
-/* Colunas extras (após LINK) */
 .data-table--records th.col-money,
 .data-table--records td:nth-child(6),
 .data-table--records th.col-area,
@@ -175,7 +329,6 @@ a.table-link:hover {
   text-align: left;
   padding-left: 14px;
 }
-
 
 .col-entry {
   min-width: 120px;
@@ -236,34 +389,13 @@ a.table-link:hover {
   text-decoration: underline;
 }
 
-/* Link estilo simples (igual leads.css) */
-a.table-link {
-  color: var(--color-primary);
-  text-decoration: none;
-  font-weight: 700;
-}
-
-a.table-link:hover {
-  text-decoration: underline;
-}
-
-
-/* ========================================
-   Gráfico de barras — Leads por vendedor
-   (aumenta área e permite números dentro das colunas)
-   ======================================== */
 #chartVendor {
   height: 260px !important;
 }
 
-/* aumenta só o primeiro card (onde fica o gráfico de vendedor) */
 .charts-grid .chart-card:first-child {
   min-height: 380px;
 }
-
-/* ========================================
-   Filtro — layout em 3 linhas (Data / Filtros / Botões)
-   ======================================== */
 
 .filter-panel__controls {
   display: grid;

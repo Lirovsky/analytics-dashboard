@@ -13,102 +13,10 @@
 
   <link rel="stylesheet" href="css/leads.css" />
   <link rel="stylesheet" href="css/leads-vendedor.css" />
-
-  <style>
-    .analytics-block {
-      display: grid;
-      gap: var(--spacing-lg);
-    }
-
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    @media (max-width: 1300px) {
-      .kpi-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
-    }
-
-    @media (max-width: 700px) {
-      .kpi-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    .kpi-card {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-lg);
-      padding: 10px 12px;
-      box-shadow: var(--shadow-sm);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .kpi-label {
-      font-size: .72rem;
-      color: var(--color-text-secondary);
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      font-weight: 700;
-    }
-
-    .kpi-value {
-      font-size: 1.4rem;
-      font-weight: 800;
-      color: var(--color-text-primary);
-    }
-
-    .charts-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-    }
-
-    @media (max-width: 1400px) {
-      .charts-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    @media (max-width: 950px) {
-      .charts-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .chart-card {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-lg);
-      padding: 10px 12px;
-      box-shadow: var(--shadow-sm);
-      display: grid;
-      gap: 8px;
-      overflow: hidden;
-    }
-
-    .chart-card--full {
-      grid-column: 1 / -1;
-    }
-
-    .chart-title {
-      font-size: .7rem;
-      font-weight: 800;
-      color: var(--color-text-secondary);
-      text-transform: uppercase;
-      letter-spacing: .05em;
-    }
-  </style>
-
 </head>
 
 <body>
-  <!-- ================= Navbar ================= -->
+
   <header class="top-nav">
     <div class="top-nav__inner">
       <div class="top-nav__brand">Analytics</div>
@@ -126,12 +34,12 @@
   </header>
 
   <div class="dashboard">
-    <!-- ================= Filtro ================= -->
+
     <aside class="filter-panel">
       <h3 class="filter-panel__title">Filtro</h3>
 
       <div class="filter-panel__controls">
-        <!-- 1ª linha: Data + atalhos -->
+
         <div class="filter-row filter-row--date">
           <div class="filter-group">
             <label for="entryStartDate">Entregue • Data inicial</label>
@@ -155,7 +63,7 @@
           </div>
         </div>
 
-        <!-- 2ª linha: filtros -->
+
         <div class="filter-row filter-row--main">
           <div class="filter-group">
             <label for="stageSelect">Stage</label>
@@ -209,7 +117,7 @@
           </div>
         </div>
 
-        <!-- 3ª linha: botões -->
+
         <hr class="filter-sep" />
 
         <div class="filter-row filter-row--actions">
@@ -221,13 +129,13 @@
 
     </aside>
 
-    <!-- ================= Conteúdo ================= -->
+
     <section class="section">
       <div class="section-header">
         <h2 class="section__title">Leads por Vendedor</h2>
       </div>
 
-      <!-- ================= Gráficos ================= -->
+
       <div class="analytics-block" id="analyticsBlock">
         <div class="kpi-grid">
           <div class="kpi-card">
@@ -275,7 +183,6 @@
             <canvas id="chartMoney" height="96"></canvas>
           </div>
 
-
           <div class="chart-card">
             <div class="chart-title">Leads por origem</div>
             <canvas id="chartOrigem" height="96"></canvas>
@@ -309,7 +216,7 @@
           </table>
         </div>
 
-        <!-- Paginação (mesmo padrão da página Leads) -->
+
         <div class="pagination" data-channel="records">
           <button class="pg-btn" id="recordsPrev" type="button">‹</button>
           <span class="pg-info" id="recordsPageInfo">1 / 1</span>
@@ -328,7 +235,7 @@
       </div>
     </section>
 
-    <!-- Loading / Error -->
+
     <div class="loading-overlay" id="loadingOverlay">
       <div class="spinner"></div>
       <p>Loading data...</p>
@@ -342,7 +249,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="js/leads-vendedor.js"></script>
 </body>

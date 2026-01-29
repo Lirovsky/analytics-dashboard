@@ -1,13 +1,4 @@
-/* ========================================
-   Stages — CSS isolado (extraído de styles.css)
-   Mantém o visual atual da página stages.html
-   ======================================== */
-
-/* ========================================
-   CSS Variables / Design System
-   ======================================== */
 :root {
-  /* Colors */
   --color-background: #f8fafc;
   --color-surface: #ffffff;
   --color-border: #e2e8f0;
@@ -17,46 +8,32 @@
   --color-text-secondary: #64748b;
   --color-text-muted: #94a3b8;
 
-  /* Channel Colors */
   --color-facebook: #dbeafe;
   --color-facebook-dark: #3b82f6;
-  --color-facebook-header: #eff6ff;
 
   --color-google: #fef3c7;
   --color-google-dark: #f59e0b;
-  --color-google-header: #fffbeb;
 
   --color-organic: #f3e8ff;
   --color-organic-dark: #a855f7;
-  --color-organic-header: #faf5ff;
 
-  --color-summary: #e8ffef;
-  --color-summary-dark: #55f768;
-  --color-summary-header: #f5fffc;
-
-  /* Status Colors */
   --color-success: #dcfce7;
   --color-success-dark: #22c55e;
-  --color-warning: #fef9c3;
+
   --color-error: #fee2e2;
   --color-error-dark: #ef4444;
 
-  /* Money Status Colors */
   --color-all: #f1f5f9;
   --color-money-yes: #dcfce7;
   --color-money-no: #fee2e2;
   --color-money-other: #fef9c3;
 
-  /* Primary */
   --color-primary: #3b82f6;
   --color-primary-hover: #2563eb;
 
-  /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 
-  /* Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
@@ -64,28 +41,20 @@
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
 
-  /* Border Radius */
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
 
-  /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
   --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
 
-  /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
 }
 
-/* ========================================
-   Reset & Base
-   ======================================== */
 *,
 *::before,
 *::after {
@@ -109,9 +78,6 @@ body {
   min-height: 100vh;
 }
 
-/* ========================================
-   Dashboard Layout
-   ======================================== */
 .dashboard {
   max-width: 1600px;
   margin: 0 auto;
@@ -120,35 +86,12 @@ body {
   gap: var(--spacing-xl);
 }
 
-/* ========================================
-   Header
-   ======================================== */
-.header {
-  text-align: center;
-  padding: var(--spacing-lg) 0;
-}
-
-.header__title {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-xs);
-}
-
-.header__subtitle {
-  font-size: var(--font-size-base);
-  color: var(--color-text-secondary);
-}
-
-/* ========================================
-   Filter Panel
-   ======================================== */
 .filter-panel {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
 }
 
 .filter-panel__title {
@@ -209,7 +152,7 @@ body {
 
 .btn--primary {
   background: var(--color-primary);
-  color: white;
+  color: #fff;
 }
 
 .btn--primary:hover {
@@ -220,20 +163,19 @@ body {
   transform: scale(0.98);
 }
 
-.link-btn {
-  font-size: var(--font-size-sm);
-  color: var(--color-primary);
-  text-decoration: none;
-  padding: var(--spacing-sm);
+.filter-sep {
+  opacity: 0.2;
+  width: 100%;
+  border: none;
+  border-top: 1px solid currentColor;
 }
 
-.link-btn:hover {
-  text-decoration: underline;
+.filter-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-/* ========================================
-   Section
-   ======================================== */
 .section {
   display: grid;
   gap: var(--spacing-lg);
@@ -247,14 +189,10 @@ body {
   border-bottom: 2px solid var(--color-border);
 }
 
-
 .table-wrapper {
   overflow-x: auto;
 }
 
-/* ========================================
-   Data Table
-   ======================================== */
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -294,26 +232,6 @@ body {
   border-bottom: none;
 }
 
-/* Highlighted values */
-.value-highlight {
-  background: var(--color-success);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  color: var(--color-success-dark);
-}
-
-.value-negative {
-  color: var(--color-error-dark);
-}
-
-.value-positive {
-  color: var(--color-success-dark);
-}
-
-/* ========================================
-   Funnel Tables
-   ======================================== */
 .data-table--funnel .group-header {
   text-align: center;
   font-size: var(--font-size-xs);
@@ -364,15 +282,12 @@ body {
   font-weight: 600;
 }
 
-/* ========================================
-   Funnel Block
-   ======================================== */
 .funnel-block {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
 }
 
 .funnel-block__title {
@@ -383,15 +298,18 @@ body {
   border-bottom: 1px solid var(--color-border);
 }
 
-/* ========================================
-   Loading & States
-   ======================================== */
+.total-row {
+  background-color: #eaf7ef;
+  border-top: 2px solid #4caf50;
+}
+
+.total-row td {
+  font-weight: 600;
+}
+
 .loading-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(255, 255, 255, 0.9);
   display: flex;
   flex-direction: column;
@@ -453,9 +371,6 @@ body {
   margin-bottom: var(--spacing-sm);
 }
 
-/* ========================================
-   Toast
-   ======================================== */
 .toast {
   position: fixed;
   bottom: var(--spacing-lg);
@@ -486,82 +401,20 @@ body {
 .toast__close {
   background: none;
   border: none;
-  font-size: var(--font-size-lg);
+  font-size: 1.25rem;
   cursor: pointer;
   color: inherit;
   padding: 0;
   line-height: 1;
 }
 
-/* ========================================
-   Responsive
-   ======================================== */
-@media (max-width: 768px) {
-  .dashboard {
-    padding: var(--spacing-md);
-  }
-
-  .filter-panel__controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .filter-group {
-    width: 100%;
-  }
-
-  .date-input {
-    width: 100%;
-  }
-
-  .data-table {
-    font-size: 0.65rem;
-  }
-
-  .data-table th,
-  .data-table td {
-    padding: var(--spacing-xs) var(--spacing-sm);
-  }
-}
-
-/* =========================
-   Linha Total (destaque)
-   ========================= */
-.total-row {
-  background-color: #eaf7ef;
-  /* verde bem suave */
-  border-top: 2px solid #4caf50;
-}
-
-.total-row td {
-  font-weight: 600;
-}
-
-/* Valores positivos na linha total */
-.total-row .value-positive {
-  color: #1e8e3e;
-}
-
-/* ROAS positivo */
-.total-row td:nth-child(6) {
-  color: #1e8e3e;
-}
-
-/* CAC – mantém neutro */
-.total-row td:nth-child(7) {
-  color: #1f2937;
-}
-
-/* ========================================
-   Navbar (topo)
-   ======================================== */
 .top-nav {
   position: sticky;
   top: 0;
   z-index: 2000;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
 }
 
 .top-nav__inner {
@@ -607,21 +460,31 @@ body {
   color: var(--color-primary);
 }
 
-.funnel-split-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-
-@media (max-width: 1100px) {
-  .funnel-split-grid {
-    grid-template-columns: 1fr;
+/* Mantido (já existia) */
+@media (max-width: 768px) {
+  .dashboard {
+    padding: var(--spacing-md);
   }
-}
 
-.funnel-split__title {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  opacity: .85;
+  .filter-panel__controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .date-input {
+    width: 100%;
+  }
+
+  .data-table {
+    font-size: 0.65rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
 }
