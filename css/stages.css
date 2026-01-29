@@ -45,6 +45,7 @@
   --color-all: #f1f5f9;
   --color-money-yes: #dcfce7;
   --color-money-no: #fee2e2;
+  --color-money-other: #fef9c3;
 
   /* Primary */
   --color-primary: #3b82f6;
@@ -330,6 +331,10 @@ body {
 
 .data-table--funnel .group-header--no {
   background: var(--color-money-no);
+}
+
+.data-table--funnel .group-header--other {
+  background: var(--color-money-other);
 }
 
 .data-table--funnel .group-header--google {

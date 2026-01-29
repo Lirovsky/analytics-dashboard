@@ -206,17 +206,19 @@
       const allCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.all?.count || 0), 0);
       const yesCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.moneyYes?.count || 0), 0);
       const noCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.moneyNo?.count || 0), 0);
+      const otherCount = sumStages.reduce((acc, s) => acc + (stages?.[s]?.moneyOther?.count || 0), 0);
 
       return [
         { count: allCount, percentage: 100 },
         { count: yesCount, percentage: Number((utils.safeDivide(yesCount, allCount) * 100).toFixed(2)) },
         { count: noCount, percentage: Number((utils.safeDivide(noCount, allCount) * 100).toFixed(2)) },
+        { count: otherCount, percentage: Number((utils.safeDivide(otherCount, allCount) * 100).toFixed(2)) },
       ];
     },
 
     buildConversandoMoneyStatus(stages) {
       const sumStages = ['Apresentação', 'Proposta Enviada', 'Pagamento Pendente', 'Assinatura'];
-      const keys = ['all', 'moneyYes', 'moneyNo'];
+      const keys = ['all', 'moneyYes', 'moneyNo', 'moneyOther'];
 
       return keys.map((k) => {
         const pct = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.percentage || 0), 0);
@@ -240,7 +242,8 @@
       if (!elements.moneyStatusBody) return;
 
       if (!data?.stages) {
-        elements.moneyStatusBody.innerHTML = ui.renderEmptyState('Sem dados de funil', 7);
+        // 1 (Stage) + 4 grupos (2 colunas cada) = 9
+        elements.moneyStatusBody.innerHTML = ui.renderEmptyState('Sem dados de funil', 9);
         return;
       }
 
@@ -253,6 +256,7 @@
             s.all || { count: 0, percentage: 0 },
             s.moneyYes || { count: 0, percentage: 0 },
             s.moneyNo || { count: 0, percentage: 0 },
+            s.moneyOther || { count: 0, percentage: 0 },
           ];
           return this.funnelRow(stage, groups, stage === 'Assinatura');
         })
@@ -311,7 +315,7 @@
     }
 
     ui.showLoading();
-    if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderSkeleton(6, 7);
+    if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderSkeleton(6, 9);
     if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderSkeleton(6, 7);
 
     try {
@@ -333,7 +337,7 @@
       funnelRender.channelTable(payload?.byChannel || null);
     } catch (e) {
       ui.showError(`Failed to load funnel: ${e.message}`);
-      if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 7);
+      if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 9);
       if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 7);
     } finally {
       ui.hideLoading();
