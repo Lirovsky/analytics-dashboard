@@ -40,6 +40,11 @@
 
       if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(str + 'T00:00:00');
 
+      // Common DB timestamp format: "YYYY-MM-DD HH:MM:SS"
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(str)) {
+        return new Date(str.replace(' ', 'T'));
+      }
+
       if (/^\d{4}\/\d{2}\/\d{2}$/.test(str)) {
         const [yyyy, mm, dd] = str.split('/');
         return new Date(`${yyyy}-${mm}-${dd}T00:00:00`);
@@ -60,6 +65,19 @@
       const mm = String(d.getMonth() + 1).padStart(2, '0');
       const yyyy = d.getFullYear();
       return `${dd}/${mm}/${yyyy}`;
+    },
+
+    removeDiacritics(value) {
+      return String(value ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    },
+    stageClass(stage) {
+      const s = this.removeDiacritics(String(stage || '').toLowerCase());
+      if (s.includes('lead')) return 'badge--stage-lead';
+      if (s.includes('apresent')) return 'badge--stage-apresentacao';
+      if (s.includes('intera')) return 'badge--stage-interacao';
+      return 'badge--stage-outro';
     },
   };
 
@@ -87,6 +105,51 @@
 
     return 'presentation';
   }
+
+  function normalizeTimeBucket(value) {
+    if (value === null || value === undefined || value === '') return '1-2';
+
+    const s = String(value).trim().toLowerCase();
+    if (!s) return '1-2';
+
+    if (s === '1' || s === '2') return '1-2';
+
+    if (s.includes('mais') && s.includes('10')) return '>10';
+
+    const nums = (s.match(/\d+/g) || []).map((n) => Number(n)).filter((n) => !Number.isNaN(n));
+
+    if (nums.length === 1) {
+      const n = nums[0];
+      if (n <= 2) return '1-2';
+      if (n <= 5) return '3-5';
+      if (n <= 10) return '6-10';
+      return '>10';
+    }
+
+    if (nums.length >= 2) {
+      const min = Math.min(...nums);
+      const max = Math.max(...nums);
+
+      if (max <= 2) return '1-2';
+      if (min >= 3 && max <= 5) return '3-5';
+      if (min >= 6 && max <= 10) return '6-10';
+      return '>10';
+    }
+    return '>10';
+  }
+
+  function isLeadPequeno(timeValue) {
+    return normalizeTimeBucket(timeValue) === '1-2';
+  }
+
+  function timeBucketLabel(timeValue) {
+    const b = normalizeTimeBucket(timeValue);
+    if (b === '1-2') return '1-2 / Não informado';
+    if (b === '3-5') return '3 a 5';
+    if (b === '6-10') return '6 a 10';
+    return 'Mais de 10';
+  }
+
 
   function getSelectedValues(selectEl) {
     if (!selectEl) return [];
@@ -385,6 +448,7 @@
     const entrada = getField(raw, [
       'ENTRADA',
       'Entrada',
+      'entrada',
       'entry',
       'ENTRY',
       'entry_date',
@@ -398,6 +462,7 @@
     const entregue = getField(raw, [
       'ENTREGUE',
       'Entregue',
+      'entregue',
       'DATA',
       'Data',
       'date',
@@ -420,6 +485,13 @@
     const stageRaw = getField(raw, ['STAGE', 'stage']);
     const stage = normalizeStage(stageRaw);
 
+    const stageFunnel = getField(raw, [
+      'stage_funnel',
+      'STAGE_FUNNEL',
+      'stageFunnel',
+      'Stage_funnel',
+    ]);
+
     return {
       row_number: rowNumber,
       ID: id,
@@ -439,6 +511,7 @@
       SISTEMA: sistema,
       DESAFIO: desafio,
       ORIGEM: origem,
+      STAGE_FUNNEL: stageFunnel,
       STAGE: stage,
     };
   }
@@ -462,7 +535,7 @@
       if (!elements.recordsBody) return;
 
       if (!rows || rows.length === 0) {
-        elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 12);
+        elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 13);
         return;
       }
 
@@ -486,6 +559,10 @@
           const sistema = utils.escapeHtml(r.SISTEMA ?? '');
           const desafio = utils.escapeHtml(r.DESAFIO ?? '');
           const origem = utils.escapeHtml(r.ORIGEM ?? '');
+          const stageFunnelRaw = String(r.STAGE_FUNNEL ?? '').trim();
+          const stageFunnelCell = stageFunnelRaw
+            ? `<span class="badge ${utils.stageClass(stageFunnelRaw)}">${utils.escapeHtml(stageFunnelRaw)}</span>`
+            : '<span class="mono">—</span>';
           const stage = utils.escapeHtml(r.STAGE ?? '');
 
           return `
@@ -495,6 +572,7 @@
               <td>${vendor}</td>
               <td class="mono">${phone}</td>
               <td>${linkCell}</td>
+              <td>${stageFunnelCell}</td>
               <td>${money || '—'}</td>
               <td>${area || '—'}</td>
               <td>${time || '—'}</td>
@@ -582,6 +660,7 @@
           r.ENTREGUE,
           r.MONEY,
           r.ORIGEM,
+          r.STAGE_FUNNEL,
           r.STAGE,
         ]
           .map((x) => String(x ?? '').toLowerCase())
@@ -790,6 +869,65 @@
     },
   };
 
+  const BAR_VENDOR_STACKED_OPTIONS = {
+    responsive: true,
+    maintainAspectRatio: false,
+
+    // melhora o hover (não precisa acertar o segmento pequeno)
+    interaction: { mode: 'index', intersect: false },
+
+    plugins: {
+      legend: { display: true, position: 'bottom' },
+
+      // garante tooltip fácil no stacked
+      tooltip: { mode: 'index', intersect: false },
+
+      datalabels: {
+        labels: {
+          // 1) Valor do segmento (dentro da barra)
+          segment: {
+            display: (ctx) => (Number(ctx.dataset?.data?.[ctx.dataIndex]) || 0) > 0,
+            anchor: "center",
+            align: "center",
+            clamp: true,
+            clip: true,
+            font: { size: 11, weight: "700" },
+            color: "#ffffff",
+            formatter: (v) => {
+              const n = Number(v) || 0;
+              return n > 0 ? String(n) : "";
+            },
+          },
+
+          // 2) Total no topo (só no ÚLTIMO dataset, para não repetir)
+          total: {
+            display: (ctx) => ctx.datasetIndex === ctx.chart.data.datasets.length - 1,
+            anchor: "end",
+            align: "end",
+            offset: 4,
+            clamp: true,
+            clip: false,
+            font: { size: 12, weight: "800" },
+            color: "rgba(15, 23, 42, 0.9)",
+            formatter: (_v, ctx) => {
+              const i = ctx.dataIndex;
+              const ds = ctx.chart.data.datasets || [];
+              const total = ds.reduce((sum, d) => sum + (Number(d.data?.[i]) || 0), 0);
+              return total ? String(total) : "";
+            },
+          },
+        },
+      },
+
+    },
+
+    scales: {
+      x: { stacked: true },
+      y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
+    },
+  };
+
+
   const PIE_OPTIONS_NO_LEGEND = {
     ...PIE_OPTIONS,
     plugins: {
@@ -828,17 +966,47 @@
   function updateCharts() {
     const rows = state.filtered;
 
-    const vendorCounts = countBy(rows, 'VENDEDOR');
-    const vendorTop = Object.entries(vendorCounts).sort((a, b) => b[1] - a[1]).slice(0, 20);
+    const vendorMap = {};
+    rows.forEach((r) => {
+      const v = String(r.VENDEDOR || '').trim() || 'Sem vendedor';
+      if (!vendorMap[v]) vendorMap[v] = { pequeno: 0, grande: 0 };
+
+      if (isLeadPequeno(r.TIME)) vendorMap[v].pequeno += 1;
+      else vendorMap[v].grande += 1;
+    });
+
+    // ordena por total desc e pega top 20 (mantém o comportamento parecido com o atual)
+    const vendorTop = Object.entries(vendorMap)
+      .map(([v, obj]) => ({ v, pequeno: obj.pequeno || 0, grande: obj.grande || 0, total: (obj.pequeno || 0) + (obj.grande || 0) }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 20);
+
+    const vendorLabels = vendorTop.map((x) => x.v);
+    const pequenos = vendorTop.map((x) => x.pequeno);
+    const grandes = vendorTop.map((x) => x.grande);
 
     ensureChart('chartVendor', {
       type: 'bar',
       data: {
-        labels: vendorTop.map(([k]) => k),
-        datasets: [{ label: 'Leads', data: vendorTop.map(([, v]) => v) }],
+        labels: vendorLabels,
+        datasets: [
+          {
+            label: 'Leads Pequenos',
+            data: pequenos,
+            stack: 'time',
+            backgroundColor: 'rgb(54, 162, 235)', // azul
+          },
+          {
+            label: 'Leads Grandes',
+            data: grandes,
+            stack: 'time',
+            backgroundColor: 'rgb(255, 159, 64)', // laranja
+          },
+        ],
       },
-      options: BAR_VENDOR_OPTIONS,
+      options: BAR_VENDOR_STACKED_OPTIONS,
     });
+
 
     const areaPie = buildPieFromCounts(countBy(rows, 'AREA'), 7);
     ensureChart('chartArea', {
@@ -1072,7 +1240,7 @@
     }
 
     ui.showLoading();
-    if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 12);
+    if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 13);
 
     try {
       const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
@@ -1092,7 +1260,7 @@
       applyAllFiltersAndRender({ resetPage: true });
     } catch (e) {
       ui.showError(`Failed to load leads: ${e.message}`);
-      if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 12);
+      if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 13);
 
     } finally {
       ui.hideLoading();

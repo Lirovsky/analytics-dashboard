@@ -370,6 +370,18 @@ a.table-link:hover {
   min-width: 360px;
 }
 
+.col-origem {
+  min-width: 120px;
+}
+
+.col-stage-funnel {
+  min-width: 160px;
+}
+
+.col-stage {
+  min-width: 120px;
+}
+
 .truncate {
   max-width: 520px;
   overflow: hidden;
