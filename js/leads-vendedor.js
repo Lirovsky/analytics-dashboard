@@ -873,18 +873,17 @@
     responsive: true,
     maintainAspectRatio: false,
 
-    // melhora o hover (não precisa acertar o segmento pequeno)
-    interaction: { mode: 'index', intersect: false },
+    interaction: { mode: "index", intersect: false },
+
+    // 1) espaço extra acima do gráfico (pra caber o total)
+    layout: { padding: { top: 18 } },
 
     plugins: {
-      legend: { display: true, position: 'bottom' },
-
-      // garante tooltip fácil no stacked
-      tooltip: { mode: 'index', intersect: false },
+      legend: { display: true, position: "bottom" },
+      tooltip: { mode: "index", intersect: false },
 
       datalabels: {
         labels: {
-          // 1) Valor do segmento (dentro da barra)
           segment: {
             display: (ctx) => (Number(ctx.dataset?.data?.[ctx.dataIndex]) || 0) > 0,
             anchor: "center",
@@ -899,14 +898,13 @@
             },
           },
 
-          // 2) Total no topo (só no ÚLTIMO dataset, para não repetir)
           total: {
             display: (ctx) => ctx.datasetIndex === ctx.chart.data.datasets.length - 1,
             anchor: "end",
             align: "end",
-            offset: 4,
-            clamp: true,
-            clip: false,
+            offset: 6,     // (opcional) afasta um pouco mais do topo da barra
+            clamp: false,  // deixa desenhar fora da área do plot
+            clip: false,   // não recorta o texto
             font: { size: 12, weight: "800" },
             color: "rgba(15, 23, 42, 0.9)",
             formatter: (_v, ctx) => {
@@ -918,14 +916,21 @@
           },
         },
       },
-
     },
 
     scales: {
       x: { stacked: true },
-      y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: { precision: 0 },
+
+        // 2) folga automática no topo do eixo Y (resolve o "8" cortado)
+        grace: "20%",
+      },
     },
   };
+
 
 
   const PIE_OPTIONS_NO_LEGEND = {

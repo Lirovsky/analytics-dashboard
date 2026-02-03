@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-page="mrr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics Dashboard • MRR</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/mrr.css" />
+</head>
+
+<body>
+  <header class="top-nav">
+    <div class="top-nav__inner">
+      <div class="top-nav__brand">Analytics</div>
+
+      <nav class="top-nav__links">
+        <a class="top-nav__link" href="metrics.html">Métricas</a>
+        <a class="top-nav__link" href="stages.html">Stages</a>
+        <a class="top-nav__link" href="leads.html">Leads</a>
+        <a class="top-nav__link" href="leads-vendedor.html">Leads • Vendedor</a>
+        <a class="top-nav__link" href="vendas.html">Vendas</a>
+        <a class="top-nav__link is-active" href="mrr.html">MRR</a>
+        <a class="top-nav__link" href="dash.html">Dash</a>
+        <a class="top-nav__link" href="tabela-vendas-lp.html">Planilhas</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="dashboard">
+    <aside class="filter-panel">
+      <h3 class="filter-panel__title">Filtro</h3>
+
+      <div class="filter-panel__controls">
+        <div class="filter-row filter-row--date">
+          <div class="filter-group">
+            <label for="entryStartDate">MRR • Data inicial</label>
+            <input type="date" id="entryStartDate" class="date-input" />
+          </div>
+
+          <div class="filter-group">
+            <label for="entryEndDate">MRR • Data final</label>
+            <input type="date" id="entryEndDate" class="date-input" />
+          </div>
+
+          <div class="filter-group filter-group--shortcuts">
+            <label>Atalhos</label>
+            <div class="filter-shortcuts">
+              <button id="presetMonth" class="btn btn--ghost" type="button">Mês atual</button>
+              <button id="presetPrevMonth" class="btn btn--ghost" type="button">Mês anterior</button>
+              <button id="preset30" class="btn btn--ghost" type="button">30 dias</button>
+              <button id="preset90" class="btn btn--ghost" type="button">90 dias</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-row filter-row--main">
+          <div class="filter-group">
+            <label for="managerSelect">Vendedor</label>
+            <select id="managerSelect" class="date-input">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="planSelect">Plano</label>
+            <select id="planSelect" class="date-input">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="channelSelect">Canal (derivado)</label>
+            <select id="channelSelect" class="date-input">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="entryTypeSelect">Tipo de entrada (derivado)</label>
+            <select id="entryTypeSelect" class="date-input">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="areaSelect">Área</label>
+            <select id="areaSelect" class="date-input">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="timeSelect">Time</label>
+            <select id="timeSelect" class="date-input">
+              <option value="">Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="moneySelect">Money</label>
+            <select id="moneySelect" class="date-input">
+              <option value="">Todos</option>
+              <option value="yes">Sim</option>
+              <option value="no">Não</option>
+              <option value="unknown">Não informado</option>
+            </select>
+          </div>
+
+          <div class="filter-group filter-group--search">
+            <label for="globalSearch">Busca</label>
+            <input type="text" id="globalSearch" class="text-input" placeholder="Buscar por tag/origem" />
+          </div>
+        </div>
+
+        <hr class="filter-sep" />
+
+        <div class="filter-row filter-row--actions">
+          <button id="applyFilters" class="btn btn--primary" type="button">Aplicar</button>
+          <button id="clearAllFilters" class="btn btn--ghost" type="button">Limpar tudo</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="section">
+      <div class="section__header">
+        <h2 class="section__title">MRR</h2>
+        <div class="section__meta">
+          <span class="meta-pill">Registros: <strong id="totalCount">–</strong></span>
+        </div>
+      </div>
+
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card">
+          <div class="kpi-label">MRR total</div>
+          <div class="kpi-value" id="kpiMrrTotal">–</div>
+          <div class="kpi-sub">Soma do MRR filtrado</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Crescimento MRR (MoM)</div>
+          <div class="kpi-value" id="kpiMrrMoM">–</div>
+          <div class="kpi-sub">Mês vs mês (quando houver 2+ meses)</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Ticket médio mensal (ARPA)</div>
+          <div class="kpi-value" id="kpiArpa">–</div>
+          <div class="kpi-sub">MRR / clientes únicos</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">Ticket médio anual (ACV)</div>
+          <div class="kpi-value" id="kpiAcv">–</div>
+          <div class="kpi-sub">ACV médio (anualizado)</div>
+        </div>
+      </div>
+
+      <div class="analytics-block" id="analyticsBlock">
+        <div class="charts-grid charts-grid--mrr">
+          <div class="chart-card">
+            <div class="chart-title">MRR por mês (série)</div>
+            <canvas id="chartMrrByMonth" height="110"></canvas>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">MRR por dia (série)</div>
+            <canvas id="chartMrrByDay" height="110"></canvas>
+          </div>
+
+          <div class="chart-card chart-card--wide">
+            <div class="chart-title">Receita por área (MRR)</div>
+            <canvas id="chartRevenueByArea" height="110"></canvas>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">Receita por plano (MRR)</div>
+            <canvas id="chartRevenueByPlan" height="110"></canvas>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">Receita por nº de usuários (MRR)</div>
+            <canvas id="chartRevenueByUsers" height="110"></canvas>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">MRR por canal</div>
+            <canvas id="chartMrrByChannel" height="110"></canvas>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-title">Ticket médio (MRR) por canal</div>
+            <canvas id="chartArpaByChannel" height="110"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <p>Loading data...</p>
+    </div>
+
+    <div class="toast toast--error" id="errorToast">
+      <span class="toast__icon">⚠️</span>
+      <span class="toast__message" id="errorMessage">Error loading data</span>
+      <button class="toast__close" id="closeToast" type="button">×</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="js/mrr.js"></script>
+</body>
+
+</html>

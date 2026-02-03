@@ -75,6 +75,9 @@
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
+
+  --dash-sidebar-width: 240px;
+  /* ajuste aqui (ex: 220–260) */
 }
 
 /* ========================================
@@ -233,7 +236,7 @@ body {
   margin: 0 auto;
   padding: var(--spacing-lg);
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: var(--dash-sidebar-width) minmax(0, 1fr);
   gap: var(--spacing-lg);
   align-items: start;
 }
@@ -253,7 +256,7 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
 
   /* Filtro no topo + KPIs no rodapé */
   display: flex;
@@ -280,7 +283,7 @@ body {
 }
 
 .dash-kpi-card__label {
-  font-size: 0.7rem;
+  font-size: 0.55rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-secondary);
@@ -503,7 +506,7 @@ body {
 .dash-panel__body {
   padding: var(--spacing-lg);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
+  grid-template-columns: minmax(0, 1fr) 110px;
   gap: var(--spacing-lg);
   align-items: start;
 }
@@ -548,6 +551,18 @@ body {
   font-size: var(--font-size-base);
   font-weight: 800;
   color: var(--color-text-primary);
+}
+
+/* Investimento: valores grandes (ex.: > 100 mil) não podem estourar o card */
+#inv-meta,
+#inv-google,
+#inv-total {
+  font-size: 0.90rem;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ========================================
@@ -703,7 +718,7 @@ body {
 
   /* Reserva altura para o header fixo */
   .dash-shell {
-    height: calc(100vh - 64px);
+    height: calc(100vh - (var(--spacing-md) * 2));
     padding: var(--spacing-md);
     gap: var(--spacing-md);
     align-items: stretch;
@@ -761,7 +776,7 @@ body {
     min-height: 0;
     padding: var(--spacing-md);
     gap: var(--spacing-md);
-    grid-template-columns: minmax(0, 1fr) 200px;
+    grid-template-columns: minmax(0, 1fr) 110px;
     align-items: stretch;
   }
 
@@ -796,12 +811,12 @@ body {
 
   /* 4 KPIs no "Custo por Leads" precisam caber sem cortar */
   .dash-panel--cpl .dash-panel__stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   /* Sidebar mais compacta para não "estourar" altura */
   .dash-sidebar {
-    padding: var(--spacing-md);
+    top: 0;
     height: 100%;
     overflow: hidden;
   }
@@ -854,7 +869,7 @@ body {
   .dash-panel__body {
     padding: var(--spacing-sm);
     gap: var(--spacing-sm);
-    grid-template-columns: minmax(0, 1fr) 190px;
+    grid-template-columns: minmax(0, 1fr) 110px;
   }
 
   .dash-panel__chart {

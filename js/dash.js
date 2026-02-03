@@ -16,6 +16,13 @@
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }),
+    // Sem centavos (útil para KPIs grandes que podem quebrar linha)
+    brl0: new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }),
   };
 
   const utils = {
@@ -43,6 +50,9 @@
     },
     formatBRL(v) {
       return formatters.brl.format(this.toNumber(v));
+    },
+    formatBRL0(v) {
+      return formatters.brl0.format(this.toNumber(v));
     },
     formatInt(v) {
       return formatters.int.format(this.toNumber(v));
@@ -80,6 +90,58 @@
       }
     },
   };
+
+  if (window.Chart && window.ChartDataLabels) {
+    window.Chart.register(window.ChartDataLabels);
+  }
+
+  // =========================================================
+  // Data Labels (Chart.js)
+  // - até 15 pontos: mostra todos
+  // - acima de 15: mostra 1 a cada 2 (mantém o último)
+  // =========================================================
+  function shouldShowDataLabel(ctx) {
+    const count = (ctx?.chart?.data?.labels || []).length;
+    if (count <= 15) return true;
+    const i = ctx.dataIndex;
+    return i % 2 === 0 || i === count - 1;
+  }
+
+  function dataLabelFont(ctx) {
+    const count = (ctx?.chart?.data?.labels || []).length;
+    return { weight: "700", size: count > 15 ? 10 : 12 };
+  }
+
+  function baseDataLabelsOptions({ datasetOffset = false } = {}) {
+    return {
+      color: utils.getCssVar("--color-text-primary", "#ffffff"),
+      textStrokeColor: "rgba(0,0,0,0.55)",
+      textStrokeWidth: 3,
+
+      display: shouldShowDataLabel,
+      anchor: "end",
+      align: "top",
+      clamp: true,
+      clip: false,
+
+      // Em gráficos com 2 linhas (Meta/Google) dá um deslocamento por dataset
+      offset: (ctx) => {
+        const count = (ctx?.chart?.data?.labels || []).length;
+        const base = count > 15 ? 4 : 6;
+        if (!datasetOffset) return base;
+        // Ajuste pensado pro gráfico de Investimento:
+        // - deixa os rótulos do Google (datasetIndex=1) mais próximos da linha amarela
+        // - empurra um pouco os rótulos da Meta (datasetIndex=0) pra evitar “misturar”
+        const idx = ctx.datasetIndex || 0;
+        if (idx === 0) return base + (count > 15 ? 8 : 10); // Meta: mais distante
+        return base; // Google: mais perto
+      },
+
+      formatter: (value) => String(Math.round(Number(value) || 0)),
+      font: dataLabelFont,
+    };
+  }
+
 
   const $id = (id) => document.getElementById(id);
 
@@ -233,9 +295,10 @@
 
     state.totals.investment_total = total;
 
-    if (el.invMeta) el.invMeta.textContent = utils.formatBRL(totalFacebook);
-    if (el.invGoogle) el.invGoogle.textContent = utils.formatBRL(totalGoogle);
-    if (el.invTotal) el.invTotal.textContent = utils.formatBRL(total);
+    // KPIs de investimento sem centavos (evita quebra de linha em valores altos)
+    if (el.invMeta) el.invMeta.textContent = utils.formatBRL0(totalFacebook);
+    if (el.invGoogle) el.invGoogle.textContent = utils.formatBRL0(totalGoogle);
+    if (el.invTotal) el.invTotal.textContent = utils.formatBRL0(total);
 
     if (!el.investmentCanvas || !window.Chart) return;
 
@@ -288,10 +351,14 @@
               label: (ctx) => `${ctx.dataset.label}: ${utils.formatBRL(ctx.parsed?.y)}`,
             },
           },
+          datalabels: baseDataLabelsOptions({ datasetOffset: true }),
+        },
+        layout: {
+          padding: { top: 18 },
         },
         scales: {
           x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
-          y: { beginAtZero: true, ticks: { callback: (v) => utils.formatBRL(v) } },
+          y: { beginAtZero: true, grace: "12%", ticks: { callback: (v) => utils.formatBRL(v) } },
         },
       },
     });
@@ -384,10 +451,14 @@
               label: (ctx) => `Leads: ${utils.formatInt(ctx.parsed?.y)}`,
             },
           },
+          datalabels: baseDataLabelsOptions(),
+        },
+        layout: {
+          padding: { top: 18 },
         },
         scales: {
           x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
-          y: { beginAtZero: true, ticks: { callback: (v) => utils.formatInt(v) } },
+          y: { beginAtZero: true, grace: "12%", ticks: { callback: (v) => utils.formatInt(v) } },
         },
       },
     });
@@ -434,10 +505,14 @@
               label: (ctx) => `Vendas: ${utils.formatInt(ctx.parsed?.y)}`,
             },
           },
+          datalabels: baseDataLabelsOptions(),
+        },
+        layout: {
+          padding: { top: 18 },
         },
         scales: {
           x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
-          y: { beginAtZero: true, ticks: { callback: (v) => utils.formatInt(v) } },
+          y: { beginAtZero: true, grace: "12%", ticks: { callback: (v) => utils.formatInt(v) } },
         },
       },
     });
@@ -492,10 +567,14 @@
               label: (ctx) => `CPL: ${utils.formatBRL(ctx.parsed?.y)}`,
             },
           },
+          datalabels: baseDataLabelsOptions(),
+        },
+        layout: {
+          padding: { top: 18 },
         },
         scales: {
           x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
-          y: { beginAtZero: true, ticks: { callback: (v) => utils.formatBRL(v) } },
+          y: { beginAtZero: true, grace: "12%", ticks: { callback: (v) => utils.formatBRL(v) } },
         },
       },
     });

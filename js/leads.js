@@ -11,6 +11,15 @@
 
     const NAO_INFORMADO_VALUE = '__nao_informado__';
 
+    const ICP_AREAS = new Set([
+        'dentistry',
+        'aesthetic',
+        'physiotherapy',
+        'medicine',
+        'biomedicine',
+    ]);
+
+
     if (window.Chart && window.ChartDataLabels && typeof window.Chart.register === 'function') {
         window.Chart.register(window.ChartDataLabels);
         window.Chart.defaults.plugins = window.Chart.defaults.plugins || {};
@@ -384,6 +393,16 @@
         errorToast: dom.byId('errorToast'),
         errorMessage: dom.byId('errorMessage'),
         closeToast: dom.byId('closeToast'),
+
+        // KPIs
+        kpiTotal: dom.byId('kpiTotal'),
+        kpiShown: dom.byId('kpiShown'),
+        kpiMoneyPct: dom.byId('kpiMoneyPct'),
+        kpiIcpPct: dom.byId('kpiIcpPct'),
+        kpiIcpOrganicPct: dom.byId('kpiIcpOrganicPct'),
+        kpiMoneyOrganicPct: dom.byId('kpiMoneyOrganicPct'),
+
+
     };
 
     const state = {
@@ -543,6 +562,62 @@
         updatePaginationUI(meta);
     }
 
+    function isOrganic(row) {
+        const o = utils.removeDiacritics(String(row?.origem ?? '').trim().toLowerCase());
+        return o === 'organico';
+    }
+
+    function isIcp(row) {
+        const area = String(row?.area ?? '').trim().toLowerCase();
+        return row?.money === 'yes' && ICP_AREAS.has(area);
+    }
+
+    function pct(part, total) {
+        if (!total) return null;
+        return Math.round((part / total) * 100);
+    }
+
+    function setKpi(el, value, title) {
+        if (!el) return;
+        el.textContent = value == null ? '—' : String(value);
+        if (title != null) el.title = String(title);
+    }
+
+    function updateKpis(rows) {
+        const shown = Array.isArray(rows) ? rows : [];
+        const totalAll = Array.isArray(state.leadsData) ? state.leadsData.length : 0;
+        const totalShown = shown.length;
+
+        const moneyYes = shown.reduce((acc, r) => acc + (r?.money === 'yes' ? 1 : 0), 0);
+        const moneyPct = pct(moneyYes, totalShown);
+
+        const icpCount = shown.reduce((acc, r) => acc + (isIcp(r) ? 1 : 0), 0);
+        const icpPct = pct(icpCount, totalShown);
+
+        const organic = shown.filter(isOrganic);
+        const totalOrganic = organic.length;
+        const moneyOrganicYes = organic.reduce((acc, r) => acc + (r?.money === 'yes' ? 1 : 0), 0);
+        const moneyOrganicPct = pct(moneyOrganicYes, totalOrganic);
+
+        const icpOrganicCount = organic.reduce((acc, r) => acc + (isIcp(r) ? 1 : 0), 0);
+        const icpOrganicPct = pct(icpOrganicCount, totalShown);
+
+
+        setKpi(elements.kpiTotal, totalAll);
+        setKpi(elements.kpiShown, totalShown);
+
+        setKpi(elements.kpiMoneyPct, moneyPct == null ? null : `${moneyPct}%`, moneyPct == null ? null : `${moneyYes}/${totalShown}`);
+        setKpi(
+            elements.kpiMoneyOrganicPct,
+            moneyOrganicPct == null ? null : `${moneyOrganicPct}%`,
+            moneyOrganicPct == null ? null : `${moneyOrganicYes}/${totalOrganic}`
+        );
+
+        setKpi(elements.kpiIcpPct, icpPct == null ? null : `${icpPct}%`, icpPct == null ? null : `${icpCount}/${totalShown}`);
+        setKpi(elements.kpiIcpOrganicPct, icpOrganicPct == null ? null : `${icpOrganicPct}%`, icpOrganicPct == null ? null : `${icpOrganicCount}/${totalOrganic}`);
+    }
+
+
     function updateCharts() {
         const rows = state.filtered || [];
 
@@ -649,6 +724,8 @@
         }
 
         state.filtered = out;
+        updateKpis(state.filtered);
+
         renderTable();
         updateCharts();
     }
@@ -692,6 +769,8 @@
             state.filtered = [];
             renderTable();
             updateCharts();
+            updateKpis([]);
+
         } finally {
             ui.hideLoading();
         }
