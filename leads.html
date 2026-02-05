@@ -71,6 +71,13 @@
                     </div>
 
                     <div class="filter-group">
+                        <label for="tagSelect">Tag</label>
+                        <select id="tagSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
                         <label for="areaSelect">Área</label>
                         <select id="areaSelect" class="date-input">
                             <option value="">Todos</option>
@@ -96,12 +103,6 @@
                         <select id="desafioSelect" class="date-input">
                             <option value="">Todos</option>
                         </select>
-                    </div>
-
-                    <div class="filter-group filter-group--search">
-                        <label for="globalSearch">Busca</label>
-                        <input id="globalSearch" class="text-input" type="text"
-                            placeholder="telefone, tag, gerente, stage..." />
                     </div>
                 </div>
 
@@ -133,6 +134,12 @@
                     <div class="kpi-card">
                         <div class="kpi-label">% Money (Sim)</div>
                         <div class="kpi-value" id="kpiMoneyPct">—</div>
+                    </div>
+
+
+                    <div class="kpi-card">
+                        <div class="kpi-label">Total Orgânico</div>
+                        <div class="kpi-value" id="kpiOrganicTotal">—</div>
                     </div>
 
                     <div class="kpi-card">
