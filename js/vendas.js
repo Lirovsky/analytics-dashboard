@@ -86,6 +86,22 @@
             if (norm === "no") return "Não";
             return "Não informado";
         },
+
+        // Origem da venda (lead_tag / lead_underline_tag)
+        // Regras:
+        // - null/undefined/"" => "Não informado"
+        // - termina com "_facebook" (case-insensitive) => "Meta"
+        // - termina com "_google" (case-insensitive) => "Google"
+        // - demais => "Orgânico"
+        normalizeLeadOrigin(value) {
+            const s = String(value ?? "").trim();
+            if (!s) return "Não informado";
+            const v = s.toLowerCase();
+            if (v === "undefined" || v === "null") return "Não informado";
+            if (v.endsWith("_facebook")) return "Meta";
+            if (v.endsWith("_google")) return "Google";
+            return "Orgânico";
+        },
     };
 
     const $id = (id) => document.getElementById(id);
@@ -406,6 +422,23 @@
             data: { labels: payPie.labels, datasets: [pieDataset(payPie.data, payPie.labels)] },
             options: PIE_OPTIONS,
         });
+
+        // Origem da venda (Meta / Google / Orgânico / Não informado)
+        const originLabels = ["Meta", "Google", "Orgânico", "Não informado"];
+        const originCounts = countBy(rows, "lead_origin");
+        ensureChart("chartOrigem", {
+            type: "pie",
+            data: {
+                labels: originLabels,
+                datasets: [
+                    pieDataset(
+                        originLabels.map((l) => originCounts[l] || 0),
+                        originLabels
+                    ),
+                ],
+            },
+            options: PIE_OPTIONS,
+        });
     }
 
     function getField(obj, keys) {
@@ -417,6 +450,9 @@
 
     function normalizeSaleRow(s) {
         const created = getField(s, ["created_at", "createdAt", "date"]);
+        const leadUnderlineTag = getField(s, ["lead_underline_tag", "leadUnderlineTag", "lead_underline", "leadUnderline"]);
+        const leadTag = getField(s, ["lead_tag", "leadTag", "tag", "origem", "origin"]);
+        const originRaw = leadUnderlineTag ?? leadTag;
         return {
             created_at: created ? String(created) : null,
             manager: getField(s, ["manager", "seller", "vendedor"]) ?? null,
@@ -427,6 +463,11 @@
             challenge: getField(s, ["challenge", "desafio"]) ?? null,
             system: getField(s, ["system", "sistema"]) ?? null,
             area: getField(s, ["area"]) ?? null,
+
+            // novo campo (no payload) + fallback para lead_tag
+            lead_underline_tag: leadUnderlineTag ?? null,
+            lead_tag: leadTag ?? null,
+            lead_origin: utils.normalizeLeadOrigin(originRaw),
         };
     }
 
@@ -468,6 +509,9 @@
                     utils.moneyLabel(r.money),
                     r.system,
                     r.challenge,
+                    r.lead_origin,
+                    r.lead_underline_tag,
+                    r.lead_tag,
                 ]
                     .map((v) => String(v ?? "").toLowerCase())
                     .join(" | ");
