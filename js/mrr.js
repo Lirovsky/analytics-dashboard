@@ -538,15 +538,20 @@
 
   // --- Derivações de aquisição ---
   function deriveChannel(leadTag) {
-    const t = String(leadTag ?? "").toLowerCase();
+    const raw = String(leadTag ?? "").trim();
+    const t = raw.toLowerCase();
     if (!t) return "Não informado";
 
     if (t.includes("trial")) return "Trial";
     if (t.includes("google") || t.includes("adwords") || t.includes("gads")) return "Google";
     if (t.includes("meta") || t.includes("facebook") || t.includes("instagram") || t.includes("fb")) return "Meta";
     if (t.includes("org") || t.includes("seo") || t.includes("geo") || t.includes("orgânico") || t.includes("organico")) return "Orgânico";
-    return "Outros";
+
+    // Antes: return "Outros";
+    // Agora: vira “canal” detalhado com a própria tag
+    return raw;
   }
+
 
   function deriveEntryType(leadTag) {
     const t = String(leadTag ?? "").toLowerCase();
