@@ -370,14 +370,13 @@
         entryEndInput: dom.byId('entryEndDate'),
         applyFilters: dom.byId('applyFilters'),
         clearAllFilters: dom.byId('clearAllFilters'),
-
-        quickSearch: dom.byId('globalSearch'),
-
         moneySelect: dom.byId('moneySelect'),
         areaSelect: dom.byId('areaSelect'),
         timeSelect: dom.byId('timeSelect'),
         sistemaSelect: dom.byId('sistemaSelect'),
         desafioSelect: dom.byId('desafioSelect'),
+
+        tagSelect: dom.byId('tagSelect'),
 
         preset7: dom.byId('preset7'),
         preset14: dom.byId('preset14'),
@@ -401,6 +400,7 @@
         kpiIcpPct: dom.byId('kpiIcpPct'),
         kpiIcpOrganicPct: dom.byId('kpiIcpOrganicPct'),
         kpiMoneyOrganicPct: dom.byId('kpiMoneyOrganicPct'),
+        kpiOrganicTotal: dom.byId('kpiOrganicTotal'),
 
 
     };
@@ -600,11 +600,13 @@
         const moneyOrganicPct = pct(moneyOrganicYes, totalOrganic);
 
         const icpOrganicCount = organic.reduce((acc, r) => acc + (isIcp(r) ? 1 : 0), 0);
-        const icpOrganicPct = pct(icpOrganicCount, totalShown);
+        const icpOrganicPct = pct(icpOrganicCount, totalOrganic);
 
 
         setKpi(elements.kpiTotal, totalAll);
         setKpi(elements.kpiShown, totalShown);
+        setKpi(elements.kpiOrganicTotal, totalOrganic);
+
 
         setKpi(elements.kpiMoneyPct, moneyPct == null ? null : `${moneyPct}%`, moneyPct == null ? null : `${moneyYes}/${totalShown}`);
         setKpi(
@@ -688,7 +690,7 @@
         const times = getSelectedValues(elements.timeSelect);
         const sistemas = getSelectedValues(elements.sistemaSelect);
         const desafios = getSelectedValues(elements.desafioSelect);
-        const q = String(elements.quickSearch?.value ?? '').trim().toLowerCase();
+        const tags = getSelectedValues(elements.tagSelect);
 
         let out = [...state.leadsData];
 
@@ -699,29 +701,7 @@
         if (sistemas.length) out = out.filter((r) => matchesSelectValue(r.system, sistemas));
         if (desafios.length) out = out.filter((r) => matchesSelectValue(r.challenge, desafios));
 
-        if (q) {
-            out = out.filter((r) => {
-                const hay = [
-                    r.entry_date,
-                    r.purchase_date,
-                    r.tag,
-                    r.origem,
-                    r.phone,
-                    r.manager,
-                    r.chat_url,
-                    r.stage,
-                    r.team,
-                    r.area,
-                    utils.moneyLabel(r.money),
-                    r.system,
-                    r.challenge,
-                ]
-                    .map((v) => String(v ?? '').toLowerCase())
-                    .join(' | ');
-
-                return hay.includes(q);
-            });
-        }
+        if (tags.length) out = out.filter((r) => matchesSelectValue(r.tag, tags));
 
         state.filtered = out;
         updateKpis(state.filtered);
@@ -735,6 +715,7 @@
         setOptions(elements.timeSelect, uniqueSorted(rows, 'team'), { keepSelected: true, includeNotInformed: true });
         setOptions(elements.sistemaSelect, uniqueSorted(rows, 'system'), { keepSelected: true, includeNotInformed: true });
         setOptions(elements.desafioSelect, uniqueSorted(rows, 'challenge'), { keepSelected: true, includeNotInformed: true });
+        setOptions(elements.tagSelect, uniqueSorted(rows, 'tag'), { keepSelected: true, includeNotInformed: true });
     }
 
     async function loadLeads() {
@@ -791,9 +772,7 @@
                 if (elements.entryEndInput) elements.entryEndInput.value = today;
 
                 if (elements.moneySelect) elements.moneySelect.value = '';
-                if (elements.quickSearch) elements.quickSearch.value = '';
-
-                [elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect]
+                [elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
                     .filter(Boolean)
                     .forEach((sel) => {
                         if (!sel) return;
@@ -809,17 +788,9 @@
         }
 
         const onAnyFilterChange = () => applyAllFiltersAndRender({ resetPage: true });
-        [elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect]
+        [elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
             .filter(Boolean)
             .forEach((el) => el.addEventListener('change', onAnyFilterChange));
-
-        let searchTimer = null;
-        if (elements.quickSearch) {
-            elements.quickSearch.addEventListener('input', () => {
-                clearTimeout(searchTimer);
-                searchTimer = setTimeout(() => applyAllFiltersAndRender({ resetPage: true }), 200);
-            });
-        }
 
         const applyPresetDays = (days) => {
             const end = new Date();
