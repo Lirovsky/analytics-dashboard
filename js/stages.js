@@ -117,16 +117,32 @@ const api = {
 
 const STAGE_VALUE_MAP = {
   Assinou: "Assinatura",
+  "1ª Interação": "Apresentação",
 };
 
 const STAGES_ORDER = [
   "Lead",
-  "1ª Interação",
   "Apresentação",
   "Proposta Enviada",
   "Pagamento Pendente",
   "Assinatura",
 ];
+
+const bucketKeys = (stageLabel) =>
+  stageLabel === "Apresentação" ? ["Apresentação", "1ª Interação"] : [stageLabel];
+
+const readMoneyCount = (stages, key) => {
+  const v = stages?.[key];
+  if (!v) return 0;
+  if (typeof v.count === "number") return v.count || 0;
+  if (v.all && typeof v.all.count === "number") return v.all.count || 0;
+
+  return 0;
+};
+
+const sumMoneyStageCount = (stages, stageLabel) =>
+  bucketKeys(stageLabel).reduce((acc, k) => acc + readMoneyCount(stages, k), 0);
+
 
 const funnelRender = {
   row(stage, groups, highlight = false) {
@@ -226,26 +242,32 @@ const funnelRender = {
     if (!elements.moneyStatusBody) return;
 
     if (!data?.stages) {
-      elements.moneyStatusBody.innerHTML = ui.renderEmptyState("Sem dados de funil", 9);
+      elements.moneyStatusBody.innerHTML = ui.renderEmptyState("Sem dados de funil", 3);
       return;
     }
 
+    const totalAll = STAGES_ORDER.reduce((acc, s) => acc + sumMoneyStageCount(data.stages, s), 0);
+
     const rows = STAGES_ORDER.map((stage) => {
-      const s = data.stages[stage] || {};
-      const groups = [
-        s.all || { count: 0, percentage: 0 },
-        s.moneyYes || { count: 0, percentage: 0 },
-        s.moneyNo || { count: 0, percentage: 0 },
-        s.moneyOther || { count: 0, percentage: 0 },
-      ];
-      return this.row(stage, groups, stage === "Assinatura");
+      const count = sumMoneyStageCount(data.stages, stage);
+      const percentage = Number((totalAll > 0 ? (count / totalAll) * 100 : 0).toFixed(2));
+      return this.row(stage, [{ count, percentage }], stage === "Assinatura");
     }).join("");
 
-    const conversando = this.row("Conversando", this.buildConversandoMoneyStatus(data.stages));
-    const total = this.totalRow("Total", this.buildTotalMoneyStatus(data.stages));
+    // Conversando = soma das etapas “em andamento”
+    const conversandoStages = ["Apresentação", "Proposta Enviada", "Pagamento Pendente", "Assinatura"];
+    const conversandoCount = conversandoStages.reduce(
+      (acc, s) => acc + sumMoneyStageCount(data.stages, s),
+      0
+    );
+    const conversandoPct = Number((totalAll > 0 ? (conversandoCount / totalAll) * 100 : 0).toFixed(2));
+    const conversando = this.row("Conversando", [{ count: conversandoCount, percentage: conversandoPct }]);
+
+    const total = this.totalRow("Total", [{ count: totalAll, percentage: 100 }]);
 
     elements.moneyStatusBody.innerHTML = rows + conversando + total;
   },
+
 
   channelTable(data) {
     if (!elements.channelFunnelBody) return;
@@ -282,7 +304,7 @@ async function loadStages() {
   }
 
   ui.showLoading();
-  if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderSkeleton(6, 9);
+  if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderSkeleton(6, 3);
   if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderSkeleton(6, 7);
 
   try {
@@ -300,7 +322,7 @@ async function loadStages() {
     funnelRender.channelTable(payload?.byChannel || null);
   } catch (e) {
     ui.showError(`Failed to load funnel: ${e.message}`);
-    if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderEmptyState("Erro ao carregar", 9);
+    if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderEmptyState("Erro ao carregar", 3);
     if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderEmptyState("Erro ao carregar", 7);
   } finally {
     ui.hideLoading();

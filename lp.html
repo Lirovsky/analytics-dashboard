@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-page="lp-conversoes">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics Dashboard • Conversões LP</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/lp.css" />
+</head>
+
+<body>
+  <header class="top-nav">
+    <div class="top-nav__inner">
+      <div class="top-nav__brand">Analytics</div>
+
+      <nav class="top-nav__links">
+        <a class="top-nav__link" href="metrics.html">Métricas</a>
+        <a class="top-nav__link" href="stages.html">Stages</a>
+        <a class="top-nav__link" href="leads.html">Leads</a>
+        <a class="top-nav__link" href="leads-vendedor.html">Leads • Vendedor</a>
+        <a class="top-nav__link" href="vendas.html">Vendas</a>
+        <a class="top-nav__link is-active" href="lp.html">LPs</a>
+        <a class="top-nav__link" href="mrr.html">MRR</a>
+        <a class="top-nav__link" href="dash.html">Dash</a>
+        <a class="top-nav__link" href="tabela-vendas-lp.html">Planilhas</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="dashboard">
+    <aside class="filter-panel">
+      <h3 class="filter-panel__title">Filtro</h3>
+
+      <div class="filter-panel__controls">
+        <div class="filter-row filter-row--date">
+          <div class="filter-group">
+            <label for="entryStartDate">Entrada • Data inicial</label>
+            <input type="date" id="entryStartDate" class="date-input" />
+          </div>
+
+          <div class="filter-group">
+            <label for="entryEndDate">Entrada • Data final</label>
+            <input type="date" id="entryEndDate" class="date-input" />
+          </div>
+
+          <div class="filter-group filter-group--shortcuts">
+            <label>Atalhos</label>
+            <div class="filter-shortcuts">
+              <button id="presetPrevDay" class="btn btn--ghost" type="button">Último dia</button>
+              <button id="presetNextDay" class="btn btn--ghost" type="button">Próximo dia</button>
+              <button id="preset7" class="btn btn--ghost" type="button">7 dias</button>
+              <button id="preset14" class="btn btn--ghost" type="button">14 dias</button>
+              <button id="preset30" class="btn btn--ghost" type="button">30 dias</button>
+            </div>
+          </div>
+        </div>
+
+        <hr class="filter-sep" />
+
+        <div class="filter-row filter-row--actions">
+          <button id="applyFilters" class="btn btn--primary" type="button">Aplicar</button>
+          <button id="clearAllFilters" class="btn btn--ghost" type="button">Limpar tudo</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="section">
+      <h2 class="section__title">Conversões da LP</h2>
+
+      <div class="analytics-block" id="analyticsBlock">
+        <div class="kpi-grid kpi-grid--4">
+          <div class="kpi-card">
+            <div class="kpi-label">Total visitas</div>
+            <div class="kpi-value" id="kpiVisits">—</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Total leads</div>
+            <div class="kpi-value" id="kpiLeads">—</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">Conversão geral</div>
+            <div class="kpi-value" id="kpiConv">—</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-label">LPs</div>
+            <div class="kpi-value" id="kpiLps">—</div>
+          </div>
+        </div>
+
+        <div class="lp-kpi-block">
+          <div class="lp-kpi-header">
+            <span class="table-block__icon">🎯</span>
+            <h3>Conversão por LP</h3>
+          </div>
+
+          <div class="lp-kpi-grid" id="lpKpis"></div>
+        </div>
+    </section>
+
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <p>Loading data...</p>
+    </div>
+
+    <div class="toast toast--error" id="errorToast">
+      <span class="toast__icon">⚠️</span>
+      <span class="toast__message" id="errorMessage">Error loading data</span>
+      <button class="toast__close" id="closeToast" type="button">×</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="js/lp.js"></script>
+</body>
+
+</html>
