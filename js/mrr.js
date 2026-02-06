@@ -537,20 +537,34 @@
   }
 
   // --- Derivações de aquisição ---
-  function deriveChannel(leadTag) {
-    const raw = String(leadTag ?? "").trim();
+
+  function normalizeLeadTag(leadTag) {
+    if (leadTag === null || leadTag === undefined) return null;
+    const raw = String(leadTag).trim();
+    if (!raw) return null;
+
+    // trata strings literais vindas do backend
     const t = raw.toLowerCase();
-    if (!t) return "Não informado";
+    if (t === "null" || t === "undefined" || t === "nan") return null;
 
-    if (t.includes("trial")) return "Trial";
-    if (t.includes("google") || t.includes("adwords") || t.includes("gads")) return "Google";
-    if (t.includes("meta") || t.includes("facebook") || t.includes("instagram") || t.includes("fb")) return "Meta";
-    if (t.includes("org") || t.includes("seo") || t.includes("geo") || t.includes("orgânico") || t.includes("organico")) return "Orgânico";
-
-    // Antes: return "Outros";
-    // Agora: vira “canal” detalhado com a própria tag
     return raw;
   }
+
+  function deriveChannel(leadTag) {
+    const raw = normalizeLeadTag(leadTag);
+    if (!raw) return "Não informado";
+
+    const t = raw.toLowerCase();
+
+    // regras novas (na ordem)
+    if (t.startsWith("trial")) return "Trial";
+    if (t.endsWith("_facebook")) return "Meta";
+    if (t.endsWith("_google")) return "Google";
+
+    // qualquer outra coisa vira orgânico (ex.: indicação)
+    return "Orgânico";
+  }
+
 
 
   function deriveEntryType(leadTag) {
@@ -585,13 +599,25 @@
     const saleDate = saleDateRaw ? String(saleDateRaw) : null;
     const saleDateObj = utils.parseDate(saleDate);
 
-    const mrr = utils.toNumber(getField(s, ["mrr", "mrr_value", "monthly_recurring_revenue"]));
     const totalValue = utils.toNumber(getField(s, ["total_value", "totalValue", "value"]));
     const recurrence = String(getField(s, ["recurrence"]) ?? "").trim();
-
-    // ACV: se for mensal (ou não anual), anualiza por mrr * 12; se for anual e tiver total_value, usa total_value
     const isAnnual = recurrence.toLowerCase().includes("anual");
-    const acv = isAnnual ? (totalValue || (mrr * 12)) : (mrr * 12);
+
+    // 1) MRR mensal = total anual / 12 (quando anual)
+    // 2) MRR anual = MRR mensal * 12
+    // Obs: se o payload já mandar "mrr" preenchido, usamos como fallback.
+    const mrrFromPayload = utils.toNumber(getField(s, ["mrr", "mrr_value", "monthly_recurring_revenue"]));
+
+    let mrr = 0;
+    if (isAnnual) {
+      mrr = totalValue > 0 ? (totalValue / 12) : mrrFromPayload;
+    } else {
+      // mensal: preferir mrr do payload; se não vier, usar totalValue como mensal
+      mrr = mrrFromPayload > 0 ? mrrFromPayload : totalValue;
+    }
+
+    const acv = (Number(mrr) || 0) * 12;
+
 
     const leadTag = getField(s, ["lead_tag", "leadTag", "tag", "origin", "source"]) ?? null;
 
