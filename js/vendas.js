@@ -130,6 +130,8 @@
 
         totalCount: $id("totalCount"),
 
+
+        kpiSalesTotal: $id("kpiSalesTotal"),
         loadingOverlay: $id("loadingOverlay"),
         errorToast: $id("errorToast"),
         errorMessage: $id("errorMessage"),
@@ -522,6 +524,7 @@
 
         state.filtered = out;
         if (elements.totalCount) elements.totalCount.textContent = String(out.length);
+        if (elements.kpiSalesTotal) elements.kpiSalesTotal.textContent = String(out.length);
         updateCharts();
     }
 
@@ -558,6 +561,7 @@
             state.salesData = [];
             state.filtered = [];
             if (elements.totalCount) elements.totalCount.textContent = "0";
+            if (elements.kpiSalesTotal) elements.kpiSalesTotal.textContent = "0";
             updateCharts();
         } finally {
             ui.hideLoading();

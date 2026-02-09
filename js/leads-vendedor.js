@@ -292,6 +292,8 @@
 
     kpiTotal: dom.byId('kpiTotal'),
     kpiShown: dom.byId('kpiShown'),
+    kpiPequenos: dom.byId('kpiPequenos'),
+    kpiGrandes: dom.byId('kpiGrandes'),
     kpiMoneyPct: dom.byId('kpiMoneyPct'),
 
     rangePill: dom.byId('rangePill'),
@@ -680,12 +682,22 @@
     const totalShown = state.filtered.length || 0;
     const pct = totalShown ? Math.round((yes / totalShown) * 100) : 0;
 
+    // KPIs de tamanho de lead (mesma lógica do gráfico "Leads por vendedor")
+    let pequenosTotal = 0;
+    let grandesTotal = 0;
+    state.filtered.forEach((r) => {
+      if (isLeadPequeno(r.TIME)) pequenosTotal += 1;
+      else grandesTotal += 1;
+    });
+
     const rowsByStage = state.rows.filter(
       (r) => normalizeStage(r.STAGE) === selectedStage
     );
     if (elements.kpiTotal) elements.kpiTotal.textContent = String(rowsByStage.length);
 
     if (elements.kpiShown) elements.kpiShown.textContent = String(totalShown);
+    if (elements.kpiPequenos) elements.kpiPequenos.textContent = String(pequenosTotal);
+    if (elements.kpiGrandes) elements.kpiGrandes.textContent = String(grandesTotal);
     if (elements.kpiMoneyPct) elements.kpiMoneyPct.textContent = totalShown ? `${pct}%` : '—';
 
     updateCharts();

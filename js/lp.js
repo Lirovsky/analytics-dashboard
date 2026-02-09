@@ -51,8 +51,8 @@
     pctClass(frac) {
       const v = Number(frac);
       const pct = Number.isFinite(v) ? (v <= 1.2 ? v * 100 : v) : 0;
-      if (pct >= 12) return "pill pill--good";
-      if (pct >= 6) return "pill pill--mid";
+      if (pct >= 10) return "pill pill--good";
+      if (pct >= 5) return "pill pill--mid";
       return "pill pill--bad";
     },
     escapeHtml(value) {
