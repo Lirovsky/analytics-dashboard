@@ -52,11 +52,15 @@ const elements = {
 
     planilhasCount: dom.byId("planilhasCount"),
     influencersCount: dom.byId("influencersCount"),
+    vendedoresBody: dom.byId("vendedoresBody"),
+    vendedoresCount: dom.byId("vendedoresCount"),
+
 
     loadingOverlay: dom.byId("loadingOverlay"),
     errorToast: dom.byId("errorToast"),
     errorMessage: dom.byId("errorMessage"),
     closeToast: dom.byId("closeToast"),
+
 };
 
 // ========================================
@@ -68,6 +72,9 @@ const state = {
     filteredPlanilhas: [],
     filteredInfluencers: [],
     sort: { key: null, direction: "asc" },
+    rawVendedores: [],
+    filteredVendedores: [],
+
 };
 
 // ========================================
@@ -109,6 +116,17 @@ function normalizePlanilhaRow(x) {
     };
 }
 
+function normalizeVendedorRow(x) {
+    const url = x?.url ?? x?.link ?? x?.href ?? x?.vendedor_url ?? null;
+    const name = x?.name ?? x?.vendedor ?? x?.seller ?? x?.nome ?? null;
+
+    return {
+        vendedor_url: utils.asUrl(url),
+        vendedor_name: utils.safeText(name),
+    };
+}
+
+
 function normalizeInfluencerRow(x) {
     const url = x?.url ?? x?.link ?? x?.href ?? x?.influencer_url ?? null;
     const name = x?.name ?? x?.pagina ?? x?.page ?? x?.nome ?? null;
@@ -128,6 +146,10 @@ function splitDataByBestGuess(data) {
      */
     const root = utils.normalizeRoot(data);
 
+    const vendedores =
+        utils.pickArray(root, ["vendedores", "sellers", "vendedor_pages", "vendedores_pages"]) || null;
+
+
     // formato A/B
     const planilhas =
         utils.pickArray(root, ["planilhas", "spreadsheets", "sheets", "links", "vendas", "vendas_links"]) || null;
@@ -135,12 +157,14 @@ function splitDataByBestGuess(data) {
     const influencers =
         utils.pickArray(root, ["influencers", "paginas", "pages", "lp_pages"]) || null;
 
-    if (planilhas || influencers) {
+    if (planilhas || influencers || vendedores) {
         return {
+            vendedores: (vendedores || []).map(normalizeVendedorRow),
             planilhas: (planilhas || []).map(normalizePlanilhaRow),
             influencers: (influencers || []).map(normalizeInfluencerRow),
         };
     }
+
 
     // formato C (array)
     if (Array.isArray(data)) {
@@ -159,7 +183,9 @@ function splitDataByBestGuess(data) {
         return { planilhas: p, influencers: inf };
     }
 
-    return { planilhas: [], influencers: [] };
+    return { vendedores: [], planilhas: [], influencers: [] };
+
+
 }
 
 // ========================================
@@ -169,21 +195,34 @@ function applySearchFilter() {
     const q = String(elements.quickSearch?.value ?? "").trim().toLowerCase();
 
     if (!q) {
+        state.filteredVendedores = [...state.rawVendedores];
         state.filteredPlanilhas = [...state.rawPlanilhas];
         state.filteredInfluencers = [...state.rawInfluencers];
         return;
     }
 
+    state.filteredVendedores = state.rawVendedores.filter((r) => {
+        const hay = [r.vendedor_name, r.vendedor_url]
+            .map(v => String(v ?? "").toLowerCase())
+            .join(" | ");
+        return hay.includes(q);
+    });
+
     state.filteredPlanilhas = state.rawPlanilhas.filter((r) => {
-        const hay = [r.planilha_name, r.planilha_url, r.status].map(v => String(v ?? "").toLowerCase()).join(" | ");
+        const hay = [r.planilha_name, r.planilha_url, r.status]
+            .map(v => String(v ?? "").toLowerCase())
+            .join(" | ");
         return hay.includes(q);
     });
 
     state.filteredInfluencers = state.rawInfluencers.filter((r) => {
-        const hay = [r.influencer_url, r.influencer_name].map(v => String(v ?? "").toLowerCase()).join(" | ");
+        const hay = [r.influencer_name, r.influencer_url]
+            .map(v => String(v ?? "").toLowerCase())
+            .join(" | ");
         return hay.includes(q);
     });
 }
+
 
 // ========================================
 // Sorting
@@ -235,6 +274,31 @@ function renderPlanilhas() {
     `;
     }).join("");
 }
+function renderVendedores() {
+    const rows = sortItems(state.filteredVendedores);
+
+    if (elements.vendedoresCount) elements.vendedoresCount.textContent = String(rows.length);
+
+    if (!elements.vendedoresBody) return;
+    if (!rows.length) {
+        elements.vendedoresBody.innerHTML = ui.renderEmptyState("Sem vendedores para o filtro atual.", 2);
+        return;
+    }
+
+    elements.vendedoresBody.innerHTML = rows.map((r) => {
+        return `
+      <tr>
+        <td>${utils.safeText(r.vendedor_name)}</td>
+        <td>
+          ${r.vendedor_url
+                ? `<a class="table-link" href="${r.vendedor_url}" target="_blank" rel="noopener noreferrer">${r.vendedor_url}</a>`
+                : "–"}
+        </td>
+      </tr>
+    `;
+    }).join("");
+}
+
 
 function renderInfluencers() {
     const rows = sortItems(state.filteredInfluencers);
@@ -263,9 +327,11 @@ function renderInfluencers() {
 }
 
 function renderAll() {
+    renderVendedores();
     renderPlanilhas();
     renderInfluencers();
 }
+
 
 // ========================================
 // Data Loading
@@ -282,8 +348,10 @@ async function loadData() {
         const data = await response.json();
         const split = splitDataByBestGuess(data);
 
+        state.rawVendedores = split.vendedores || [];
         state.rawPlanilhas = split.planilhas || [];
         state.rawInfluencers = split.influencers || [];
+
 
         applySearchFilter();
         renderAll();

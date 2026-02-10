@@ -77,6 +77,29 @@
                 </div>
             </div>
 
+            <!-- ================= Vendedores (NOVO) ================= -->
+            <div class="table-block">
+                <div class="table-block__header">
+                    <span class="table-block__icon">👤</span>
+                    <h3>Vendedores</h3>
+                    <div class="table-block__meta">
+                        <span class="meta-pill">Total: <strong id="vendedoresCount">–</strong></span>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="data-table data-table--compact">
+                        <thead>
+                            <tr>
+                                <th data-sort="vendedor_name">Vendedor <span class="sort-icon">↕</span></th>
+                                <th data-sort="vendedor_url">Página <span class="sort-icon">↕</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="vendedoresBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- ================= Influencers ================= -->
             <div class="table-block">
                 <div class="table-block__header">
@@ -96,11 +119,10 @@
                             </tr>
                         </thead>
                         <tbody id="influencersBody"></tbody>
-
-                        <tbody id="influencersBody"></tbody>
                     </table>
                 </div>
             </div>
+
         </section>
 
         <!-- Loading / Error -->
