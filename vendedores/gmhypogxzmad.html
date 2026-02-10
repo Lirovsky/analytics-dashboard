@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-page="leads-pedro">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analytics Dashboard • Pedro</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="../css/leads.css" />
+    <link rel="stylesheet" href="../css/leads-vendedor.css" />
+</head>
+
+<body>
+
+    <div class="dashboard">
+
+        <aside class="filter-panel">
+            <h3 class="filter-panel__title">Filtro</h3>
+
+            <div class="filter-panel__controls">
+
+                <div class="filter-row filter-row--date">
+                    <div class="filter-group">
+                        <label for="entryStartDate">Entregue • Data inicial</label>
+                        <input type="date" id="entryStartDate" class="date-input" />
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="entryEndDate">Entregue • Data final</label>
+                        <input type="date" id="entryEndDate" class="date-input" />
+                    </div>
+
+                    <div class="filter-group filter-group--shortcuts">
+                        <label>Atalhos</label>
+                        <div class="filter-shortcuts">
+                            <button id="presetPrevDay" class="btn btn--ghost" type="button">Último dia</button>
+                            <button id="presetNextDay" class="btn btn--ghost" type="button">Próximo dia</button>
+                            <button id="preset7" class="btn btn--ghost" type="button">7 dias</button>
+                            <button id="preset14" class="btn btn--ghost" type="button">14 dias</button>
+                            <button id="preset30" class="btn btn--ghost" type="button">30 dias</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-row filter-row--main">
+                    <div class="filter-group">
+                        <label for="stageSelect">Stage</label>
+                        <select id="stageSelect" class="date-input">
+                            <option value="presentation" selected>Apresentação</option>
+                            <option value="negotiation">Negociação</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="moneySelect">Money</label>
+                        <select id="moneySelect" class="date-input">
+                            <option value="">Todos</option>
+                            <option value="yes">Sim</option>
+                            <option value="no">Não</option>
+                            <option value="unknown">Não informado</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="areaSelect">Área</label>
+                        <select id="areaSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="timeSelect">Time</label>
+                        <select id="timeSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="desafioSelect">Desafio</label>
+                        <select id="desafioSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group filter-group--search">
+                        <label for="globalSearch">Busca</label>
+                        <input type="text" id="globalSearch" class="text-input"
+                            placeholder="Buscar por contato / link umbler" />
+                    </div>
+                </div>
+
+                <hr class="filter-sep" />
+
+                <div class="filter-row filter-row--actions">
+                    <button id="applyFilters" class="btn btn--primary">Aplicar</button>
+                    <button id="clearAllFilters" class="btn btn--ghost" type="button">Limpar tudo</button>
+                </div>
+            </div>
+
+        </aside>
+
+        <section class="section">
+            <div class="section-header">
+                <h2 class="section__title">Leads • Pedro</h2>
+            </div>
+
+            <div class="analytics-block" id="analyticsBlock">
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-label">Total</div>
+                        <div class="kpi-value" id="kpiShown">—</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Grandes</div>
+                        <div class="kpi-value" id="kpiGrandes">—</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Pequenos</div>
+                        <div class="kpi-value" id="kpiPequenos">—</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">% Money (Sim)</div>
+                        <div class="kpi-value" id="kpiMoneyYes">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-card chart-card--full">
+                <div class="chart-title">Registros</div>
+                <div class="table-wrapper">
+                    <table class="data-table data-table--records">
+                        <thead>
+                            <tr>
+                                <th class="col-entry" data-sort="ENTRADA">Entrada <span class="sort-icon">↕</span></th>
+                                <th class="col-entregue" data-sort="ENTREGUE">Entregue <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="col-vendor" data-sort="VENDEDOR">Vendedor <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="col-phone" data-sort="PHONE">Phone <span class="sort-icon">↕</span></th>
+                                <th class="col-link" data-sort="LINK">Link <span class="sort-icon">↕</span></th>
+                                <th class="col-stage-funnel" data-sort="STAGE_FUNNEL">Etapa atual <span
+                                        class="sort-icon">↕</span></th>
+                                <th class="col-money" data-sort="MONEY">Money <span class="sort-icon">↕</span></th>
+                                <th class="col-area" data-sort="AREA">Área <span class="sort-icon">↕</span></th>
+                                <th class="col-time" data-sort="TIME">Time <span class="sort-icon">↕</span></th>
+                                <th class="col-sistema" data-sort="SISTEMA">Sistema <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="col-desafio" data-sort="DESAFIO">Desafio <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="col-origem" data-sort="ORIGEM">Origem <span class="sort-icon">↕</span></th>
+                                <th class="col-stage" data-sort="STAGE">Stage <span class="sort-icon">↕</span></th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="recordsBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="pagination" data-channel="records">
+                    <button class="pg-btn" id="recordsPrev" type="button">‹</button>
+                    <span class="pg-info" id="recordsPageInfo">1 / 1</span>
+                    <button class="pg-btn" id="recordsNext" type="button">›</button>
+
+                    <span class="pg-sep"></span>
+
+                    <label class="pg-label">Linhas</label>
+                    <select class="pg-size" id="recordsPageSize">
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <div class="toast toast--error" id="errorToast">
+            <span class="toast__icon">⚠️</span>
+            <span class="toast__message" id="errorMessage">Error loading data</span>
+            <button class="toast__close" id="closeToast">×</button>
+        </div>
+    </div>
+
+    <script src="../js/vendedores/pedro.js"></script>
+</body>
+
+</html>
