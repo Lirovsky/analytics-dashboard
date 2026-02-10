@@ -170,7 +170,21 @@
     }
 
     // ordena por visitas desc (como padrão visual)
-    const list = [...rows].sort((a, b) => (b.visitas || 0) - (a.visitas || 0));
+    // ordena por conversão desc (de cima para baixo / esquerda para direita)
+    const list = [...rows].sort((a, b) => {
+      const ca = Number(a.conversao) || 0;
+      const cb = Number(b.conversao) || 0;
+      if (cb !== ca) return cb - ca;
+
+      const la = Number(a.leads) || 0;
+      const lb = Number(b.leads) || 0;
+      if (lb !== la) return lb - la;
+
+      const va = Number(a.visitas) || 0;
+      const vb = Number(b.visitas) || 0;
+      return vb - va;
+    });
+
 
     el.lpKpis.innerHTML = list
       .map((r) => {
