@@ -60,6 +60,7 @@
                     </div>
                 </div>
 
+                <!-- LINHA DE CIMA: Money, Tag, Vendedor, Área -->
                 <div class="filter-row filter-row--main">
                     <div class="filter-group">
                         <label for="moneySelect">Money</label>
@@ -79,11 +80,45 @@
                     </div>
 
                     <div class="filter-group">
-                        <label for="areaSelect">Área</label>
-                        <select id="areaSelect" class="date-input">
+                        <label for="sellerSelect">Vendedor</label>
+                        <select id="sellerSelect" class="date-input">
                             <option value="">Todos</option>
                         </select>
                     </div>
+
+                    <div class="filter-group">
+                        <label for="stageSelect">Etapa</label>
+                        <select id="stageSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="areaTrigger">Área</label>
+
+                        <div class="multi-select" id="areaMulti">
+                            <button id="areaTrigger" type="button" class="date-input multi-select__trigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                                <span id="areaTriggerText">Todos</span>
+                                <span class="multi-select__chevron" aria-hidden="true"></span>
+                            </button>
+
+                            <div id="areaMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                                <div class="multi-select__actions">
+                                    <button type="button" class="multi-select__action" id="areaSelectAll">Marcar
+                                        todos</button>
+                                    <button type="button" class="multi-select__action" id="areaClear">Limpar</button>
+                                </div>
+
+                                <div id="areaCheckboxes" class="multi-select__list"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LINHA DE BAIXO: Etapa, Time, Sistema, Desafio -->
+                <div class="filter-row filter-row--main">
+
 
                     <div class="filter-group">
                         <label for="timeSelect">Time</label>
@@ -106,6 +141,7 @@
                         </select>
                     </div>
                 </div>
+
 
                 <hr class="filter-sep" />
 
@@ -192,8 +228,12 @@
                     <span class="table-block__icon">🧾</span>
                     <h3>Lista</h3>
                     <div class="table-block__meta">
+                        <button id="exportPhonesCsv" class="btn btn--ghost" type="button">
+                            Exportar CSV
+                        </button>
                         <span class="meta-pill">Total: <strong id="totalCount">–</strong></span>
                     </div>
+
                 </div>
 
                 <div class="table-wrapper">

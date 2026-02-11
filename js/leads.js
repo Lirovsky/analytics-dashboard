@@ -146,6 +146,75 @@
             .filter((v) => String(v).trim() !== '');
     }
 
+    function getCheckedValues(containerEl) {
+        if (!containerEl) return [];
+        return Array.from(containerEl.querySelectorAll('input[type="checkbox"]:checked'))
+            .map((i) => i.value)
+            .filter((v) => String(v).trim() !== '');
+    }
+
+    // ====== UI: Área multi-select (dropdown com checkboxes) ======
+    function setAreaMenuOpen(open) {
+        if (!elements?.areaMulti || !elements?.areaTrigger) return;
+        elements.areaMulti.classList.toggle('is-open', !!open);
+        elements.areaTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function updateAreaTriggerText() {
+        if (!elements?.areaTriggerText) return;
+
+        const selected = getCheckedValues(elements.areaCheckboxes);
+
+        if (!selected.length) {
+            elements.areaTriggerText.textContent = 'Todos';
+            return;
+        }
+
+        if (selected.length === 1) {
+            const v = selected[0];
+            elements.areaTriggerText.textContent = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
+            return;
+        }
+
+        elements.areaTriggerText.textContent = `${selected.length} selecionadas`;
+    }
+
+    function setAllAreaCheckboxes(checked) {
+        if (!elements?.areaCheckboxes) return;
+        elements.areaCheckboxes
+            .querySelectorAll('input[type="checkbox"]')
+            .forEach((i) => (i.checked = !!checked));
+        updateAreaTriggerText();
+    }
+
+    function setCheckboxOptions(containerEl, values, { keepSelected = true, includeNotInformed = false } = {}) {
+        if (!containerEl) return;
+
+        const current = keepSelected ? new Set(getCheckedValues(containerEl)) : new Set();
+
+        const safeValues = Array.isArray(values) ? values : [];
+        const finalValues = [...safeValues];
+
+        if (includeNotInformed && !finalValues.includes(NAO_INFORMADO_VALUE)) {
+            finalValues.push(NAO_INFORMADO_VALUE);
+        }
+
+        containerEl.innerHTML = finalValues
+            .map((v) => {
+                const label = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
+                const checked = current.has(v) ? 'checked' : '';
+                return `
+        <label class="multi-select__item">
+          <input type="checkbox" value="${utils.escapeHtml(v)}" ${checked} />
+          <span>${utils.escapeHtml(label)}</span>
+        </label>
+      `;
+            })
+            .join('');
+
+        updateAreaTriggerText();
+    }
+
     function uniqueSorted(rows, key) {
         const set = new Set();
         rows.forEach((r) => {
@@ -371,12 +440,24 @@
         applyFilters: dom.byId('applyFilters'),
         clearAllFilters: dom.byId('clearAllFilters'),
         moneySelect: dom.byId('moneySelect'),
-        areaSelect: dom.byId('areaSelect'),
+
+        // Área (multi-select)
+        areaMulti: dom.byId('areaMulti'),
+        areaTrigger: dom.byId('areaTrigger'),
+        areaTriggerText: dom.byId('areaTriggerText'),
+        areaMenu: dom.byId('areaMenu'),
+        areaSelectAll: dom.byId('areaSelectAll'),
+        areaClear: dom.byId('areaClear'),
+        areaCheckboxes: dom.byId('areaCheckboxes'),
+
+        sellerSelect: dom.byId('sellerSelect'),
+
         timeSelect: dom.byId('timeSelect'),
         sistemaSelect: dom.byId('sistemaSelect'),
         desafioSelect: dom.byId('desafioSelect'),
-
         tagSelect: dom.byId('tagSelect'),
+        stageSelect: dom.byId('stageSelect'),
+
 
         preset7: dom.byId('preset7'),
         preset14: dom.byId('preset14'),
@@ -401,9 +482,53 @@
         kpiIcpOrganicPct: dom.byId('kpiIcpOrganicPct'),
         kpiMoneyOrganicPct: dom.byId('kpiMoneyOrganicPct'),
         kpiOrganicTotal: dom.byId('kpiOrganicTotal'),
-
-
     };
+
+    // depois do objeto elements:
+    elements.exportPhonesCsv = dom.byId('exportPhonesCsv');
+
+    function csvEscape(v) {
+        const s = String(v ?? '');
+        if (/[",\n]/.test(s)) return `"${s.replaceAll('"', '""')}"`;
+        return s;
+    }
+
+    function downloadCsv(filename, rows) {
+        const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        URL.revokeObjectURL(url);
+    }
+
+    function exportPhonesFromFiltered() {
+        const phones = (state.filtered || [])
+            .map(r => String(r?.phone ?? '').trim())
+            .filter(Boolean);
+
+        // opcional: remover duplicados
+        const unique = Array.from(new Set(phones));
+
+        // 1 coluna (phone) ou inclua outras colunas se quiser (tag, origem, etc.)
+        const rows = [
+            ['phone'],
+            ...unique.map(p => [p]),
+        ];
+
+        const stamp = utils.today();
+        downloadCsv(`telefones-filtrados-${stamp}.csv`, rows);
+    }
+
+    if (elements.exportPhonesCsv) {
+        elements.exportPhonesCsv.addEventListener('click', exportPhonesFromFiltered);
+    }
 
     const state = {
         sort: { key: 'entry_date', direction: 'desc' },
@@ -442,8 +567,26 @@
     }
 
     function normalizeLeadRow(l) {
-        const managerId = Number(getField(l, ['manager_id', 'managerId', 'MANAGER_ID']) ?? 0) || 0;
-        const manager = CONFIG.MANAGER_MAP[managerId] || managerId || '–';
+        // 1) tenta pegar nome direto (porque seu backend já está mandando "manager": "Zedles")
+        const managerNameRaw = getField(l, ['manager', 'manager_name', 'managerName']);
+        const managerName = String(managerNameRaw ?? '').trim();
+
+        // 2) fallback: tenta pegar manager_id (pode ser número OU string)
+        const rawManagerId = getField(l, ['manager_id', 'managerId', 'MANAGER_ID']);
+
+        let manager = '–';
+
+        if (managerName) {
+            manager = managerName;
+        } else {
+            const maybeNum = Number(rawManagerId);
+            if (!Number.isNaN(maybeNum) && maybeNum > 0) {
+                manager = CONFIG.MANAGER_MAP[maybeNum] || String(maybeNum);
+            } else {
+                const maybeName = String(rawManagerId ?? '').trim();
+                manager = maybeName || '–';
+            }
+        }
 
         const externalId = getField(l, ['external_id', 'externalId', 'chat_id', 'chatId']);
         const chatUrl = externalId ? `${CONFIG.CHAT_URL_PREFIX}${String(externalId)}` : null;
@@ -463,18 +606,13 @@
 
         return {
             entry_date: entryIso ? String(entryIso) : null,
-
             purchase_date: purchaseIso ? String(purchaseIso).slice(0, 10) : null,
-
             tag,
             origem,
             phone: getField(l, ['phone', 'PHONE', 'contato', 'Contato']) ?? null,
-
             manager,
             chat_url: chatUrl,
-
             stage: getField(l, ['stage', 'STAGE', 'etapa', 'Etapa']) ?? null,
-
             team,
             area,
             money: moneyNorm,
@@ -602,11 +740,9 @@
         const icpOrganicCount = organic.reduce((acc, r) => acc + (isIcp(r) ? 1 : 0), 0);
         const icpOrganicPct = pct(icpOrganicCount, totalOrganic);
 
-
         setKpi(elements.kpiTotal, totalAll);
         setKpi(elements.kpiShown, totalShown);
         setKpi(elements.kpiOrganicTotal, totalOrganic);
-
 
         setKpi(elements.kpiMoneyPct, moneyPct == null ? null : `${moneyPct}%`, moneyPct == null ? null : `${moneyYes}/${totalShown}`);
         setKpi(
@@ -618,7 +754,6 @@
         setKpi(elements.kpiIcpPct, icpPct == null ? null : `${icpPct}%`, icpPct == null ? null : `${icpCount}/${totalShown}`);
         setKpi(elements.kpiIcpOrganicPct, icpOrganicPct == null ? null : `${icpOrganicPct}%`, icpOrganicPct == null ? null : `${icpOrganicCount}/${totalOrganic}`);
     }
-
 
     function updateCharts() {
         const rows = state.filtered || [];
@@ -685,37 +820,51 @@
     function applyAllFiltersAndRender({ resetPage = false } = {}) {
         if (resetPage) state.pagination.page = 1;
 
-        const moneyMode = (elements.moneySelect?.value || '').trim(); // '', yes, no, unknown
-        const areas = getSelectedValues(elements.areaSelect);
+        const moneyMode = (elements.moneySelect?.value || '').trim();
+        const areas = getCheckedValues(elements.areaCheckboxes);
+        const sellers = getSelectedValues(elements.sellerSelect);
+
         const times = getSelectedValues(elements.timeSelect);
         const sistemas = getSelectedValues(elements.sistemaSelect);
         const desafios = getSelectedValues(elements.desafioSelect);
         const tags = getSelectedValues(elements.tagSelect);
+        const stages = getSelectedValues(elements.stageSelect);
+
 
         let out = [...state.leadsData];
 
         if (moneyMode) out = out.filter((r) => utils.normalizeMoney(r.money) === moneyMode);
 
         if (areas.length) out = out.filter((r) => matchesSelectValue(r.area, areas));
+        if (sellers.length) out = out.filter((r) => matchesSelectValue(r.manager, sellers));
+
         if (times.length) out = out.filter((r) => matchesSelectValue(r.team, times));
         if (sistemas.length) out = out.filter((r) => matchesSelectValue(r.system, sistemas));
         if (desafios.length) out = out.filter((r) => matchesSelectValue(r.challenge, desafios));
-
         if (tags.length) out = out.filter((r) => matchesSelectValue(r.tag, tags));
+        if (stages.length) out = out.filter((r) => matchesSelectValue(r.stage, stages));
+
 
         state.filtered = out;
         updateKpis(state.filtered);
-
         renderTable();
         updateCharts();
     }
 
     function refreshFilterOptions(rows) {
-        setOptions(elements.areaSelect, uniqueSorted(rows, 'area'), { keepSelected: true, includeNotInformed: true });
+        setCheckboxOptions(elements.areaCheckboxes, uniqueSorted(rows, 'area'), { keepSelected: true, includeNotInformed: true });
+
+        setOptions(elements.sellerSelect, uniqueSorted(rows, 'manager'), { keepSelected: true, includeNotInformed: true });
+
         setOptions(elements.timeSelect, uniqueSorted(rows, 'team'), { keepSelected: true, includeNotInformed: true });
         setOptions(elements.sistemaSelect, uniqueSorted(rows, 'system'), { keepSelected: true, includeNotInformed: true });
         setOptions(elements.desafioSelect, uniqueSorted(rows, 'challenge'), { keepSelected: true, includeNotInformed: true });
         setOptions(elements.tagSelect, uniqueSorted(rows, 'tag'), { keepSelected: true, includeNotInformed: true });
+
+        setOptions(elements.stageSelect, uniqueSorted(rows, 'stage'), { keepSelected: true, includeNotInformed: true });
+
+
+        updateAreaTriggerText();
     }
 
     async function loadLeads() {
@@ -751,7 +900,6 @@
             renderTable();
             updateCharts();
             updateKpis([]);
-
         } finally {
             ui.hideLoading();
         }
@@ -766,13 +914,10 @@
 
         if (elements.clearAllFilters) {
             elements.clearAllFilters.addEventListener('click', () => {
-                const today = utils.today();
-
-                if (elements.entryStartInput) elements.entryStartInput.value = today;
-                if (elements.entryEndInput) elements.entryEndInput.value = today;
-
                 if (elements.moneySelect) elements.moneySelect.value = '';
-                [elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
+                if (elements.sellerSelect) elements.sellerSelect.value = '';
+
+                [elements.moneySelect, elements.sellerSelect, elements.stageSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
                     .filter(Boolean)
                     .forEach((sel) => {
                         if (!sel) return;
@@ -783,14 +928,64 @@
                         }
                     });
 
+                setAllAreaCheckboxes(false);
+                setAreaMenuOpen(false);
+
                 loadLeads();
             });
         }
 
         const onAnyFilterChange = () => applyAllFiltersAndRender({ resetPage: true });
-        [elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
+
+        [elements.moneySelect, elements.sellerSelect, elements.stageSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
             .filter(Boolean)
             .forEach((el) => el.addEventListener('change', onAnyFilterChange));
+
+
+        // change nos checkboxes de área (delegação)
+        if (elements.areaCheckboxes) {
+            elements.areaCheckboxes.addEventListener('change', () => {
+                updateAreaTriggerText();
+                onAnyFilterChange();
+            });
+        }
+
+        // ====== eventos do dropdown de Área ======
+        if (elements.areaTrigger) {
+            elements.areaTrigger.addEventListener('click', (e) => {
+                e.preventDefault();
+                const open = !elements.areaMulti?.classList.contains('is-open');
+                setAreaMenuOpen(open);
+            });
+        }
+
+        if (elements.areaSelectAll) {
+            elements.areaSelectAll.addEventListener('click', (e) => {
+                e.preventDefault();
+                setAllAreaCheckboxes(true);
+                onAnyFilterChange();
+            });
+        }
+
+        if (elements.areaClear) {
+            elements.areaClear.addEventListener('click', (e) => {
+                e.preventDefault();
+                setAllAreaCheckboxes(false);
+                onAnyFilterChange();
+            });
+        }
+
+        // fechar ao clicar fora
+        document.addEventListener('pointerdown', (e) => {
+            const wrap = elements.areaMulti;
+            if (!wrap) return;
+            if (wrap.classList.contains('is-open') && !wrap.contains(e.target)) setAreaMenuOpen(false);
+        });
+
+        // fechar no ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') setAreaMenuOpen(false);
+        });
 
         const applyPresetDays = (days) => {
             const end = new Date();
