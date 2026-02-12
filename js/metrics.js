@@ -49,6 +49,60 @@ const utils = {
         if (!Number.isFinite(n) || !Number.isFinite(d) || d === 0) return null;
         return n / d;
     },
+
+    // =========================
+    // bases normalizadas
+    // =========================
+    getAnnualizedValue(campaign) {
+        const direct = this.safeNumber(campaign?.value_annualized);
+        if (direct !== null) return direct;
+
+        const vm = Number(campaign?.value_monthly) || 0;
+        const va = Number(campaign?.value_annual) || 0;
+        const vu = Number(campaign?.value_unknown) || 0;
+        if (vm !== 0 || va !== 0 || vu !== 0) return vm * 12 + va + vu;
+
+        return Number(campaign?.value) || 0;
+    },
+
+    getMonthlyEquivValue(campaign) {
+        const direct = this.safeNumber(campaign?.value_monthly_equiv);
+        if (direct !== null) return direct;
+
+        const vm = Number(campaign?.value_monthly) || 0;
+        const va = Number(campaign?.value_annual) || 0;
+        const vu = Number(campaign?.value_unknown) || 0;
+        if (vm !== 0 || va !== 0 || vu !== 0) return vm + va / 12 + vu;
+
+        return Number(campaign?.value) || 0;
+    },
+
+    // =========================
+    // sort helpers (inclui campos calculados)
+    // =========================
+    getSortValue(c, key) {
+        const leads = Number(c?.leads) || 0;
+        const sales = Number(c?.sales) || 0;
+        const value = Number(c?.value) || 0;
+        const investment = Number(c?.investment) || 0;
+
+        if (key === "ticket_medio_anual") {
+            const annualized = utils.getAnnualizedValue(c);
+            return utils.safeDivide(annualized, sales) ?? 0;
+        }
+
+        if (key === "ticket_medio_mensal") {
+            const monthlyEquiv = utils.getMonthlyEquivValue(c);
+            return utils.safeDivide(monthlyEquiv, sales) ?? 0;
+        }
+
+        if (key === "rpl") return utils.safeDivide(value, leads) ?? 0;
+        if (key === "cpl") return utils.safeDivide(investment, leads) ?? 0;
+
+        const raw = c?.[key];
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : 0;
+    },
 };
 
 const $id = (id) => document.getElementById(id);
@@ -78,7 +132,11 @@ const elements = {
     totalValue: $id("totalValue"),
     totalInvestment: $id("totalInvestment"),
     totalCplGeneral: $id("totalCplGeneral"),
-    totalTicketMedioGeneral: $id("totalTicketMedioGeneral"),
+
+    // IDs novos (HTML atualizado)
+    totalTicketMedioAnnual: $id("totalTicketMedioAnnual"),
+    totalTicketMedioMonthly: $id("totalTicketMedioMonthly"),
+
     totalAvgGeneral: $id("totalAvgGeneral"),
     totalCplIcp: $id("totalCplIcp"),
 
@@ -114,7 +172,7 @@ const ui = {
     hideError() {
         elements.errorToast?.classList.remove("active");
     },
-    renderEmptyState(message = "Sem dados", colspan = 11) {
+    renderEmptyState(message = "Sem dados", colspan = 12) {
         return `<tr><td colspan="${colspan}"><div class="empty-state"><p>${message}</p></div></td></tr>`;
     },
 };
@@ -125,8 +183,9 @@ function sortCampaigns(items) {
 
     const dir = direction === "asc" ? 1 : -1;
     return [...items].sort((a, b) => {
-        const aVal = a[key] || 0;
-        const bVal = b[key] || 0;
+        const aVal = utils.getSortValue(a, key);
+        const bVal = utils.getSortValue(b, key);
+        if (aVal === bVal) return 0;
         return aVal > bVal ? dir : -dir;
     });
 }
@@ -149,12 +208,19 @@ function updatePaginationUI(channel, meta) {
 
 const campaignsRender = {
     campaignRow(campaign, includeInvestment = true) {
-        const value = Number(campaign.value) || 0;
+        const value = Number(campaign.value) || 0; // caixa do período
         const sales = Number(campaign.sales) || 0;
         const leads = Number(campaign.leads) || 0;
-        const ticketMedio = utils.safeDivide(value, sales);
+
+        const annualizedValue = utils.getAnnualizedValue(campaign);
+        const monthlyEquivValue = utils.getMonthlyEquivValue(campaign);
+
+        const ticketAnnual = utils.safeDivide(annualizedValue, sales);
+        const ticketMonthly = utils.safeDivide(monthlyEquivValue, sales);
+
         const rpl = utils.safeDivide(value, leads);
         const cpl = utils.safeDivide(campaign.investment, leads);
+
         const roasClass = (Number(campaign.roas) || 0) >= 1 ? "value-positive" : "value-negative";
 
         if (includeInvestment) {
@@ -164,7 +230,8 @@ const campaignsRender = {
           <td>${utils.formatNumber(leads)}</td>
           <td>${utils.formatNumber(sales)}</td>
           <td>${utils.formatCurrency(value)}</td>
-          <td>${utils.formatCurrency(ticketMedio)}</td>
+          <td>${utils.formatCurrency(ticketAnnual)}</td>
+          <td>${utils.formatCurrency(ticketMonthly)}</td>
           <td>${utils.formatCurrency(rpl)}</td>
           <td>${utils.formatCurrency(campaign.investment)}</td>
           <td class="${roasClass}">${utils.formatROAS(campaign.roas)}</td>
@@ -180,7 +247,8 @@ const campaignsRender = {
         <td>${utils.formatNumber(leads)}</td>
         <td>${utils.formatNumber(sales)}</td>
         <td>${utils.formatCurrency(value)}</td>
-        <td>${utils.formatCurrency(ticketMedio)}</td>
+        <td>${utils.formatCurrency(ticketAnnual)}</td>
+        <td>${utils.formatCurrency(ticketMonthly)}</td>
         <td>${utils.formatCurrency(rpl)}</td>
         <td>${utils.formatDays(campaign.avg_time_to_purchase_days)}</td>
       </tr>`;
@@ -191,13 +259,17 @@ const campaignsRender = {
         const cac = totals.sales > 0 ? totals.investment / totals.sales : null;
         const cpl = totals.leads > 0 ? totals.investment / totals.leads : null;
 
+        const ticketTotalAnnual = utils.safeDivide(totals.value_annualized, totals.sales);
+        const ticketTotalMonthly = utils.safeDivide(totals.value_monthly_equiv, totals.sales);
+
         let cells = `
       <tr class="total-row">
         <td><strong>Total</strong></td>
         <td><strong>${utils.formatNumber(totals.leads)}</strong></td>
         <td><strong>${utils.formatNumber(totals.sales)}</strong></td>
         <td><strong>${utils.formatCurrency(totals.value)}</strong></td>
-        <td><strong>${utils.formatCurrency(utils.safeDivide(totals.value, totals.sales))}</strong></td>
+        <td><strong>${utils.formatCurrency(ticketTotalAnnual)}</strong></td>
+        <td><strong>${utils.formatCurrency(ticketTotalMonthly)}</strong></td>
         <td><strong>${utils.formatCurrency(utils.safeDivide(totals.value, totals.leads))}</strong></td>`;
 
         if (includeInvestment) {
@@ -218,7 +290,8 @@ const campaignsRender = {
 
             const sorted = sortCampaigns(items || []);
             if (!sorted.length) {
-                bodyEl.innerHTML = ui.renderEmptyState("Sem dados", includeInv ? 11 : 7);
+                // facebook/google: 12 colunas | orgânico: 8 colunas
+                bodyEl.innerHTML = ui.renderEmptyState("Sem dados", includeInv ? 12 : 8);
                 updatePaginationUI(channel, { page: 1, totalPages: 1 });
                 return;
             }
@@ -230,15 +303,27 @@ const campaignsRender = {
                     acc.value += Number(c.value) || 0;
                     acc.investment += Number(c.investment) || 0;
 
+                    acc.value_annualized += utils.getAnnualizedValue(c);
+                    acc.value_monthly_equiv += utils.getMonthlyEquivValue(c);
+
                     const avg = Number(c.avg_time_to_purchase_days);
                     const sales = Number(c.sales) || 0;
-                    if (acc.sales > 0 && isFinite(avg)) {
+                    if (sales > 0 && Number.isFinite(avg)) {
                         acc.weightedSum += avg * sales;
                         acc.weight += sales;
                     }
                     return acc;
                 },
-                { leads: 0, sales: 0, value: 0, investment: 0, weightedSum: 0, weight: 0 }
+                {
+                    leads: 0,
+                    sales: 0,
+                    value: 0,
+                    investment: 0,
+                    value_annualized: 0,
+                    value_monthly_equiv: 0,
+                    weightedSum: 0,
+                    weight: 0,
+                }
             );
 
             const meta = paginate(sorted, state.pagination[channel].page, state.pagination[channel].pageSize);
@@ -246,7 +331,11 @@ const campaignsRender = {
 
             bodyEl.innerHTML =
                 meta.slice.map((c) => campaignsRender.campaignRow(c, includeInv)).join("") +
-                campaignsRender.campaignTotalRow(totals, includeInv, totals.weight > 0 ? totals.weightedSum / totals.weight : null);
+                campaignsRender.campaignTotalRow(
+                    totals,
+                    includeInv,
+                    totals.weight > 0 ? totals.weightedSum / totals.weight : null
+                );
 
             updatePaginationUI(channel, meta);
         };
@@ -267,28 +356,51 @@ const campaignsRender = {
                 acc.value += Number(c.value) || 0;
                 acc.investment += Number(c.investment) || 0;
 
+                acc.value_annualized += utils.getAnnualizedValue(c);
+                acc.value_monthly_equiv += utils.getMonthlyEquivValue(c);
+
                 const avg = Number(c.avg_time_to_purchase_days);
                 const sales = Number(c.sales) || 0;
-                if (sales > 0 && !isNaN(avg)) {
+                if (sales > 0 && Number.isFinite(avg)) {
                     acc.weightedSum += avg * sales;
                     acc.weight += sales;
                 }
                 return acc;
             },
-            { campaigns: 0, leads: 0, sales: 0, value: 0, investment: 0, weightedSum: 0, weight: 0 }
+            {
+                campaigns: 0,
+                leads: 0,
+                sales: 0,
+                value: 0,
+                investment: 0,
+                value_annualized: 0,
+                value_monthly_equiv: 0,
+                weightedSum: 0,
+                weight: 0,
+            }
         );
 
         if (elements.totalCampaigns) elements.totalCampaigns.textContent = utils.formatNumber(totals.campaigns);
         if (elements.totalLeads) elements.totalLeads.textContent = utils.formatNumber(totals.leads);
         if (elements.totalSales) elements.totalSales.textContent = utils.formatNumber(totals.sales);
+
+        // receita do período (caixa)
         if (elements.totalValue) elements.totalValue.textContent = utils.formatCurrency(totals.value);
+
         if (elements.totalInvestment) elements.totalInvestment.textContent = utils.formatCurrency(totals.investment);
         if (elements.totalCplGeneral) elements.totalCplGeneral.textContent = utils.formatCurrency(utils.safeDivide(totals.investment, totals.leads));
 
         const totalLeadsICP = Number(data?.entrySummary?.total_leads_ICP) || 0;
         if (elements.totalCplIcp) elements.totalCplIcp.textContent = utils.formatCurrency(utils.safeDivide(totals.investment, totalLeadsICP));
 
-        if (elements.totalTicketMedioGeneral) elements.totalTicketMedioGeneral.textContent = utils.formatCurrency(utils.safeDivide(totals.value, totals.sales));
+        // TM anual + TM mensal (globais)
+        if (elements.totalTicketMedioAnnual) {
+            elements.totalTicketMedioAnnual.textContent = utils.formatCurrency(utils.safeDivide(totals.value_annualized, totals.sales));
+        }
+        if (elements.totalTicketMedioMonthly) {
+            elements.totalTicketMedioMonthly.textContent = utils.formatCurrency(utils.safeDivide(totals.value_monthly_equiv, totals.sales));
+        }
+
         if (elements.totalAvgGeneral) elements.totalAvgGeneral.textContent = utils.formatDays(totals.weight > 0 ? totals.weightedSum / totals.weight : null);
     },
 };
