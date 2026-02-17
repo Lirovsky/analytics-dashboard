@@ -38,8 +38,8 @@
                     <div class="filter-group filter-group--shortcuts">
                         <label>Atalhos</label>
                         <div class="filter-shortcuts">
-                            <button id="presetPrevDay" class="btn btn--ghost" type="button">Último dia</button>
-                            <button id="presetNextDay" class="btn btn--ghost" type="button">Próximo dia</button>
+                            <button id="presetPrevDay" class="btn btn--ghost" type="button">Dia anterior</button>
+                            <button id="presetNextDay" class="btn btn--ghost" type="button">Dia seguinte</button>
                             <button id="preset7" class="btn btn--ghost" type="button">7 dias</button>
                             <button id="preset14" class="btn btn--ghost" type="button">14 dias</button>
                             <button id="preset30" class="btn btn--ghost" type="button">30 dias</button>
@@ -52,7 +52,17 @@
                         <label for="stageSelect">Stage</label>
                         <select id="stageSelect" class="date-input">
                             <option value="presentation" selected>Apresentação</option>
+                            <option value="proposal_sent">Proposta</option>
+                            <option value="payment_pending">Pagamento</option>
                             <option value="negotiation">Negociação</option>
+                            <option value="signature">Assinatura</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="substageSelect">Substage</label>
+                        <select id="substageSelect" class="date-input">
+                            <option value="">Todos</option>
                         </select>
                     </div>
 
@@ -145,6 +155,8 @@
                                 <th class="col-link" data-sort="LINK">Link <span class="sort-icon">↕</span></th>
                                 <th class="col-stage-funnel" data-sort="STAGE_FUNNEL">Etapa atual <span
                                         class="sort-icon">↕</span></th>
+                                <th class="col-substage" data-sort="SUBSTAGE">Substage <span class="sort-icon">↕</span>
+                                </th>
                                 <th class="col-money" data-sort="MONEY">Money <span class="sort-icon">↕</span></th>
                                 <th class="col-area" data-sort="AREA">Área <span class="sort-icon">↕</span></th>
                                 <th class="col-time" data-sort="TIME">Time <span class="sort-icon">↕</span></th>

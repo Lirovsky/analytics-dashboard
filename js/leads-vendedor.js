@@ -75,9 +75,22 @@
     stageClass(stage) {
       const s = this.removeDiacritics(String(stage || '').toLowerCase());
       if (s.includes('lead')) return 'badge--stage-lead';
+      // Negociação deve ser rosa
+      if (s.includes('negoci') || s.includes('negoti')) return 'badge--stage-negociacao';
       if (s.includes('apresent')) return 'badge--stage-apresentacao';
       if (s.includes('intera')) return 'badge--stage-interacao';
+      if (s.includes('pagamento')) return 'badge--stage-pagamento';
+      if (s.includes('proposta')) return 'badge--stage-proposta';
+      if (s.includes('assinou')) return 'badge--stage-assinou';
       return 'badge--stage-outro';
+    },
+    substageClass(substage) {
+      const s = this.removeDiacritics(String(substage || '').toLowerCase());
+      if (!s) return 'badge--substage-outro';
+      if (s.includes('convers')) return 'badge--substage-conversa';
+      if (s.includes('meet')) return 'badge--substage-meet';
+      if (s.includes('test')) return 'badge--substage-teste';
+      return 'badge--substage-outro';
     },
   };
 
@@ -99,11 +112,39 @@
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, ''); // remove acentos
 
-    if (s.includes('present') || s.includes('apres') || s.startsWith('pres')) return 'presentation';
+    // Apresentação
+    if (s === 'presentation' || s.includes('present') || s.includes('apres') || s.startsWith('pres')) return 'presentation';
 
-    if (s.includes('nego') || s.includes('negoci')) return 'negotiation';
+    // Proposta
+    if (s === 'proposal_sent' || s.includes('proposal') || s.includes('propost')) return 'proposal_sent';
+
+    // Pagamento
+    if (s === 'payment_pending' || s.includes('payment') || s.includes('pagam') || s.includes('pagto')) return 'payment_pending';
+
+    // Negociação
+    if (s === 'negotiation' || s.includes('nego') || s.includes('negoci')) return 'negotiation';
+
+    // Assinatura
+    if (s === 'signature' || s.includes('signat') || s.includes('assin')) return 'signature';
 
     return 'presentation';
+  }
+
+  function normalizeSubstage(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+
+    const s = raw
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    if (s.includes('convers')) return 'Conversa';
+    if (s.includes('meet')) return 'Meet';
+    if (s.includes('test')) return 'Teste';
+
+    // fallback: mantém o valor original (sem mexer)
+    return raw;
   }
 
   function normalizeTimeBucket(value) {
@@ -280,6 +321,7 @@
     timeSelect: dom.byId('timeSelect'),
     sistemaSelect: dom.byId('sistemaSelect'),
     stageSelect: dom.byId('stageSelect'),
+    substageSelect: dom.byId('substageSelect'),
     desafioSelect: dom.byId('desafioSelect'),
     globalSearch: dom.byId('globalSearch'),
     presetPrevDay: dom.byId('presetPrevDay'),
@@ -494,6 +536,16 @@
       'Stage_funnel',
     ]);
 
+    const substageRaw = getField(raw, [
+      'substage',
+      'SUBSTAGE',
+      'Substage',
+      'sub_stage',
+      'SUB_STAGE',
+      'subStage',
+    ]);
+    const substage = normalizeSubstage(substageRaw);
+
     return {
       row_number: rowNumber,
       ID: id,
@@ -514,6 +566,7 @@
       DESAFIO: desafio,
       ORIGEM: origem,
       STAGE_FUNNEL: stageFunnel,
+      SUBSTAGE: substage,
       STAGE: stage,
     };
   }
@@ -537,7 +590,7 @@
       if (!elements.recordsBody) return;
 
       if (!rows || rows.length === 0) {
-        elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 13);
+        elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 14);
         return;
       }
 
@@ -565,6 +618,11 @@
           const stageFunnelCell = stageFunnelRaw
             ? `<span class="badge ${utils.stageClass(stageFunnelRaw)}">${utils.escapeHtml(stageFunnelRaw)}</span>`
             : '<span class="mono">—</span>';
+
+          const substageRaw = String(r.SUBSTAGE ?? '').trim();
+          const substageCell = substageRaw
+            ? `<span class="badge badge--substage ${utils.substageClass(substageRaw)}">${utils.escapeHtml(substageRaw)}</span>`
+            : '<span class="mono">—</span>';
           const stage = utils.escapeHtml(r.STAGE ?? '');
 
           return `
@@ -575,6 +633,7 @@
               <td class="mono">${phone}</td>
               <td>${linkCell}</td>
               <td>${stageFunnelCell}</td>
+              <td>${substageCell}</td>
               <td>${money || '—'}</td>
               <td>${area || '—'}</td>
               <td>${time || '—'}</td>
@@ -625,6 +684,7 @@
     const areas = getSelectedValues(elements.areaSelect);
     const times = getSelectedValues(elements.timeSelect);
     const sistemas = getSelectedValues(elements.sistemaSelect);
+    const substages = getSelectedValues(elements.substageSelect);
     const desafios = getSelectedValues(elements.desafioSelect);
 
     const q = String(elements.globalSearch?.value || '').trim().toLowerCase();
@@ -646,6 +706,7 @@
     if (areas.length) out = out.filter((r) => matchesSelectValue(r.AREA, areas));
     if (times.length) out = out.filter((r) => matchesSelectValue(r.TIME, times));
     if (sistemas.length) out = out.filter((r) => matchesSelectValue(r.SISTEMA, sistemas));
+    if (substages.length) out = out.filter((r) => matchesSelectValue(r.SUBSTAGE, substages));
     if (desafios.length) out = out.filter((r) => matchesSelectValue(r.DESAFIO, desafios));
 
     if (q) {
@@ -663,6 +724,7 @@
           r.MONEY,
           r.ORIGEM,
           r.STAGE_FUNNEL,
+          r.SUBSTAGE,
           r.STAGE,
         ]
           .map((x) => String(x ?? '').toLowerCase())
@@ -1257,7 +1319,7 @@
     }
 
     ui.showLoading();
-    if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 13);
+    if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 14);
 
     try {
       const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
@@ -1272,12 +1334,13 @@
       setOptions(elements.areaSelect, uniqueSorted(rows, 'AREA'), { keepSelected: true, includeNotInformed: true });
       setOptions(elements.timeSelect, uniqueSorted(rows, 'TIME'), { keepSelected: true, includeNotInformed: true });
       setOptions(elements.sistemaSelect, uniqueSorted(rows, 'SISTEMA'), { keepSelected: true, includeNotInformed: true });
+      setOptions(elements.substageSelect, uniqueSorted(rows, 'SUBSTAGE'), { keepSelected: true, includeNotInformed: true });
       setOptions(elements.desafioSelect, uniqueSorted(rows, 'DESAFIO'), { keepSelected: true, includeNotInformed: true });
 
       applyAllFiltersAndRender({ resetPage: true });
     } catch (e) {
       ui.showError(`Failed to load leads: ${e.message}`);
-      if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 13);
+      if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 14);
 
     } finally {
       ui.hideLoading();
@@ -1311,6 +1374,10 @@
     [elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.stageSelect, elements.desafioSelect]
       .filter(Boolean)
       .forEach((el) => el.addEventListener('change', onAnyFilterChange));
+
+    if (elements.substageSelect) {
+      elements.substageSelect.addEventListener('change', onAnyFilterChange);
+    }
 
     let searchTimer = null;
     if (elements.globalSearch) {
@@ -1381,6 +1448,7 @@
         if (elements.vendorSelect) elements.vendorSelect.value = '';
         if (elements.moneySelect) elements.moneySelect.value = '';
         if (elements.stageSelect) elements.stageSelect.value = 'presentation';
+        if (elements.substageSelect) elements.substageSelect.value = '';
         if (elements.globalSearch) elements.globalSearch.value = '';
 
         [elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect]

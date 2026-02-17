@@ -6,8 +6,8 @@
         ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor',
     };
 
-    // Nome "fixo" do vendedor (aceita variações comuns do mesmo nome)
-    const FIXED_VENDOR_ALIASES = new Set(['Guilherme', 'guilherme']);
+    // Nome "fixo" do vendedor (use aliases normalizados: minúsculo + sem acentos)
+    const FIXED_VENDOR_ALIASES = new Set(['guilherme']);
     const NAO_INFORMADO_VALUE = '__nao_informado__';
 
     const utils = {
@@ -20,6 +20,7 @@
         today() {
             return this.getDateString(new Date());
         },
+
         escapeHtml(value) {
             return String(value ?? '')
                 .replaceAll('&', '&amp;')
@@ -28,13 +29,14 @@
                 .replaceAll('"', '&quot;')
                 .replaceAll("'", '&#039;');
         },
+
         parseAnyDate(s) {
             if (!s) return null;
             const str = String(s).trim();
 
             if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(str + 'T00:00:00');
 
-            // "YYYY-MM-DD HH:MM:SS"
+            // Common DB timestamp format: "YYYY-MM-DD HH:MM:SS"
             if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(str)) {
                 return new Date(str.replace(' ', 'T'));
             }
@@ -52,6 +54,7 @@
             const d = new Date(str);
             return isNaN(d) ? null : d;
         },
+
         formatDatePt(value) {
             const d = this.parseAnyDate(value);
             if (!d) return String(value ?? '');
@@ -60,17 +63,33 @@
             const yyyy = d.getFullYear();
             return `${dd}/${mm}/${yyyy}`;
         },
+
         removeDiacritics(value) {
             return String(value ?? '')
                 .normalize('NFD')
                 .replace(/[\u0300-\u036f]/g, '');
         },
+
+        // Cores/bordas (mesma lógica do leads-vendedor.js)
         stageClass(stage) {
             const s = this.removeDiacritics(String(stage || '').toLowerCase());
             if (s.includes('lead')) return 'badge--stage-lead';
+            // Negociação deve ser rosa
+            if (s.includes('negoci') || s.includes('negoti')) return 'badge--stage-negociacao';
             if (s.includes('apresent')) return 'badge--stage-apresentacao';
             if (s.includes('intera')) return 'badge--stage-interacao';
+            if (s.includes('pagamento')) return 'badge--stage-pagamento';
+            if (s.includes('proposta')) return 'badge--stage-proposta';
             return 'badge--stage-outro';
+        },
+
+        substageClass(substage) {
+            const s = this.removeDiacritics(String(substage || '').toLowerCase());
+            if (!s) return 'badge--substage-outro';
+            if (s.includes('convers')) return 'badge--substage-conversa';
+            if (s.includes('meet')) return 'badge--substage-meet';
+            if (s.includes('test')) return 'badge--substage-teste';
+            return 'badge--substage-outro';
         },
     };
 
@@ -79,8 +98,7 @@
     }
 
     function isFixedVendor(value) {
-        const n = normalizeVendor(value);
-        return FIXED_VENDOR_ALIASES.has(n);
+        return FIXED_VENDOR_ALIASES.has(normalizeVendor(value));
     }
 
     function normalizeMoney(value) {
@@ -93,17 +111,46 @@
 
     function normalizeStage(value) {
         const raw = String(value ?? '').trim();
-        if (!raw) return 'presentation';
+        if (!raw) return 'presentation'; // default para dados antigos/sem stage
 
         const s = raw
             .toLowerCase()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '');
 
-        if (s.includes('present') || s.includes('apres') || s.startsWith('pres')) return 'presentation';
-        if (s.includes('nego') || s.includes('negoci')) return 'negotiation';
+        // Apresentação
+        if (s === 'presentation' || s.includes('present') || s.includes('apres') || s.startsWith('pres')) return 'presentation';
+
+        // Proposta
+        if (s === 'proposal_sent' || s.includes('proposal') || s.includes('propost')) return 'proposal_sent';
+
+        // Pagamento
+        if (s === 'payment_pending' || s.includes('payment') || s.includes('pagam') || s.includes('pagto')) return 'payment_pending';
+
+        // Negociação
+        if (s === 'negotiation' || s.includes('nego') || s.includes('negoci')) return 'negotiation';
+
+        // Assinatura
+        if (s === 'signature' || s.includes('signat') || s.includes('assin')) return 'signature';
 
         return 'presentation';
+    }
+
+    function normalizeSubstage(value) {
+        const raw = String(value ?? '').trim();
+        if (!raw) return '';
+
+        const s = raw
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+
+        if (s.includes('convers')) return 'Conversa';
+        if (s.includes('meet')) return 'Meet';
+        if (s.includes('test')) return 'Teste';
+
+        // fallback: mantém o valor original (sem mexer)
+        return raw;
     }
 
     function normalizeTimeBucket(value) {
@@ -115,9 +162,7 @@
         if (s === '1' || s === '2') return '1-2';
         if (s.includes('mais') && s.includes('10')) return '>10';
 
-        const nums = (s.match(/\d+/g) || [])
-            .map((n) => Number(n))
-            .filter((n) => !Number.isNaN(n));
+        const nums = (s.match(/\d+/g) || []).map((n) => Number(n)).filter((n) => !Number.isNaN(n));
 
         if (nums.length === 1) {
             const n = nums[0];
@@ -146,9 +191,7 @@
 
     function getSelectedValues(selectEl) {
         if (!selectEl) return [];
-        return Array.from(selectEl.selectedOptions || [])
-            .map((o) => o.value)
-            .filter((v) => String(v).trim() !== '');
+        return Array.from(selectEl.selectedOptions || []).map((o) => o.value).filter((v) => String(v).trim() !== '');
     }
 
     function setOptions(selectEl, values, { keepSelected = true, includeNotInformed = false } = {}) {
@@ -217,6 +260,7 @@
         clearAllFilters: dom.byId('clearAllFilters'),
 
         stageSelect: dom.byId('stageSelect'),
+        substageSelect: dom.byId('substageSelect'),
         moneySelect: dom.byId('moneySelect'),
         areaSelect: dom.byId('areaSelect'),
         timeSelect: dom.byId('timeSelect'),
@@ -250,7 +294,7 @@
         rows: [],
         filtered: [],
         sort: { key: 'ENTREGUE', direction: 'desc' },
-        pagination: { page: 1, pageSize: 25, totalPages: 1 },
+        pagination: { page: 1, pageSize: 20, totalPages: 1 },
     };
 
     function clamp(n, min, max) {
@@ -258,7 +302,7 @@
     }
 
     function updatePagination(totalRows) {
-        const size = Number(state.pagination.pageSize) || 25;
+        const size = Number(state.pagination.pageSize) || 20;
         const totalPages = Math.max(1, Math.ceil((totalRows || 0) / size));
 
         state.pagination.totalPages = totalPages;
@@ -271,7 +315,7 @@
 
     function paginateRows(rows) {
         updatePagination(rows?.length || 0);
-        const size = Number(state.pagination.pageSize) || 25;
+        const size = Number(state.pagination.pageSize) || 20;
         const start = (state.pagination.page - 1) * size;
         return rows.slice(start, start + size);
     }
@@ -292,7 +336,7 @@
         hideError() {
             if (elements.errorToast) elements.errorToast.classList.remove('active');
         },
-        renderSkeletonRows(count = 10, cols = 13) {
+        renderSkeletonRows(count = 10, cols = 14) {
             return Array(count)
                 .fill(0)
                 .map(
@@ -304,7 +348,7 @@
                 )
                 .join('');
         },
-        renderEmptyState(message = 'Sem dados', colspan = 13) {
+        renderEmptyState(message = 'Sem dados', colspan = 14) {
             return `
         <tr>
           <td colspan="${colspan}">
@@ -327,6 +371,7 @@
             params.set('_ts', Date.now());
             return `${base}?${params.toString()}`;
         },
+
         async fetchRows(paramsObj) {
             const url = this.buildUrl(CONFIG.ENDPOINT, paramsObj);
 
@@ -370,14 +415,30 @@
         const id = getField(raw, ['ID', 'id']);
 
         const entrada = getField(raw, [
-            'ENTRADA', 'Entrada', 'entrada', 'entry', 'ENTRY',
-            'entry_date', 'entryDate', 'DATA_ENTRADA', 'data_entrada',
-            'created_at', 'createdAt',
+            'ENTRADA',
+            'Entrada',
+            'entrada',
+            'entry',
+            'ENTRY',
+            'entry_date',
+            'entryDate',
+            'DATA_ENTRADA',
+            'data_entrada',
+            'created_at',
+            'createdAt',
         ]);
 
         const entregue = getField(raw, [
-            'ENTREGUE', 'Entregue', 'entregue', 'DATA', 'Data', 'date',
-            'delivered_at', 'deliveredAt', 'DATA_ENTREGUE', 'data_entregue',
+            'ENTREGUE',
+            'Entregue',
+            'entregue',
+            'DATA',
+            'Data',
+            'date',
+            'delivered_at',
+            'deliveredAt',
+            'DATA_ENTREGUE',
+            'data_entregue',
         ]);
 
         const vendedor = getField(raw, ['VENDEDOR', 'Vendedor', 'seller', 'vendedor']);
@@ -390,10 +451,15 @@
         const sistema = getField(raw, ['SISTEMA', 'Sistema', 'sistema', 'SYSTEM', 'system']);
         const desafio = getField(raw, ['DESAFIO', 'Desafio', 'desafio', 'CHALLENGE', 'challenge']);
         const origem = getField(raw, ['ORIGEM', 'origem']);
-        const stageRaw = getField(raw, ['STAGE', 'stage']);
-        const stage = normalizeStage(stageRaw);
 
         const stageFunnel = getField(raw, ['stage_funnel', 'STAGE_FUNNEL', 'stageFunnel', 'Stage_funnel']);
+
+        // Alguns payloads não trazem o STAGE (código). Nesses casos, derivamos pelo rótulo do funil.
+        const stageRaw = getField(raw, ['STAGE', 'stage', 'stage_code', 'STAGE_CODE', 'stageCode']);
+        const stage = normalizeStage(stageRaw || stageFunnel);
+
+        const substageRaw = getField(raw, ['substage', 'SUBSTAGE', 'Substage', 'sub_stage', 'SUB_STAGE', 'subStage']);
+        const substage = normalizeSubstage(substageRaw);
 
         return {
             row_number: rowNumber,
@@ -413,7 +479,9 @@
             SISTEMA: sistema,
             DESAFIO: desafio,
             ORIGEM: origem,
+
             STAGE_FUNNEL: stageFunnel,
+            SUBSTAGE: substage,
             STAGE: stage,
         };
     }
@@ -423,7 +491,7 @@
             if (!elements.recordsBody) return;
 
             if (!rows || rows.length === 0) {
-                elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 13);
+                elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 14);
                 return;
             }
 
@@ -451,6 +519,11 @@
                         ? `<span class="badge ${utils.stageClass(stageFunnelRaw)}">${utils.escapeHtml(stageFunnelRaw)}</span>`
                         : '<span class="mono">—</span>';
 
+                    const substageRaw = String(r.SUBSTAGE ?? '').trim();
+                    const substageCell = substageRaw
+                        ? `<span class="badge badge--substage ${utils.substageClass(substageRaw)}">${utils.escapeHtml(substageRaw)}</span>`
+                        : '<span class="mono">—</span>';
+
                     const stage = utils.escapeHtml(r.STAGE ?? '');
 
                     return `
@@ -461,6 +534,7 @@
               <td class="mono">${phone}</td>
               <td>${linkCell}</td>
               <td>${stageFunnelCell}</td>
+              <td>${substageCell}</td>
               <td>${money || '—'}</td>
               <td>${area || '—'}</td>
               <td>${time || '—'}</td>
@@ -499,6 +573,7 @@
         const selectedStage = (elements.stageSelect?.value || 'presentation').trim() || 'presentation';
         const moneyMode = (elements.moneySelect?.value || '').trim(); // '', yes, no, unknown
 
+        const substages = getSelectedValues(elements.substageSelect);
         const areas = getSelectedValues(elements.areaSelect);
         const times = getSelectedValues(elements.timeSelect);
         const desafios = getSelectedValues(elements.desafioSelect);
@@ -507,23 +582,33 @@
 
         let out = [...state.rows];
 
-        // Stage
         if (selectedStage) out = out.filter((r) => normalizeStage(r.STAGE) === selectedStage);
 
-        // Money
+        if (substages.length) out = out.filter((r) => matchesSelectValue(r.SUBSTAGE, substages));
+
         if (moneyMode) out = out.filter((r) => normalizeMoney(r.MONEY) === moneyMode);
 
-        // Outros filtros
         if (areas.length) out = out.filter((r) => matchesSelectValue(r.AREA, areas));
         if (times.length) out = out.filter((r) => matchesSelectValue(r.TIME, times));
         if (desafios.length) out = out.filter((r) => matchesSelectValue(r.DESAFIO, desafios));
 
-        // Busca
         if (q) {
             out = out.filter((r) => {
                 const hay = [
-                    r.PHONE, r.LINK, r.DESAFIO, r.SISTEMA, r.AREA, r.TIME, r.VENDEDOR,
-                    r.ENTRADA, r.ENTREGUE, r.MONEY, r.ORIGEM, r.STAGE_FUNNEL, r.STAGE,
+                    r.PHONE,
+                    r.LINK,
+                    r.DESAFIO,
+                    r.SISTEMA,
+                    r.AREA,
+                    r.TIME,
+                    r.VENDEDOR,
+                    r.ENTRADA,
+                    r.ENTREGUE,
+                    r.MONEY,
+                    r.ORIGEM,
+                    r.STAGE_FUNNEL,
+                    r.SUBSTAGE,
+                    r.STAGE,
                 ]
                     .map((x) => String(x ?? '').toLowerCase())
                     .join(' | ');
@@ -537,7 +622,6 @@
         const pageRows = paginateRows(sorted);
         render.recordsTable(pageRows);
 
-        // KPIs (baseado no filtro atual)
         const totalShown = state.filtered.length || 0;
 
         let pequenosTotal = 0;
@@ -554,7 +638,6 @@
         if (elements.kpiShown) elements.kpiShown.textContent = String(totalShown);
         if (elements.kpiPequenos) elements.kpiPequenos.textContent = String(pequenosTotal);
         if (elements.kpiGrandes) elements.kpiGrandes.textContent = String(grandesTotal);
-        // Money (Sim) deve ser exibido como porcentagem sobre o total filtrado
         if (elements.kpiMoneyYes) elements.kpiMoneyYes.textContent = totalShown ? `${pct}%` : '—';
     }
 
@@ -568,17 +651,18 @@
         }
 
         ui.showLoading();
-        if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 13);
+        if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 14);
 
         try {
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
             const allRows = extractRows(res).map(normalizeRow);
 
-            // Filtra SOMENTE a vendedora fixa
+            // Filtra SOMENTE o vendedor fixo
             const rows = allRows.filter((r) => isFixedVendor(r.VENDEDOR));
 
             state.rows = rows;
 
+            setOptions(elements.substageSelect, uniqueSorted(rows, 'SUBSTAGE'), { keepSelected: true, includeNotInformed: true });
             setOptions(elements.areaSelect, uniqueSorted(rows, 'AREA'), { keepSelected: true, includeNotInformed: true });
             setOptions(elements.timeSelect, uniqueSorted(rows, 'TIME'), { keepSelected: true, includeNotInformed: true });
             setOptions(elements.desafioSelect, uniqueSorted(rows, 'DESAFIO'), { keepSelected: true, includeNotInformed: true });
@@ -586,7 +670,7 @@
             applyAllFiltersAndRender({ resetPage: true });
         } catch (e) {
             ui.showError(`Failed to load leads: ${e.message}`);
-            if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 13);
+            if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 14);
         } finally {
             ui.hideLoading();
         }
@@ -596,6 +680,10 @@
         const today = utils.today();
         if (elements.entryStartInput) elements.entryStartInput.value = today;
         if (elements.entryEndInput) elements.entryEndInput.value = today;
+
+        // sincroniza pageSize inicial com o select (se existir)
+        const ps = Number(elements.recordsPageSize?.value);
+        if (!Number.isNaN(ps) && ps > 0) state.pagination.pageSize = ps;
     }
 
     function setupEventListeners() {
@@ -603,7 +691,7 @@
         if (elements.applyFilters) elements.applyFilters.addEventListener('click', loadData);
 
         const onAnyFilterChange = () => applyAllFiltersAndRender({ resetPage: true });
-        [elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.stageSelect, elements.desafioSelect]
+        [elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.stageSelect, elements.substageSelect, elements.desafioSelect]
             .filter(Boolean)
             .forEach((el) => el.addEventListener('change', onAnyFilterChange));
 
@@ -627,6 +715,7 @@
         const applyNextDay = () => {
             const startStr = elements.entryStartInput?.value || '';
             const endStr = elements.entryEndInput?.value || '';
+
             let baseStr = startStr || endStr || utils.today();
             if (startStr && endStr && startStr === endStr) baseStr = startStr;
 
@@ -643,6 +732,7 @@
         const applyPreviousDay = () => {
             const startStr = elements.entryStartInput?.value || '';
             const endStr = elements.entryEndInput?.value || '';
+
             let baseStr = startStr || endStr || utils.today();
             if (startStr && endStr && startStr === endStr) baseStr = startStr;
 
@@ -667,6 +757,7 @@
             elements.clearAllFilters.addEventListener('click', () => {
                 if (elements.moneySelect) elements.moneySelect.value = '';
                 if (elements.stageSelect) elements.stageSelect.value = 'presentation';
+                if (elements.substageSelect) elements.substageSelect.value = '';
                 if (elements.globalSearch) elements.globalSearch.value = '';
 
                 [elements.areaSelect, elements.timeSelect, elements.desafioSelect]
@@ -705,7 +796,7 @@
         }
         if (elements.recordsPageSize) {
             elements.recordsPageSize.addEventListener('change', () => {
-                state.pagination.pageSize = Number(elements.recordsPageSize.value) || 25;
+                state.pagination.pageSize = Number(elements.recordsPageSize.value) || 20;
                 state.pagination.page = 1;
                 applyAllFiltersAndRender();
             });
@@ -715,8 +806,7 @@
             th.addEventListener('click', () => {
                 const key = th.dataset.sort;
 
-                state.sort.direction =
-                    (state.sort.key === key && state.sort.direction === 'desc') ? 'asc' : 'desc';
+                state.sort.direction = (state.sort.key === key && state.sort.direction === 'desc') ? 'asc' : 'desc';
                 state.sort.key = key;
 
                 document.querySelectorAll('.data-table--records th[data-sort]').forEach((x) => x.classList.remove('active'));
