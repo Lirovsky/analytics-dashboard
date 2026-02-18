@@ -86,6 +86,7 @@ const utils = {
         const sales = Number(c?.sales) || 0;
         const value = Number(c?.value) || 0;
         const investment = Number(c?.investment) || 0;
+        const lead_total = Number.isFinite(Number(c?.lead_total)) ? Number(c?.lead_total) : leads + lead_trial;
 
         if (key === "ticket_medio_anual") {
             const annualized = utils.getAnnualizedValue(c);
@@ -99,8 +100,10 @@ const utils = {
 
         if (key === "lead_trial") return lead_trial;
 
-        if (key === "rpl") return utils.safeDivide(value, leads) ?? 0;
-        if (key === "cpl") return utils.safeDivide(investment, leads) ?? 0;
+        if (key === "lead_total") return lead_total;
+
+        if (key === "rpl") return utils.safeDivide(value, lead_total) ?? 0;
+        if (key === "cpl") return utils.safeDivide(investment, lead_total) ?? 0;
 
         const raw = c?.[key];
         const n = Number(raw);
@@ -215,6 +218,7 @@ const campaignsRender = {
         const sales = Number(campaign.sales) || 0;
         const leads = Number(campaign.leads) || 0;
         const leadTrial = Number(campaign.lead_trial) || 0;
+        const leadTotal = Number.isFinite(Number(campaign.lead_total)) ? Number(campaign.lead_total) : leads + leadTrial;
 
         const annualizedValue = utils.getAnnualizedValue(campaign);
         const monthlyEquivValue = utils.getMonthlyEquivValue(campaign);
@@ -222,8 +226,8 @@ const campaignsRender = {
         const ticketAnnual = utils.safeDivide(annualizedValue, sales);
         const ticketMonthly = utils.safeDivide(monthlyEquivValue, sales);
 
-        const rpl = utils.safeDivide(value, leads);
-        const cpl = utils.safeDivide(campaign.investment, leads);
+        const rpl = utils.safeDivide(value, leadTotal);
+        const cpl = utils.safeDivide(campaign.investment, leadTotal);
 
         const roasClass = (Number(campaign.roas) || 0) >= 1 ? "value-positive" : "value-negative";
 
@@ -233,6 +237,7 @@ const campaignsRender = {
           <td>${campaign.name || "–"}</td>
           <td>${utils.formatNumber(leads)}</td>
           <td>${utils.formatNumber(leadTrial)}</td>
+          <td>${utils.formatNumber(leadTotal)}</td>
           <td>${utils.formatNumber(sales)}</td>
           <td>${utils.formatCurrency(value)}</td>
           <td>${utils.formatCurrency(ticketAnnual)}</td>
@@ -251,7 +256,8 @@ const campaignsRender = {
         <td>${campaign.name || "–"}</td>
         <td>${utils.formatNumber(leads)}</td>
         <td>${utils.formatNumber(leadTrial)}</td>
-        <td>${utils.formatNumber(sales)}</td>
+        <td>${utils.formatNumber(leadTotal)}</td>
+          <td>${utils.formatNumber(sales)}</td>
         <td>${utils.formatCurrency(value)}</td>
         <td>${utils.formatCurrency(ticketAnnual)}</td>
         <td>${utils.formatCurrency(ticketMonthly)}</td>
@@ -263,7 +269,7 @@ const campaignsRender = {
     campaignTotalRow(totals, includeInvestment = true, avgDaysTotal = null) {
         const roas = totals.investment > 0 ? totals.value / totals.investment : null;
         const cac = totals.sales > 0 ? totals.investment / totals.sales : null;
-        const cpl = totals.leads > 0 ? totals.investment / totals.leads : null;
+        const cpl = totals.lead_total > 0 ? totals.investment / totals.lead_total : null;
 
         const ticketTotalAnnual = utils.safeDivide(totals.value_annualized, totals.sales);
         const ticketTotalMonthly = utils.safeDivide(totals.value_monthly_equiv, totals.sales);
@@ -273,11 +279,12 @@ const campaignsRender = {
         <td><strong>Total</strong></td>
         <td><strong>${utils.formatNumber(totals.leads)}</strong></td>
         <td><strong>${utils.formatNumber(totals.lead_trial)}</strong></td>
+        <td><strong>${utils.formatNumber(totals.lead_total)}</strong></td>
         <td><strong>${utils.formatNumber(totals.sales)}</strong></td>
         <td><strong>${utils.formatCurrency(totals.value)}</strong></td>
         <td><strong>${utils.formatCurrency(ticketTotalAnnual)}</strong></td>
         <td><strong>${utils.formatCurrency(ticketTotalMonthly)}</strong></td>
-        <td><strong>${utils.formatCurrency(utils.safeDivide(totals.value, totals.leads))}</strong></td>`;
+        <td><strong>${utils.formatCurrency(utils.safeDivide(totals.value, totals.lead_total))}</strong></td>`;
 
         if (includeInvestment) {
             cells += `
@@ -298,7 +305,7 @@ const campaignsRender = {
             const sorted = sortCampaigns(items || []);
             if (!sorted.length) {
                 // facebook/google: 12 colunas | orgânico: 8 colunas
-                bodyEl.innerHTML = ui.renderEmptyState("Sem dados", includeInv ? 13 : 9);
+                bodyEl.innerHTML = ui.renderEmptyState("Sem dados", includeInv ? 14 : 10);
                 updatePaginationUI(channel, { page: 1, totalPages: 1 });
                 return;
             }
@@ -307,6 +314,8 @@ const campaignsRender = {
                 (acc, c) => {
                     acc.leads += Number(c.leads) || 0;
                     acc.lead_trial += Number(c.lead_trial) || 0;
+                    const leadTotal = Number.isFinite(Number(c.lead_total)) ? Number(c.lead_total) : (Number(c.leads) || 0) + (Number(c.lead_trial) || 0);
+                    acc.lead_total += leadTotal;
                     acc.sales += Number(c.sales) || 0;
                     acc.value += Number(c.value) || 0;
                     acc.investment += Number(c.investment) || 0;
@@ -325,6 +334,7 @@ const campaignsRender = {
                 {
                     leads: 0,
                     lead_trial: 0,
+                    lead_total: 0,
                     sales: 0,
                     value: 0,
                     investment: 0,
@@ -362,6 +372,8 @@ const campaignsRender = {
                 acc.campaigns += 1;
                 acc.leads += Number(c.leads) || 0;
                 acc.lead_trial += Number(c.lead_trial) || 0;
+                const leadTotal = Number.isFinite(Number(c.lead_total)) ? Number(c.lead_total) : (Number(c.leads) || 0) + (Number(c.lead_trial) || 0);
+                acc.lead_total += leadTotal;
                 acc.sales += Number(c.sales) || 0;
                 acc.value += Number(c.value) || 0;
                 acc.investment += Number(c.investment) || 0;
@@ -381,6 +393,7 @@ const campaignsRender = {
                 campaigns: 0,
                 leads: 0,
                 lead_trial: 0,
+                lead_total: 0,
                 sales: 0,
                 value: 0,
                 investment: 0,
@@ -392,14 +405,14 @@ const campaignsRender = {
         );
 
         if (elements.totalCampaigns) elements.totalCampaigns.textContent = utils.formatNumber(totals.campaigns);
-        if (elements.totalLeads) elements.totalLeads.textContent = utils.formatNumber(totals.leads);
+        if (elements.totalLeads) elements.totalLeads.textContent = utils.formatNumber(totals.lead_total);
         if (elements.totalSales) elements.totalSales.textContent = utils.formatNumber(totals.sales);
 
         // receita do período (caixa)
         if (elements.totalValue) elements.totalValue.textContent = utils.formatCurrency(totals.value);
 
         if (elements.totalInvestment) elements.totalInvestment.textContent = utils.formatCurrency(totals.investment);
-        if (elements.totalCplGeneral) elements.totalCplGeneral.textContent = utils.formatCurrency(utils.safeDivide(totals.investment, totals.leads));
+        if (elements.totalCplGeneral) elements.totalCplGeneral.textContent = utils.formatCurrency(utils.safeDivide(totals.investment, totals.lead_total));
 
         const totalLeadsICP = Number(data?.entrySummary?.total_leads_ICP) || 0;
         if (elements.totalCplIcp) elements.totalCplIcp.textContent = utils.formatCurrency(utils.safeDivide(totals.investment, totalLeadsICP));
