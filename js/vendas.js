@@ -102,6 +102,22 @@
             if (v.endsWith("_google")) return "Google";
             return "Orgânico";
         },
+
+        formatBRL(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return "—";
+            try {
+                return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+            } catch {
+                return `R$ ${n.toFixed(2)}`;
+            }
+        },
+
+        formatPct(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return "—";
+            return `${n.toFixed(2).replace(".", ",")}%`;
+        },
     };
 
     const $id = (id) => document.getElementById(id);
@@ -132,6 +148,8 @@
 
 
         kpiSalesTotal: $id("kpiSalesTotal"),
+        kpiTicketMedioMensal: $id("kpiTicketMedioMensal"),
+        kpiTaxaConversao: $id("kpiTaxaConversao"),
         loadingOverlay: $id("loadingOverlay"),
         errorToast: $id("errorToast"),
         errorMessage: $id("errorMessage"),
@@ -141,6 +159,11 @@
     const state = {
         salesData: [],
         filtered: [],
+        meta: {
+            vendasPorVendedor: [],
+            ticketTotals: null,
+            ticketByManager: {},
+        },
         charts: {},
     };
 
@@ -525,6 +548,44 @@
         state.filtered = out;
         if (elements.totalCount) elements.totalCount.textContent = String(out.length);
         if (elements.kpiSalesTotal) elements.kpiSalesTotal.textContent = String(out.length);
+
+        // KPIs extras (ticket médio mensal e taxa de conversão)
+        // Regras:
+        // - Se vendedor = "Todos", usa totais.ticket_medio_mensal e conversão geral (soma vendas / soma leads entregues)
+        // - Se vendedor selecionado, usa managers[].ticket_medio_mensal e vendas_por_vendedor[].taxa_conversao_pct
+        const selectedManager = String(elements.managerSelect?.value || "").trim();
+
+        // Ticket médio mensal
+        const ticketTotals = state.meta?.ticketTotals;
+        const ticketByManager = state.meta?.ticketByManager || {};
+        const ticketValue = selectedManager
+            ? ticketByManager[selectedManager]
+            : ticketTotals?.ticket_medio_mensal;
+        if (elements.kpiTicketMedioMensal) {
+            elements.kpiTicketMedioMensal.textContent = utils.formatBRL(ticketValue);
+        }
+
+        // Conversão
+        const vendasPorVendedor = Array.isArray(state.meta?.vendasPorVendedor) ? state.meta.vendasPorVendedor : [];
+        let convPct = null;
+        if (selectedManager) {
+            const row = vendasPorVendedor.find((x) => String(x?.vendedor ?? "").trim() === selectedManager);
+            convPct = row?.taxa_conversao_pct ?? null;
+        } else {
+            const sums = vendasPorVendedor.reduce(
+                (acc, r) => {
+                    acc.vendas += Number(r?.total_vendas) || 0;
+                    acc.leads += Number(r?.leads_entregues) || 0;
+                    return acc;
+                },
+                { vendas: 0, leads: 0 }
+            );
+            convPct = sums.leads > 0 ? (sums.vendas / sums.leads) * 100 : 0;
+        }
+        if (elements.kpiTaxaConversao) {
+            elements.kpiTaxaConversao.textContent = utils.formatPct(convPct);
+        }
+
         updateCharts();
     }
 
@@ -549,8 +610,21 @@
             const text = (rawText || "").trim();
             const data = text ? JSON.parse(text) : [];
 
-            const root = Array.isArray(data) ? data[0] : data;
-            const sales = Array.isArray(root?.sales) ? root.sales : Array.isArray(root) ? root : [];
+            const first = Array.isArray(data) ? data[0] : data;
+            const second = Array.isArray(data) ? data[1] : null;
+
+            // meta para KPIs
+            state.meta.vendasPorVendedor = Array.isArray(first?.vendas_por_vendedor) ? first.vendas_por_vendedor : [];
+            state.meta.ticketTotals = second?.totais ?? null;
+            state.meta.ticketByManager = Array.isArray(second?.managers)
+                ? second.managers.reduce((acc, r) => {
+                    const k = String(r?.manager ?? "").trim();
+                    if (k) acc[k] = r?.ticket_medio_mensal;
+                    return acc;
+                }, {})
+                : {};
+
+            const sales = Array.isArray(first?.sales) ? first.sales : Array.isArray(first) ? first : [];
 
             state.salesData = sales.map(normalizeSaleRow);
             refreshFilterOptions(state.salesData);
@@ -560,8 +634,13 @@
             ui.showError(`Erro: ${e.message}`);
             state.salesData = [];
             state.filtered = [];
+            state.meta.vendasPorVendedor = [];
+            state.meta.ticketTotals = null;
+            state.meta.ticketByManager = {};
             if (elements.totalCount) elements.totalCount.textContent = "0";
             if (elements.kpiSalesTotal) elements.kpiSalesTotal.textContent = "0";
+            if (elements.kpiTicketMedioMensal) elements.kpiTicketMedioMensal.textContent = "—";
+            if (elements.kpiTaxaConversao) elements.kpiTaxaConversao.textContent = "—";
             updateCharts();
         } finally {
             ui.hideLoading();
