@@ -67,6 +67,39 @@
       return `${dd}/${mm}/${yyyy}`;
     },
 
+    // Aceita number ou string em pt-BR/en-US (ex: "1.234,56", "1234.56", "R$ 1.234")
+    parseNumberPt(value) {
+      if (value === null || value === undefined || value === '') return null;
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+      const raw = String(value).trim();
+      if (!raw) return null;
+
+      // remove símbolos e espaços, mantém dígitos, ".", "," e "-"
+      let s = raw.replace(/[^0-9.,-]/g, '');
+      if (!s) return null;
+
+      const hasComma = s.includes(',');
+      const hasDot = s.includes('.');
+
+      // Se tem ambos, assume "." milhar e "," decimal (pt-BR)
+      if (hasComma && hasDot) {
+        s = s.replace(/\./g, '').replace(/,/g, '.');
+      } else if (hasComma && !hasDot) {
+        // só vírgula: trata como decimal
+        s = s.replace(/,/g, '.');
+      }
+
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    },
+
+    formatCurrencyBr(value) {
+      const n = typeof value === 'number' ? value : this.parseNumberPt(value);
+      if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+    },
+
     removeDiacritics(value) {
       return String(value ?? '')
         .normalize('NFD')
@@ -337,6 +370,7 @@
     kpiPequenos: dom.byId('kpiPequenos'),
     kpiGrandes: dom.byId('kpiGrandes'),
     kpiMoneyPct: dom.byId('kpiMoneyPct'),
+    kpiStageMrr: dom.byId('kpiStageMrr'),
 
     rangePill: dom.byId('rangePill'),
 
@@ -546,6 +580,22 @@
     ]);
     const substage = normalizeSubstage(substageRaw);
 
+    const paymentPendingValue = getField(raw, [
+      'payment_pending_value',
+      'PAYMENT_PENDING_VALUE',
+      'paymentPendingValue',
+      'payment_pending_mrr',
+      'paymentPendingMrr',
+    ]);
+
+    const negotiationValue = getField(raw, [
+      'negotiation_value',
+      'NEGOTIATION_VALUE',
+      'negotiationValue',
+      'negotiation_mrr',
+      'negotiationMrr',
+    ]);
+
     return {
       row_number: rowNumber,
       ID: id,
@@ -568,6 +618,9 @@
       STAGE_FUNNEL: stageFunnel,
       SUBSTAGE: substage,
       STAGE: stage,
+
+      PAYMENT_PENDING_VALUE: paymentPendingValue,
+      NEGOTIATION_VALUE: negotiationValue,
     };
   }
 
@@ -761,6 +814,31 @@
     if (elements.kpiPequenos) elements.kpiPequenos.textContent = String(pequenosTotal);
     if (elements.kpiGrandes) elements.kpiGrandes.textContent = String(grandesTotal);
     if (elements.kpiMoneyPct) elements.kpiMoneyPct.textContent = totalShown ? `${pct}%` : '—';
+
+    // KPI: MRR mensal por stage (média no stage selecionado)
+    if (elements.kpiStageMrr) {
+      let sum = 0;
+      let count = 0;
+
+      if (selectedStage === 'negotiation') {
+        state.filtered.forEach((r) => {
+          sum += utils.parseNumberPt(r.NEGOTIATION_VALUE) || 0;
+          count += 1;
+        });
+      } else if (selectedStage === 'payment_pending') {
+        state.filtered.forEach((r) => {
+          sum += utils.parseNumberPt(r.PAYMENT_PENDING_VALUE) || 0;
+          count += 1;
+        });
+      }
+
+      if (!count) {
+        elements.kpiStageMrr.textContent = '—';
+      } else {
+        const avg = sum / count;
+        elements.kpiStageMrr.textContent = utils.formatCurrencyBr(avg);
+      }
+    }
 
     updateCharts();
   }
