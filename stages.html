@@ -73,22 +73,7 @@
             <div class="funnel-block">
                 <h3 class="funnel-block__title">Funil por Money Status</h3>
 
-                <div class="table-wrapper">
-                    <table class="data-table data-table--funnel">
-                        <thead>
-                            <tr>
-                                <th class="stage-col">Stage</th>
-                                <th colspan="2" class="group-header group-header--all">Todos</th>
-                            </tr>
-                            <tr class="subheader">
-                                <th></th>
-                                <th>Qtd</th>
-                                <th>%</th>
-                            </tr>
-                        </thead>
-                        <tbody id="moneyStatusBody"></tbody>
-                    </table>
-                </div>
+                <div id="moneyStatusChart" class="funnel-chart" aria-label="Funil por Money Status"></div>
             </div>
 
             <div class="funnel-block">
@@ -130,6 +115,11 @@
             <button class="toast__close" id="closeToast" type="button">×</button>
         </div>
     </div>
+
+    <!-- amCharts (Funnel) -->
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/percent.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
 
     <script src="js/stages.js"></script>
 </body>

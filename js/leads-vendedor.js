@@ -224,6 +224,47 @@
     return 'Mais de 10';
   }
 
+  function parseCurrencyValue(value) {
+    if (value === null || value === undefined || value === '') return null;
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+    const raw = String(value).trim();
+    if (!raw) return null;
+
+    // Mantém apenas dígitos, separadores e sinal
+    let s = raw.replace(/[^0-9,.-]/g, '');
+
+    const lastComma = s.lastIndexOf(',');
+    const lastDot = s.lastIndexOf('.');
+
+    if (lastComma > -1 && lastDot > -1) {
+      // Decide qual é decimal pelo último separador
+      if (lastComma > lastDot) {
+        // "1.234,56" -> "1234.56"
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else {
+        // "1,234.56" -> "1234.56"
+        s = s.replace(/,/g, '');
+      }
+    } else if (lastComma > -1) {
+      // "1234,56" ou "1.234,56"
+      s = s.replace(/\./g, '').replace(',', '.');
+    }
+
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function formatBRL(value) {
+    const n = typeof value === 'number' ? value : parseCurrencyValue(value);
+    if (n === null) return '—';
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 2,
+    }).format(n);
+  }
+
 
   function getSelectedValues(selectEl) {
     if (!selectEl) return [];
@@ -371,6 +412,7 @@
     kpiGrandes: dom.byId('kpiGrandes'),
     kpiMoneyPct: dom.byId('kpiMoneyPct'),
     kpiStageMrr: dom.byId('kpiStageMrr'),
+    kpiStageValorTotal: dom.byId('kpiStageValorTotal'),
 
     rangePill: dom.byId('rangePill'),
 
@@ -643,7 +685,7 @@
       if (!elements.recordsBody) return;
 
       if (!rows || rows.length === 0) {
-        elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 14);
+        elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 15);
         return;
       }
 
@@ -665,6 +707,16 @@
           const area = utils.escapeHtml(r.AREA ?? '');
           const time = utils.escapeHtml(r.TIME ?? '');
           const sistema = utils.escapeHtml(r.SISTEMA ?? '');
+          const selectedStage = (elements.stageSelect?.value || '').trim();
+
+          let valorRaw = null;
+          if (selectedStage === 'payment_pending') valorRaw = r.PAYMENT_PENDING_VALUE;
+          else if (selectedStage === 'negotiation') valorRaw = r.NEGOTIATION_VALUE;
+
+          const valorDisplay = (selectedStage === 'payment_pending' || selectedStage === 'negotiation')
+            ? formatBRL(valorRaw)
+            : '—';
+
           const desafio = utils.escapeHtml(r.DESAFIO ?? '');
           const origem = utils.escapeHtml(r.ORIGEM ?? '');
           const stageFunnelRaw = String(r.STAGE_FUNNEL ?? '').trim();
@@ -691,6 +743,7 @@
               <td>${area || '—'}</td>
               <td>${time || '—'}</td>
               <td>${sistema || '—'}</td>
+              <td class="mono td-valor">${valorDisplay}</td>
               <td>${desafio || '—'}</td>
               <td>${origem || '—'}</td>
               <td>${stage || '—'}</td>
@@ -815,28 +868,36 @@
     if (elements.kpiGrandes) elements.kpiGrandes.textContent = String(grandesTotal);
     if (elements.kpiMoneyPct) elements.kpiMoneyPct.textContent = totalShown ? `${pct}%` : '—';
 
-    // KPI: MRR mensal por stage (média no stage selecionado)
+    // KPI: MRR mensal por stage (média no stage selecionado) + Valor total (soma)
+    let stageSum = 0;
+    let stageCount = 0;
+
+    if (selectedStage === 'negotiation') {
+      state.filtered.forEach((r) => {
+        stageSum += utils.parseNumberPt(r.NEGOTIATION_VALUE) || 0;
+        stageCount += 1;
+      });
+    } else if (selectedStage === 'payment_pending') {
+      state.filtered.forEach((r) => {
+        stageSum += utils.parseNumberPt(r.PAYMENT_PENDING_VALUE) || 0;
+        stageCount += 1;
+      });
+    }
+
     if (elements.kpiStageMrr) {
-      let sum = 0;
-      let count = 0;
-
-      if (selectedStage === 'negotiation') {
-        state.filtered.forEach((r) => {
-          sum += utils.parseNumberPt(r.NEGOTIATION_VALUE) || 0;
-          count += 1;
-        });
-      } else if (selectedStage === 'payment_pending') {
-        state.filtered.forEach((r) => {
-          sum += utils.parseNumberPt(r.PAYMENT_PENDING_VALUE) || 0;
-          count += 1;
-        });
-      }
-
-      if (!count) {
+      if (!stageCount) {
         elements.kpiStageMrr.textContent = '—';
       } else {
-        const avg = sum / count;
+        const avg = stageSum / stageCount;
         elements.kpiStageMrr.textContent = utils.formatCurrencyBr(avg);
+      }
+    }
+
+    if (elements.kpiStageValorTotal) {
+      if (!stageCount) {
+        elements.kpiStageValorTotal.textContent = '—';
+      } else {
+        elements.kpiStageValorTotal.textContent = utils.formatCurrencyBr(stageSum);
       }
     }
 
@@ -854,6 +915,28 @@
         const aTime = utils.parseAnyDate(a?.[key])?.getTime?.() || 0;
         const bTime = utils.parseAnyDate(b?.[key])?.getTime?.() || 0;
         return (aTime - bTime) * dir;
+      });
+    }
+
+    if (key === 'VALOR') {
+      const selectedStage = (elements.stageSelect?.value || '').trim();
+      const pick = (r) => {
+        if (selectedStage === 'payment_pending') return parseCurrencyValue(r.PAYMENT_PENDING_VALUE);
+        if (selectedStage === 'negotiation') return parseCurrencyValue(r.NEGOTIATION_VALUE);
+        return null;
+      };
+
+      return [...items].sort((a, b) => {
+        const av = pick(a);
+        const bv = pick(b);
+
+        const aNull = (av === null || av === undefined);
+        const bNull = (bv === null || bv === undefined);
+        if (aNull && bNull) return 0;
+        if (aNull) return 1;
+        if (bNull) return -1;
+
+        return (av - bv) * dir;
       });
     }
 

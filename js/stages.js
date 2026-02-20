@@ -45,7 +45,7 @@ const elements = {
   stageSelect: $id("stageSelect"),
   applyEntryOnly: $id("applyEntryOnly"),
 
-  moneyStatusBody: $id("moneyStatusBody"),
+  moneyStatusChart: $id("moneyStatusChart"),
   channelFunnelBody: $id("channelFunnelBody"),
 
   loadingOverlay: $id("loadingOverlay"),
@@ -56,6 +56,163 @@ const elements = {
 
 const state = {
   funnelData: null,
+  charts: {
+    moneyStatus: null,
+  },
+};
+
+// ----------------------------
+// Funnel chart (amCharts)
+// ----------------------------
+
+const funnelChart = {
+  disposeMoneyStatusChart() {
+    const chartRef = state.charts.moneyStatus;
+    if (!chartRef) return;
+    try {
+      chartRef.root.dispose();
+    } catch (_) {
+      // ignore
+    }
+    state.charts.moneyStatus = null;
+  },
+
+  ensureMoneyStatusChart() {
+    if (state.charts.moneyStatus) return state.charts.moneyStatus;
+    if (!elements.moneyStatusChart) return null;
+    if (typeof am5 === "undefined" || typeof am5percent === "undefined") {
+      ui.showError("amCharts não carregou (verifique bloqueio de scripts). ");
+      return null;
+    }
+
+    // limpa qualquer placeholder
+    elements.moneyStatusChart.innerHTML = "";
+
+    const root = am5.Root.new("moneyStatusChart");
+    root.setThemes([am5themes_Animated.new(root)]);
+
+    // Formatação numérica/percentual
+    root.numberFormatter.setAll({
+      intlLocales: "pt-BR",
+      numberFormat: "#,###.##",
+    });
+
+    const chart = root.container.children.push(
+      am5percent.SlicedChart.new(root, {
+        layout: root.verticalLayout,
+      })
+    );
+
+    const series = chart.series.push(
+      am5percent.FunnelSeries.new(root, {
+        alignLabels: false,
+        orientation: "vertical",
+        valueField: "value",
+        categoryField: "category",
+      })
+    );
+
+    // Labels no centro do slice
+    series.labels.template.setAll({
+      text: "{category}: {value.formatNumber('#,###')} ({cumPctText})",
+      centerX: am5.p50,
+      x: am5.p50,
+      oversizedBehavior: "wrap",
+      fontSize: 12,
+    });
+
+    // Tooltip com detalhes (acumulado + no estágio)
+    series.slices.template.setAll({
+      tooltipText:
+        "{category}\nAcumulado: {value.formatNumber('#,###')} ({cumPctText})\nNo estágio: {stageCountText} ({stagePctText})",
+    });
+
+    // Remove ticks (fica mais limpo, já que o label está no centro)
+    series.ticks.template.setAll({
+      forceHidden: true,
+    });
+
+    const legend = chart.children.push(
+      am5.Legend.new(root, {
+        centerX: am5.p50,
+        x: am5.p50,
+        marginTop: 10,
+        marginBottom: 0,
+      })
+    );
+
+    state.charts.moneyStatus = { root, chart, series, legend, appeared: false };
+    return state.charts.moneyStatus;
+  },
+
+  buildMoneyStatusData(moneyStatusPayload) {
+    const stages = moneyStatusPayload?.stages;
+    if (!stages) return null;
+
+    // contagem "no estágio" (a mesma da tabela atual)
+    const stageCounts = STAGES_ORDER.map((stage) => sumMoneyStageCount(stages, stage));
+    const totalAll = stageCounts.reduce((acc, n) => acc + (n || 0), 0);
+
+    // valor do funil = acumulado (etapa atual + todas as etapas abaixo)
+    let remaining = totalAll;
+
+    return STAGES_ORDER.map((stage, idx) => {
+      const stageCount = stageCounts[idx] || 0;
+      const stagePct = totalAll > 0 ? (stageCount / totalAll) * 100 : 0;
+      const cumPct = totalAll > 0 ? (remaining / totalAll) * 100 : 0;
+
+      const item = {
+        category: stage,
+        value: remaining,
+        // campos extras para tooltip/label
+        stageCount,
+        stageCountText: utils.formatNumber(stageCount),
+        stagePctText: utils.formatPercentage(stagePct),
+        cumPctText: utils.formatPercentage(cumPct),
+      };
+
+      remaining -= stageCount;
+      return item;
+    });
+  },
+
+  renderMoneyStatus(moneyStatusPayload) {
+    if (!elements.moneyStatusChart) return;
+
+    if (!moneyStatusPayload?.stages) {
+      this.disposeMoneyStatusChart();
+      elements.moneyStatusChart.innerHTML = `
+        <div class="empty-state" style="padding: 24px;">
+          <div class="empty-state__icon">📊</div>
+          <p>Sem dados de funil</p>
+        </div>
+      `;
+      return;
+    }
+
+    const chartRef = this.ensureMoneyStatusChart();
+    if (!chartRef) return;
+
+    const data = this.buildMoneyStatusData(moneyStatusPayload);
+    if (!data) {
+      elements.moneyStatusChart.innerHTML = `
+        <div class="empty-state" style="padding: 24px;">
+          <div class="empty-state__icon">📊</div>
+          <p>Sem dados de funil</p>
+        </div>
+      `;
+      return;
+    }
+
+    chartRef.series.data.setAll(data);
+    chartRef.legend.data.setAll(chartRef.series.dataItems);
+
+    if (!chartRef.appeared) {
+      chartRef.series.appear(900);
+      chartRef.chart.appear(900, 80);
+      chartRef.appeared = true;
+    }
+  },
 };
 
 const ui = {
@@ -239,33 +396,8 @@ const funnelRender = {
   },
 
   moneyStatusTable(data) {
-    if (!elements.moneyStatusBody) return;
-
-    if (!data?.stages) {
-      elements.moneyStatusBody.innerHTML = ui.renderEmptyState("Sem dados de funil", 3);
-      return;
-    }
-
-    const totalAll = STAGES_ORDER.reduce((acc, s) => acc + sumMoneyStageCount(data.stages, s), 0);
-
-    const rows = STAGES_ORDER.map((stage) => {
-      const count = sumMoneyStageCount(data.stages, stage);
-      const percentage = Number((totalAll > 0 ? (count / totalAll) * 100 : 0).toFixed(2));
-      return this.row(stage, [{ count, percentage }], stage === "Assinatura");
-    }).join("");
-
-    // Conversando = soma das etapas “em andamento”
-    const conversandoStages = ["Apresentação", "Proposta Enviada", "Pagamento Pendente", "Assinatura"];
-    const conversandoCount = conversandoStages.reduce(
-      (acc, s) => acc + sumMoneyStageCount(data.stages, s),
-      0
-    );
-    const conversandoPct = Number((totalAll > 0 ? (conversandoCount / totalAll) * 100 : 0).toFixed(2));
-    const conversando = this.row("Conversando", [{ count: conversandoCount, percentage: conversandoPct }]);
-
-    const total = this.totalRow("Total", [{ count: totalAll, percentage: 100 }]);
-
-    elements.moneyStatusBody.innerHTML = rows + conversando + total;
+    // Mantido por compatibilidade (não renderiza mais tabela); agora vira funil.
+    funnelChart.renderMoneyStatus(data);
   },
 
 
@@ -304,7 +436,6 @@ async function loadStages() {
   }
 
   ui.showLoading();
-  if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderSkeleton(6, 3);
   if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderSkeleton(6, 7);
 
   try {
@@ -322,7 +453,15 @@ async function loadStages() {
     funnelRender.channelTable(payload?.byChannel || null);
   } catch (e) {
     ui.showError(`Failed to load funnel: ${e.message}`);
-    if (elements.moneyStatusBody) elements.moneyStatusBody.innerHTML = ui.renderEmptyState("Erro ao carregar", 3);
+    if (elements.moneyStatusChart) {
+      funnelChart.disposeMoneyStatusChart();
+      elements.moneyStatusChart.innerHTML = `
+        <div class="empty-state" style="padding: 24px;">
+          <div class="empty-state__icon">⚠️</div>
+          <p>Erro ao carregar</p>
+        </div>
+      `;
+    }
     if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderEmptyState("Erro ao carregar", 7);
   } finally {
     ui.hideLoading();
