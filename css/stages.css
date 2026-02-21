@@ -497,3 +497,35 @@ body {
     height: 360px;
   }
 }
+
+.channel-funnels {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.channel-funnel {
+  flex: 1;
+  min-width: 240px;
+}
+
+.channel-funnel__title {
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.funnel-chart {
+  width: 100%;
+  height: 320px;
+  /* importante: amCharts precisa de altura */
+}
+
+@media (max-width: 900px) {
+  .channel-funnels {
+    flex-direction: column;
+  }
+
+  .funnel-chart {
+    height: 280px;
+  }
+}

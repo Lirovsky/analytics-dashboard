@@ -80,26 +80,22 @@
                 <h3 class="funnel-block__title">Funil por Canal</h3>
 
                 <div class="table-wrapper">
-                    <table class="data-table data-table--funnel">
-                        <thead>
-                            <tr>
-                                <th class="stage-col">Stage</th>
-                                <th colspan="2" class="group-header group-header--google">Google</th>
-                                <th colspan="2" class="group-header group-header--facebook">Facebook</th>
-                                <th colspan="2" class="group-header group-header--organic">Orgânico</th>
-                            </tr>
-                            <tr class="subheader">
-                                <th></th>
-                                <th>Qtd</th>
-                                <th>%</th>
-                                <th>Qtd</th>
-                                <th>%</th>
-                                <th>Qtd</th>
-                                <th>%</th>
-                            </tr>
-                        </thead>
-                        <tbody id="channelFunnelBody"></tbody>
-                    </table>
+                    <div class="channel-funnels">
+                        <div class="channel-funnel">
+                            <div class="channel-funnel__title">Google</div>
+                            <div id="channelFunnelGoogle" class="funnel-chart"></div>
+                        </div>
+
+                        <div class="channel-funnel">
+                            <div class="channel-funnel__title">Facebook</div>
+                            <div id="channelFunnelFacebook" class="funnel-chart"></div>
+                        </div>
+
+                        <div class="channel-funnel">
+                            <div class="channel-funnel__title">Orgânico</div>
+                            <div id="channelFunnelOrganic" class="funnel-chart"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

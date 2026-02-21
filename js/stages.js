@@ -2,6 +2,18 @@ const CONFIG = {
   FUNNEL_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/funnel",
 };
 
+// --------------------------------------------------
+// Funil (ajuste de proporção visual)
+// --------------------------------------------------
+// 1 = linear (padrão) | 0.5 = raiz (recomendado) | 0.35 = mais agressivo
+const FUNNEL_VISUAL_EXPONENT = 0.5;
+
+const toFunnelVisualValue = (value) => {
+  const n = Math.max(0, Number(value) || 0);
+  // Mantém ordenação (monotônico) e "comprime" diferenças grandes.
+  return Math.pow(n, FUNNEL_VISUAL_EXPONENT);
+};
+
 const formatters = {
   number: new Intl.NumberFormat("pt-BR"),
 };
@@ -46,7 +58,14 @@ const elements = {
   applyEntryOnly: $id("applyEntryOnly"),
 
   moneyStatusChart: $id("moneyStatusChart"),
+
+  // tabela (se você mantiver)
   channelFunnelBody: $id("channelFunnelBody"),
+
+  // 3 funis (se você adicionar no HTML)
+  channelFunnelGoogle: $id("channelFunnelGoogle"),
+  channelFunnelFacebook: $id("channelFunnelFacebook"),
+  channelFunnelOrganic: $id("channelFunnelOrganic"),
 
   loadingOverlay: $id("loadingOverlay"),
   errorToast: $id("errorToast"),
@@ -58,6 +77,11 @@ const state = {
   funnelData: null,
   charts: {
     moneyStatus: null,
+    byChannel: {
+      google: null,
+      facebook: null,
+      organic: null,
+    },
   },
 };
 
@@ -66,6 +90,7 @@ const state = {
 // ----------------------------
 
 const funnelChart = {
+  // -------- Money Status (funil principal) --------
   disposeMoneyStatusChart() {
     const chartRef = state.charts.moneyStatus;
     if (!chartRef) return;
@@ -80,8 +105,9 @@ const funnelChart = {
   ensureMoneyStatusChart() {
     if (state.charts.moneyStatus) return state.charts.moneyStatus;
     if (!elements.moneyStatusChart) return null;
+
     if (typeof am5 === "undefined" || typeof am5percent === "undefined") {
-      ui.showError("amCharts não carregou (verifique bloqueio de scripts). ");
+      ui.showError("amCharts não carregou (verifique bloqueio de scripts).");
       return null;
     }
 
@@ -91,7 +117,6 @@ const funnelChart = {
     const root = am5.Root.new("moneyStatusChart");
     root.setThemes([am5themes_Animated.new(root)]);
 
-    // Formatação numérica/percentual
     root.numberFormatter.setAll({
       intlLocales: "pt-BR",
       numberFormat: "#,###.##",
@@ -107,41 +132,32 @@ const funnelChart = {
       am5percent.FunnelSeries.new(root, {
         alignLabels: false,
         orientation: "vertical",
-        valueField: "value",
+        valueField: "value", // valor visual comprimido
         categoryField: "category",
       })
     );
 
-    // Labels no centro do slice
+    // Labels no centro do slice (sempre com valores REAIS)
     series.labels.template.setAll({
-      text: "{category}: {value.formatNumber('#,###')} ({cumPctText})",
+      text: "{category}: {rawValueText} ({cumPctText})",
       centerX: am5.p50,
       x: am5.p50,
       oversizedBehavior: "wrap",
       fontSize: 12,
     });
 
-    // Tooltip com detalhes (acumulado + no estágio)
+    // Tooltip com detalhes (reais)
     series.slices.template.setAll({
       tooltipText:
-        "{category}\nAcumulado: {value.formatNumber('#,###')} ({cumPctText})\nNo estágio: {stageCountText} ({stagePctText})",
+        "{category}\nAcumulado: {rawValueText} ({cumPctText})\nNo estágio: {stageCountText} ({stagePctText})",
     });
 
-    // Remove ticks (fica mais limpo, já que o label está no centro)
+    // Remove ticks (mais limpo)
     series.ticks.template.setAll({
       forceHidden: true,
     });
 
-    const legend = chart.children.push(
-      am5.Legend.new(root, {
-        centerX: am5.p50,
-        x: am5.p50,
-        marginTop: 10,
-        marginBottom: 0,
-      })
-    );
-
-    state.charts.moneyStatus = { root, chart, series, legend, appeared: false };
+    state.charts.moneyStatus = { root, chart, series, appeared: false };
     return state.charts.moneyStatus;
   },
 
@@ -149,7 +165,7 @@ const funnelChart = {
     const stages = moneyStatusPayload?.stages;
     if (!stages) return null;
 
-    // contagem "no estágio" (a mesma da tabela atual)
+    // contagem "no estágio" (a mesma da tabela anterior)
     const stageCounts = STAGES_ORDER.map((stage) => sumMoneyStageCount(stages, stage));
     const totalAll = stageCounts.reduce((acc, n) => acc + (n || 0), 0);
 
@@ -161,13 +177,25 @@ const funnelChart = {
       const stagePct = totalAll > 0 ? (stageCount / totalAll) * 100 : 0;
       const cumPct = totalAll > 0 ? (remaining / totalAll) * 100 : 0;
 
+      const rawCum = remaining;
+      const visualCum = toFunnelVisualValue(rawCum);
+
       const item = {
         category: stage,
-        value: remaining,
-        // campos extras para tooltip/label
+
+        // tamanho do slice (comprimido)
+        value: visualCum,
+
+        // valores reais para exibição
+        rawValue: rawCum,
+        rawValueText: utils.formatNumber(rawCum),
+
+        // extras (no estágio)
         stageCount,
         stageCountText: utils.formatNumber(stageCount),
         stagePctText: utils.formatPercentage(stagePct),
+
+        // acumulado %
         cumPctText: utils.formatPercentage(cumPct),
       };
 
@@ -205,13 +233,174 @@ const funnelChart = {
     }
 
     chartRef.series.data.setAll(data);
-    chartRef.legend.data.setAll(chartRef.series.dataItems);
 
     if (!chartRef.appeared) {
       chartRef.series.appear(900);
       chartRef.chart.appear(900, 80);
       chartRef.appeared = true;
     }
+  },
+
+  // -------- By Channel (3 funis lado a lado) --------
+  disposeByChannelCharts() {
+    const refs = state.charts.byChannel;
+    if (!refs) return;
+
+    ["google", "facebook", "organic"].forEach((k) => {
+      const ref = refs[k];
+      if (!ref) return;
+      try {
+        ref.root.dispose();
+      } catch (_) {
+        // ignore
+      }
+      refs[k] = null;
+    });
+  },
+
+  ensureByChannelChart(channelKey, element) {
+    if (!element) return null;
+    if (state.charts.byChannel?.[channelKey]) return state.charts.byChannel[channelKey];
+
+    if (typeof am5 === "undefined" || typeof am5percent === "undefined") {
+      ui.showError("amCharts não carregou (verifique bloqueio de scripts).");
+      return null;
+    }
+
+    // limpa qualquer placeholder
+    element.innerHTML = "";
+
+    const root = am5.Root.new(element.id);
+    root.setThemes([am5themes_Animated.new(root)]);
+
+    root.numberFormatter.setAll({
+      intlLocales: "pt-BR",
+      numberFormat: "#,###.##",
+    });
+
+    const chart = root.container.children.push(
+      am5percent.SlicedChart.new(root, {
+        layout: root.verticalLayout,
+      })
+    );
+
+    const series = chart.series.push(
+      am5percent.FunnelSeries.new(root, {
+        alignLabels: false,
+        orientation: "vertical",
+        valueField: "value",
+        categoryField: "category",
+      })
+    );
+
+    series.labels.template.setAll({
+      text: "{category}: {rawValueText} ({cumPctText})",
+      centerX: am5.p50,
+      x: am5.p50,
+      oversizedBehavior: "wrap",
+      fontSize: 12,
+    });
+
+    series.slices.template.setAll({
+      tooltipText:
+        "{category}\nAcumulado: {rawValueText} ({cumPctText})\nNo estágio: {stageCountText} ({stagePctText})",
+    });
+
+    series.ticks.template.setAll({ forceHidden: true });
+
+    const ref = { root, chart, series, appeared: false };
+    state.charts.byChannel[channelKey] = ref;
+    return ref;
+  },
+
+  buildByChannelData(byChannelPayload, channelKey) {
+    const stages = byChannelPayload?.stages;
+    if (!stages) return null;
+
+    const stageCounts = STAGES_ORDER.map((stage) => {
+      const s = stages?.[stage];
+      return (s?.[channelKey]?.count || 0) * 1;
+    });
+
+    const totalAll = stageCounts.reduce((acc, n) => acc + (n || 0), 0);
+    let remaining = totalAll;
+
+    return STAGES_ORDER.map((stage, idx) => {
+      const stageCount = stageCounts[idx] || 0;
+      const stagePct = totalAll > 0 ? (stageCount / totalAll) * 100 : 0;
+      const cumPct = totalAll > 0 ? (remaining / totalAll) * 100 : 0;
+
+      const rawCum = remaining;
+      const visualCum = toFunnelVisualValue(rawCum);
+
+      const item = {
+        category: stage,
+        value: visualCum,
+
+        rawValue: rawCum,
+        rawValueText: utils.formatNumber(rawCum),
+
+        stageCount,
+        stageCountText: utils.formatNumber(stageCount),
+        stagePctText: utils.formatPercentage(stagePct),
+
+        cumPctText: utils.formatPercentage(cumPct),
+      };
+
+      remaining -= stageCount;
+      return item;
+    });
+  },
+
+  renderByChannelFunnels(byChannelPayload) {
+    const targets = [
+      { key: "google", el: elements.channelFunnelGoogle },
+      { key: "facebook", el: elements.channelFunnelFacebook },
+      { key: "organic", el: elements.channelFunnelOrganic },
+    ];
+
+    // Se nenhum container existir, não faz nada (HTML não foi alterado)
+    const hasAny = targets.some((t) => !!t.el);
+    if (!hasAny) return;
+
+    if (!byChannelPayload?.stages) {
+      // sem dados => limpa charts + placeholder
+      targets.forEach(({ key, el }) => {
+        if (!el) return;
+        const ref = state.charts.byChannel?.[key];
+        if (ref) {
+          try {
+            ref.root.dispose();
+          } catch (_) { }
+          state.charts.byChannel[key] = null;
+        }
+        el.innerHTML = `
+          <div class="empty-state" style="padding: 24px;">
+            <div class="empty-state__icon">📊</div>
+            <p>Sem dados</p>
+          </div>
+        `;
+      });
+      return;
+    }
+
+    targets.forEach(({ key, el }) => {
+      if (!el) return;
+
+      const chartRef = this.ensureByChannelChart(key, el);
+      if (!chartRef) return;
+
+      const data = this.buildByChannelData(byChannelPayload, key);
+      if (!data) return;
+
+      chartRef.series.data.setAll(data);
+
+      if (!chartRef.appeared) {
+        chartRef.series.appear(900);
+        chartRef.chart.appear(900, 80);
+        chartRef.appeared = true;
+      }
+    });
   },
 };
 
@@ -277,13 +466,7 @@ const STAGE_VALUE_MAP = {
   "1ª Interação": "Apresentação",
 };
 
-const STAGES_ORDER = [
-  "Lead",
-  "Apresentação",
-  "Proposta Enviada",
-  "Pagamento Pendente",
-  "Assinatura",
-];
+const STAGES_ORDER = ["Lead", "Apresentação", "Proposta Enviada", "Pagamento Pendente", "Assinatura"];
 
 const bucketKeys = (stageLabel) =>
   stageLabel === "Apresentação" ? ["Apresentação", "1ª Interação"] : [stageLabel];
@@ -293,13 +476,11 @@ const readMoneyCount = (stages, key) => {
   if (!v) return 0;
   if (typeof v.count === "number") return v.count || 0;
   if (v.all && typeof v.all.count === "number") return v.all.count || 0;
-
   return 0;
 };
 
 const sumMoneyStageCount = (stages, stageLabel) =>
   bucketKeys(stageLabel).reduce((acc, k) => acc + readMoneyCount(stages, k), 0);
-
 
 const funnelRender = {
   row(stage, groups, highlight = false) {
@@ -321,24 +502,6 @@ const funnelRender = {
     `;
   },
 
-  totalRow(stage, groups) {
-    const cells = groups
-      .map(
-        (g) => `
-          <td><strong>${utils.formatNumber(g.count)}</strong></td>
-          <td><strong>${utils.formatPercentage(g.percentage)}</strong></td>
-        `
-      )
-      .join("");
-
-    return `
-      <tr class="total-row">
-        <td><strong>${stage}</strong></td>
-        ${cells}
-      </tr>
-    `;
-  },
-
   totalRowCountsOnly(stage, counts) {
     const cells = counts.map((c) => `<td><strong>${utils.formatNumber(c)}</strong></td><td></td>`).join("");
     return `
@@ -354,36 +517,6 @@ const funnelRender = {
     return keys.map((k) => STAGES_ORDER.reduce((acc, s) => acc + (stages?.[s]?.[k]?.count || 0), 0));
   },
 
-  buildTotalMoneyStatus(stages) {
-    const allCount = STAGES_ORDER.reduce((acc, s) => acc + (stages?.[s]?.all?.count || 0), 0);
-    const yesCount = STAGES_ORDER.reduce((acc, s) => acc + (stages?.[s]?.moneyYes?.count || 0), 0);
-    const noCount = STAGES_ORDER.reduce((acc, s) => acc + (stages?.[s]?.moneyNo?.count || 0), 0);
-    const otherCount = STAGES_ORDER.reduce((acc, s) => acc + (stages?.[s]?.moneyOther?.count || 0), 0);
-
-    const pct = (count) => {
-      const v = utils.safeDivide(count, allCount);
-      return v === null ? 0 : Number((v * 100).toFixed(2));
-    };
-
-    return [
-      { count: allCount, percentage: 100 },
-      { count: yesCount, percentage: pct(yesCount) },
-      { count: noCount, percentage: pct(noCount) },
-      { count: otherCount, percentage: pct(otherCount) },
-    ];
-  },
-
-  buildConversandoMoneyStatus(stages) {
-    const sumStages = ["Apresentação", "Proposta Enviada", "Pagamento Pendente", "Assinatura"];
-    const keys = ["all", "moneyYes", "moneyNo", "moneyOther"];
-
-    return keys.map((k) => {
-      const pct = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.percentage || 0), 0);
-      const count = sumStages.reduce((acc, s) => acc + (stages?.[s]?.[k]?.count || 0), 0);
-      return { count, percentage: Number(pct.toFixed(2)) };
-    });
-  },
-
   buildConversandoByChannel(stages) {
     const sumStages = ["Apresentação", "Proposta Enviada", "Pagamento Pendente", "Assinatura"];
     const keys = ["google", "facebook", "organic"];
@@ -396,10 +529,9 @@ const funnelRender = {
   },
 
   moneyStatusTable(data) {
-    // Mantido por compatibilidade (não renderiza mais tabela); agora vira funil.
+    // Mantido por compatibilidade: agora vira funil (chart)
     funnelChart.renderMoneyStatus(data);
   },
-
 
   channelTable(data) {
     if (!elements.channelFunnelBody) return;
@@ -436,6 +568,8 @@ async function loadStages() {
   }
 
   ui.showLoading();
+
+  // skeleton da tabela (se existir)
   if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderSkeleton(6, 7);
 
   try {
@@ -450,9 +584,15 @@ async function loadStages() {
     state.funnelData = payload;
 
     funnelRender.moneyStatusTable(payload?.moneyStatus || null);
+
+    // tabela (se você mantiver)
     funnelRender.channelTable(payload?.byChannel || null);
+
+    // 3 funis por canal (se os containers existirem no HTML)
+    funnelChart.renderByChannelFunnels(payload?.byChannel || null);
   } catch (e) {
     ui.showError(`Failed to load funnel: ${e.message}`);
+
     if (elements.moneyStatusChart) {
       funnelChart.disposeMoneyStatusChart();
       elements.moneyStatusChart.innerHTML = `
@@ -462,7 +602,23 @@ async function loadStages() {
         </div>
       `;
     }
-    if (elements.channelFunnelBody) elements.channelFunnelBody.innerHTML = ui.renderEmptyState("Erro ao carregar", 7);
+
+    // limpa tabela
+    if (elements.channelFunnelBody) {
+      elements.channelFunnelBody.innerHTML = ui.renderEmptyState("Erro ao carregar", 7);
+    }
+
+    // limpa funis por canal
+    funnelChart.disposeByChannelCharts();
+    [elements.channelFunnelGoogle, elements.channelFunnelFacebook, elements.channelFunnelOrganic].forEach((el) => {
+      if (!el) return;
+      el.innerHTML = `
+        <div class="empty-state" style="padding: 24px;">
+          <div class="empty-state__icon">⚠️</div>
+          <p>Erro ao carregar</p>
+        </div>
+      `;
+    });
   } finally {
     ui.hideLoading();
   }
