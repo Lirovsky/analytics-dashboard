@@ -3,7 +3,7 @@
     if (page !== 'leads-gustavo') return;
 
     const CONFIG = {
-        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor',
+        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor-individual',
     };
 
     // Nome "fixo" do vendedor (use aliases normalizados: minúsculo + sem acentos)
@@ -62,6 +62,11 @@
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             const yyyy = d.getFullYear();
             return `${dd}/${mm}/${yyyy}`;
+        },
+        formatCurrencyBRL(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         },
 
         removeDiacritics(value) {
@@ -277,6 +282,8 @@
         kpiPequenos: dom.byId('kpiPequenos'),
         kpiGrandes: dom.byId('kpiGrandes'),
         kpiMoneyYes: dom.byId('kpiMoneyYes'),
+        kpiTicketMedio: dom.byId('kpiTicketMedio'),
+        kpiTaxaConversao: dom.byId('kpiTaxaConversao'),
 
         recordsBody: dom.byId('recordsBody'),
         recordsPrev: dom.byId('recordsPrev'),
@@ -395,12 +402,38 @@
         },
     };
 
-    function extractRows(payload) {
-        if (Array.isArray(payload)) return payload;
-        if (payload?.data && Array.isArray(payload.data)) return payload.data;
-        if (payload?.items && Array.isArray(payload.items)) return payload.items;
-        if (payload?.result && Array.isArray(payload.result)) return payload.result;
-        return [];
+    function extractPayload(payload) {
+        const out = { rows: [], vendasPorVendedor: [], managers: [] };
+
+        // Novo formato: array com 3 itens (registros + vendas_por_vendedor + managers)
+        if (Array.isArray(payload)) {
+            const registrosItem = payload.find((x) => Array.isArray(x?.registros));
+            if (registrosItem) out.rows = registrosItem.registros;
+
+            const vendasItem = payload.find((x) => Array.isArray(x?.vendas_por_vendedor));
+            if (vendasItem) out.vendasPorVendedor = vendasItem.vendas_por_vendedor;
+
+            const managersItem = payload.find((x) => Array.isArray(x?.managers));
+            if (managersItem) out.managers = managersItem.managers;
+
+            // Backward compatibility: alguns endpoints antigos retornam a lista de registros direto
+            if (!out.rows.length && !out.vendasPorVendedor.length && !out.managers.length) {
+                out.rows = payload;
+            }
+
+            return out;
+        }
+
+        // Outros formatos comuns
+        if (Array.isArray(payload?.registros)) out.rows = payload.registros;
+        else if (payload?.data && Array.isArray(payload.data)) out.rows = payload.data;
+        else if (payload?.items && Array.isArray(payload.items)) out.rows = payload.items;
+        else if (payload?.result && Array.isArray(payload.result)) out.rows = payload.result;
+
+        if (Array.isArray(payload?.vendas_por_vendedor)) out.vendasPorVendedor = payload.vendas_por_vendedor;
+        if (Array.isArray(payload?.managers)) out.managers = payload.managers;
+
+        return out;
     }
 
     function getField(obj, keys) {
@@ -641,6 +674,39 @@
         if (elements.kpiMoneyYes) elements.kpiMoneyYes.textContent = totalShown ? `${pct}%` : '—';
     }
 
+
+    function updateVendorKpis(vendasPorVendedor, managers) {
+        const aliases = Array.from(FIXED_VENDOR_ALIASES).map(normalizeVendor);
+
+        const matchAlias = (name) => {
+            const n = normalizeVendor(name);
+            return aliases.includes(n);
+        };
+
+        // Ticket médio mensal (managers[])
+        const managerRow = (Array.isArray(managers) ? managers : []).find((m) =>
+            matchAlias(m?.manager ?? m?.Manager ?? m?.vendedor ?? m?.Vendedor)
+        );
+
+        const ticket = managerRow?.ticket_medio_mensal;
+        if (elements.kpiTicketMedio) {
+            elements.kpiTicketMedio.textContent = Number.isFinite(Number(ticket)) ? utils.formatCurrencyBRL(ticket) : '—';
+        }
+
+        // Taxa de conversão (vendas_por_vendedor[])
+        const vendasRow = (Array.isArray(vendasPorVendedor) ? vendasPorVendedor : []).find((v) =>
+            matchAlias(v?.vendedor ?? v?.Vendedor ?? v?.seller ?? v?.manager)
+        );
+
+        const convPct = vendasRow?.taxa_conversao_pct;
+        if (elements.kpiTaxaConversao) {
+            const n = Number(convPct);
+            elements.kpiTaxaConversao.textContent = Number.isFinite(n)
+                ? `${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+                : '—';
+        }
+    }
+
     async function loadData() {
         const entryStart = elements.entryStartInput?.value || '';
         const entryEnd = elements.entryEndInput?.value || '';
@@ -655,12 +721,15 @@
 
         try {
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
-            const allRows = extractRows(res).map(normalizeRow);
+            const { rows: rawRows, vendasPorVendedor, managers } = extractPayload(res);
+            const allRows = (rawRows || []).map(normalizeRow);
 
             // Filtra SOMENTE o vendedor fixo
             const rows = allRows.filter((r) => isFixedVendor(r.VENDEDOR));
 
             state.rows = rows;
+
+            updateVendorKpis(vendasPorVendedor, managers);
 
             setOptions(elements.substageSelect, uniqueSorted(rows, 'SUBSTAGE'), { keepSelected: true, includeNotInformed: true });
             setOptions(elements.areaSelect, uniqueSorted(rows, 'AREA'), { keepSelected: true, includeNotInformed: true });

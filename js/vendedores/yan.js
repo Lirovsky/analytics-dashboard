@@ -3,7 +3,7 @@
     if (page !== 'leads-yan') return;
 
     const CONFIG = {
-        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor',
+        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor-individual',
     };
 
     // Nome "fixo" do vendedor (use aliases normalizados: minúsculo + sem acentos)
@@ -21,6 +21,19 @@
             return this.getDateString(new Date());
         },
 
+
+
+        formatBRL(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        },
+
+        formatPct(value, digits = 2) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            return `${n.toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
+        },
         escapeHtml(value) {
             return String(value ?? '')
                 .replaceAll('&', '&amp;')
@@ -101,6 +114,19 @@
         return FIXED_VENDOR_ALIASES.has(normalizeVendor(value));
     }
 
+
+
+    function hasVendorAlias(value) {
+        const n = normalizeVendor(value);
+        if (!n) return false;
+        const words = n.split(/\s+/).filter(Boolean);
+        for (const a of FIXED_VENDOR_ALIASES) {
+            if (n === a) return true;
+            if (n.startsWith(a + ' ')) return true;
+            if (words.includes(a)) return true;
+        }
+        return false;
+    }
     function normalizeMoney(value) {
         const v = String(value ?? '').trim().toLowerCase();
         if (!v) return 'unknown';
@@ -278,6 +304,9 @@
         kpiGrandes: dom.byId('kpiGrandes'),
         kpiMoneyYes: dom.byId('kpiMoneyYes'),
 
+
+        kpiTicketMedio: dom.byId('kpiTicketMedio'),
+        kpiTaxaConversao: dom.byId('kpiTaxaConversao'),
         recordsBody: dom.byId('recordsBody'),
         recordsPrev: dom.byId('recordsPrev'),
         recordsNext: dom.byId('recordsNext'),
@@ -395,12 +424,33 @@
         },
     };
 
+    function parseCompositePayload(payload) {
+        // Novo formato: array com 3 itens:
+        // [ { registros: [...] }, { vendas_por_vendedor: [...] }, { managers: [...] } ]
+        // Formato antigo: array direto de registros (leads)
+        if (Array.isArray(payload)) {
+            const looksComposite = payload.some((x) => x && typeof x === 'object' && (Array.isArray(x.registros) || Array.isArray(x.vendas_por_vendedor) || Array.isArray(x.managers)));
+            if (looksComposite) {
+                const registros = Array.isArray(payload?.[0]?.registros) ? payload[0].registros : [];
+                const vendasItem = payload.find((x) => Array.isArray(x?.vendas_por_vendedor));
+                const managersItem = payload.find((x) => Array.isArray(x?.managers));
+                return {
+                    registros,
+                    vendasPorVendedor: vendasItem?.vendas_por_vendedor || [],
+                    managers: managersItem?.managers || [],
+                };
+            }
+            return { registros: payload, vendasPorVendedor: [], managers: [] };
+        }
+
+        const wrapped = payload?.data || payload?.items || payload?.result;
+        if (Array.isArray(wrapped)) return parseCompositePayload(wrapped);
+
+        return { registros: [], vendasPorVendedor: [], managers: [] };
+    }
+
     function extractRows(payload) {
-        if (Array.isArray(payload)) return payload;
-        if (payload?.data && Array.isArray(payload.data)) return payload.data;
-        if (payload?.items && Array.isArray(payload.items)) return payload.items;
-        if (payload?.result && Array.isArray(payload.result)) return payload.result;
-        return [];
+        return parseCompositePayload(payload).registros;
     }
 
     function getField(obj, keys) {
@@ -655,13 +705,25 @@
 
         try {
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
-            const allRows = extractRows(res).map(normalizeRow);
+            const parsed = parseCompositePayload(res);
+            const allRows = (parsed.registros || []).map(normalizeRow);
 
             // Filtra SOMENTE o vendedor fixo
             const rows = allRows.filter((r) => isFixedVendor(r.VENDEDOR));
 
             state.rows = rows;
 
+
+
+            // KPIs de Vendas (Ticket médio mensal / Conversão) para o vendedor fixo
+            const managerRow = (parsed.managers || []).find((m) => hasVendorAlias(m.manager));
+            const ticketMedioMensal = managerRow?.ticket_medio_mensal;
+
+            const vendaRow = (parsed.vendasPorVendedor || []).find((v) => hasVendorAlias(v.vendedor));
+            const taxaConversaoPct = vendaRow?.taxa_conversao_pct;
+
+            if (elements.kpiTicketMedio) elements.kpiTicketMedio.textContent = utils.formatBRL(ticketMedioMensal);
+            if (elements.kpiTaxaConversao) elements.kpiTaxaConversao.textContent = utils.formatPct(taxaConversaoPct, 2);
             setOptions(elements.substageSelect, uniqueSorted(rows, 'SUBSTAGE'), { keepSelected: true, includeNotInformed: true });
             setOptions(elements.areaSelect, uniqueSorted(rows, 'AREA'), { keepSelected: true, includeNotInformed: true });
             setOptions(elements.timeSelect, uniqueSorted(rows, 'TIME'), { keepSelected: true, includeNotInformed: true });

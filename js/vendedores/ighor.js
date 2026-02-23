@@ -1,13 +1,13 @@
 (() => {
     const page = document.documentElement.getAttribute('data-page');
-    if (page !== 'leads-estevao') return;
+    if (page !== 'leads-ighor') return;
 
     const CONFIG = {
         ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor-individual',
     };
 
     // Nome "fixo" do vendedor (use aliases normalizados: minúsculo + sem acentos)
-    const FIXED_VENDOR_ALIASES = new Set(['estevao', 'stevao', 'estevaoo', 'stevaoo']);
+    const FIXED_VENDOR_ALIASES = new Set(['ighor']);
     const NAO_INFORMADO_VALUE = '__nao_informado__';
 
     const utils = {
@@ -21,6 +21,19 @@
             return this.getDateString(new Date());
         },
 
+
+
+        formatBRL(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        },
+
+        formatPct(value, digits = 2) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            return `${n.toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
+        },
         escapeHtml(value) {
             return String(value ?? '')
                 .replaceAll('&', '&amp;')
@@ -64,18 +77,6 @@
             return `${dd}/${mm}/${yyyy}`;
         },
 
-        formatBRL(value) {
-            const n = Number(value);
-            if (!Number.isFinite(n)) return '—';
-            try {
-                return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } catch (_) {
-                // fallback simples
-                return `R$ ${n.toFixed(2)}`;
-            }
-        },
-
-
         removeDiacritics(value) {
             return String(value ?? '')
                 .normalize('NFD')
@@ -113,6 +114,19 @@
         return FIXED_VENDOR_ALIASES.has(normalizeVendor(value));
     }
 
+
+
+    function hasVendorAlias(value) {
+        const n = normalizeVendor(value);
+        if (!n) return false;
+        const words = n.split(/\s+/).filter(Boolean);
+        for (const a of FIXED_VENDOR_ALIASES) {
+            if (n === a) return true;
+            if (n.startsWith(a + ' ')) return true;
+            if (words.includes(a)) return true;
+        }
+        return false;
+    }
     function normalizeMoney(value) {
         const v = String(value ?? '').trim().toLowerCase();
         if (!v) return 'unknown';
@@ -290,9 +304,9 @@
         kpiGrandes: dom.byId('kpiGrandes'),
         kpiMoneyYes: dom.byId('kpiMoneyYes'),
 
+
         kpiTicketMedio: dom.byId('kpiTicketMedio'),
         kpiTaxaConversao: dom.byId('kpiTaxaConversao'),
-
         recordsBody: dom.byId('recordsBody'),
         recordsPrev: dom.byId('recordsPrev'),
         recordsNext: dom.byId('recordsNext'),
@@ -410,38 +424,33 @@
         },
     };
 
-    function extractPayload(payload) {
-        // Payload novo (leads-vendedor-individual) vem como array com 3 itens:
-        // 1) { registros: [...] }
-        // 2) { vendas_por_vendedor: [...], sales: [...] }
-        // 3) { managers: [...], totais: {...} }
-        const arr =
-            (Array.isArray(payload) && payload) ||
-            (payload?.data && Array.isArray(payload.data) && payload.data) ||
-            (payload?.items && Array.isArray(payload.items) && payload.items) ||
-            (payload?.result && Array.isArray(payload.result) && payload.result) ||
-            [];
-
-        let registros = [];
-        let vendasPorVendedor = [];
-        let managers = [];
-
-        const looksLikeLeadRow = (x) =>
-            x &&
-            (x.VENDEDOR || x.vendedor || x.PHONE || x.phone || x.LINK || x.link || x.ENTRADA || x.entrada || x.ENTREGUE || x.entregue);
-
-        if (Array.isArray(arr)) {
-            arr.forEach((obj) => {
-                if (obj?.registros && Array.isArray(obj.registros)) registros = obj.registros;
-                if (obj?.vendas_por_vendedor && Array.isArray(obj.vendas_por_vendedor)) vendasPorVendedor = obj.vendas_por_vendedor;
-                if (obj?.managers && Array.isArray(obj.managers)) managers = obj.managers;
-            });
-
-            // compatibilidade: se for lista direta de leads (sem wrapper)
-            if (!registros.length && arr.some(looksLikeLeadRow)) registros = arr;
+    function parseCompositePayload(payload) {
+        // Novo formato: array com 3 itens:
+        // [ { registros: [...] }, { vendas_por_vendedor: [...] }, { managers: [...] } ]
+        // Formato antigo: array direto de registros (leads)
+        if (Array.isArray(payload)) {
+            const looksComposite = payload.some((x) => x && typeof x === 'object' && (Array.isArray(x.registros) || Array.isArray(x.vendas_por_vendedor) || Array.isArray(x.managers)));
+            if (looksComposite) {
+                const registros = Array.isArray(payload?.[0]?.registros) ? payload[0].registros : [];
+                const vendasItem = payload.find((x) => Array.isArray(x?.vendas_por_vendedor));
+                const managersItem = payload.find((x) => Array.isArray(x?.managers));
+                return {
+                    registros,
+                    vendasPorVendedor: vendasItem?.vendas_por_vendedor || [],
+                    managers: managersItem?.managers || [],
+                };
+            }
+            return { registros: payload, vendasPorVendedor: [], managers: [] };
         }
 
-        return { registros, vendasPorVendedor, managers };
+        const wrapped = payload?.data || payload?.items || payload?.result;
+        if (Array.isArray(wrapped)) return parseCompositePayload(wrapped);
+
+        return { registros: [], vendasPorVendedor: [], managers: [] };
+    }
+
+    function extractRows(payload) {
+        return parseCompositePayload(payload).registros;
     }
 
     function getField(obj, keys) {
@@ -696,8 +705,8 @@
 
         try {
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
-            const { registros, vendasPorVendedor, managers } = extractPayload(res);
-            const allRows = (registros || []).map(normalizeRow);
+            const parsed = parseCompositePayload(res);
+            const allRows = (parsed.registros || []).map(normalizeRow);
 
             // Filtra SOMENTE o vendedor fixo
             const rows = allRows.filter((r) => isFixedVendor(r.VENDEDOR));
@@ -706,16 +715,15 @@
 
 
 
-            // KPIs agregados (Ticket médio mensal / Taxa de conversão) — filtrados apenas para o vendedor fixo
-            const managerRow = (managers || []).find((m) => isFixedVendor(m?.manager));
-            const ticket = managerRow?.ticket_medio_mensal;
-            if (elements.kpiTicketMedio) elements.kpiTicketMedio.textContent = utils.formatBRL(ticket);
+            // KPIs de Vendas (Ticket médio mensal / Conversão) para o vendedor fixo
+            const managerRow = (parsed.managers || []).find((m) => hasVendorAlias(m.manager));
+            const ticketMedioMensal = managerRow?.ticket_medio_mensal;
 
-            const convRow = (vendasPorVendedor || []).find((v) => isFixedVendor(v?.vendedor));
-            const convPct = Number(convRow?.taxa_conversao_pct);
-            if (elements.kpiTaxaConversao) {
-                elements.kpiTaxaConversao.textContent = Number.isFinite(convPct) ? `${convPct.toFixed(2)}%` : '—';
-            }
+            const vendaRow = (parsed.vendasPorVendedor || []).find((v) => hasVendorAlias(v.vendedor));
+            const taxaConversaoPct = vendaRow?.taxa_conversao_pct;
+
+            if (elements.kpiTicketMedio) elements.kpiTicketMedio.textContent = utils.formatBRL(ticketMedioMensal);
+            if (elements.kpiTaxaConversao) elements.kpiTaxaConversao.textContent = utils.formatPct(taxaConversaoPct, 2);
             setOptions(elements.substageSelect, uniqueSorted(rows, 'SUBSTAGE'), { keepSelected: true, includeNotInformed: true });
             setOptions(elements.areaSelect, uniqueSorted(rows, 'AREA'), { keepSelected: true, includeNotInformed: true });
             setOptions(elements.timeSelect, uniqueSorted(rows, 'TIME'), { keepSelected: true, includeNotInformed: true });

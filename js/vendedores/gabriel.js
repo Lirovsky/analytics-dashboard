@@ -3,7 +3,7 @@
     if (page !== 'leads-gabriel') return;
 
     const CONFIG = {
-        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor',
+        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor-individual',
     };
 
     // Nome "fixo" do vendedor (use aliases normalizados: minúsculo + sem acentos)
@@ -63,6 +63,20 @@
             const yyyy = d.getFullYear();
             return `${dd}/${mm}/${yyyy}`;
         },
+
+
+        formatCurrencyBRL(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        },
+
+        formatPercent(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            return `${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+        },
+
 
         removeDiacritics(value) {
             return String(value ?? '')
@@ -278,6 +292,9 @@
         kpiGrandes: dom.byId('kpiGrandes'),
         kpiMoneyYes: dom.byId('kpiMoneyYes'),
 
+        kpiTicketMedio: dom.byId('kpiTicketMedio'),
+        kpiTaxaConversao: dom.byId('kpiTaxaConversao'),
+
         recordsBody: dom.byId('recordsBody'),
         recordsPrev: dom.byId('recordsPrev'),
         recordsNext: dom.byId('recordsNext'),
@@ -402,6 +419,57 @@
         if (payload?.result && Array.isArray(payload.result)) return payload.result;
         return [];
     }
+
+
+    function parseCompositePayload(payload) {
+        // Novo webhook retorna um array com 3 itens:
+        // 1) { registros: [...] }
+        // 2) { vendas_por_vendedor: [...], sales: [...] }
+        // 3) { managers: [...], totais: {...} }
+        if (!Array.isArray(payload)) {
+            return { registros: extractRows(payload), vendasBlock: null, totaisBlock: null };
+        }
+
+        let registros = null;
+        let vendasBlock = null;
+        let totaisBlock = null;
+
+        for (const it of payload) {
+            if (it && Array.isArray(it.registros)) registros = it.registros;
+            if (it && Array.isArray(it.vendas_por_vendedor)) vendasBlock = it;
+            if (it && it.totais && Array.isArray(it.managers)) totaisBlock = it;
+        }
+
+        // fallback compat: se não veio no formato composto, trata como lista de registros
+        if (!Array.isArray(registros)) {
+            return { registros: extractRows(payload), vendasBlock, totaisBlock };
+        }
+
+        return { registros, vendasBlock, totaisBlock };
+    }
+
+    function getVendorMetrics({ vendasBlock, totaisBlock }) {
+        const aliases = FIXED_VENDOR_ALIASES;
+
+        const matchAlias = (name) => aliases.has(normalizeVendor(name));
+
+        // Ticket médio mensal (vem de managers[])
+        let ticketMedioMensal = null;
+        if (totaisBlock?.managers?.length) {
+            const m = totaisBlock.managers.find((x) => matchAlias(x?.manager));
+            if (m && m.ticket_medio_mensal !== undefined && m.ticket_medio_mensal !== null) ticketMedioMensal = m.ticket_medio_mensal;
+        }
+
+        // Taxa de conversão (vem de vendas_por_vendedor[])
+        let taxaConversaoPct = null;
+        if (vendasBlock?.vendas_por_vendedor?.length) {
+            const v = vendasBlock.vendas_por_vendedor.find((x) => matchAlias(x?.vendedor));
+            if (v && v.taxa_conversao_pct !== undefined && v.taxa_conversao_pct !== null) taxaConversaoPct = v.taxa_conversao_pct;
+        }
+
+        return { ticketMedioMensal, taxaConversaoPct };
+    }
+
 
     function getField(obj, keys) {
         for (const k of keys) {
@@ -654,8 +722,21 @@
         if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 14);
 
         try {
+
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
-            const allRows = extractRows(res).map(normalizeRow);
+            const parsed = parseCompositePayload(res);
+
+            // KPIs novos (calculados no backend por vendedor)
+            const { ticketMedioMensal, taxaConversaoPct } = getVendorMetrics(parsed);
+
+            if (elements.kpiTicketMedio) {
+                elements.kpiTicketMedio.textContent = ticketMedioMensal !== null ? utils.formatCurrencyBRL(ticketMedioMensal) : '—';
+            }
+            if (elements.kpiTaxaConversao) {
+                elements.kpiTaxaConversao.textContent = taxaConversaoPct !== null ? utils.formatPercent(taxaConversaoPct) : '—';
+            }
+
+            const allRows = (parsed.registros || []).map(normalizeRow);
 
             // Filtra SOMENTE o vendedor fixo
             const rows = allRows.filter((r) => isFixedVendor(r.VENDEDOR));

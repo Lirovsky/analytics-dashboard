@@ -3,7 +3,7 @@
     if (page !== 'leads-luciano') return;
 
     const CONFIG = {
-        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor',
+        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor-individual',
     };
 
     // Nome "fixo" do vendedor (use aliases normalizados: minúsculo + sem acentos)
@@ -90,6 +90,22 @@
             if (s.includes('meet')) return 'badge--substage-meet';
             if (s.includes('test')) return 'badge--substage-teste';
             return 'badge--substage-outro';
+        },
+
+        formatCurrencyBRL(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            try {
+                return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+            } catch (e) {
+                return `R$ ${n.toFixed(2)}`.replace('.', ',');
+            }
+        },
+
+        formatPercentPt(value, digits = 2) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            return `${n.toFixed(digits).replace('.', ',')}%`;
         },
     };
 
@@ -278,6 +294,9 @@
         kpiGrandes: dom.byId('kpiGrandes'),
         kpiMoneyYes: dom.byId('kpiMoneyYes'),
 
+        kpiTicketMedio: dom.byId('kpiTicketMedio'),
+        kpiTaxaConversao: dom.byId('kpiTaxaConversao'),
+
         recordsBody: dom.byId('recordsBody'),
         recordsPrev: dom.byId('recordsPrev'),
         recordsNext: dom.byId('recordsNext'),
@@ -402,6 +421,62 @@
         if (payload?.result && Array.isArray(payload.result)) return payload.result;
         return [];
     }
+
+    function looksLikeLeadRow(obj) {
+        if (!obj || typeof obj !== 'object') return false;
+        return (
+            obj.vendedor !== undefined ||
+            obj.VENDEDOR !== undefined ||
+            obj.phone !== undefined ||
+            obj.PHONE !== undefined ||
+            obj.entregue !== undefined ||
+            obj.ENTREGUE !== undefined ||
+            obj.stage !== undefined ||
+            obj.stage_funnel !== undefined ||
+            obj.STAGE !== undefined ||
+            obj.STAGE_FUNNEL !== undefined
+        );
+    }
+
+    // Webhook novo retorna um payload composto (registros + vendas_por_vendedor + managers).
+    function extractCompositePayload(payload) {
+        const items = extractRows(payload);
+
+        const registrosItem = Array.isArray(items) ? items.find((x) => Array.isArray(x?.registros)) : null;
+        const registros = registrosItem?.registros;
+
+        const vendasItem = Array.isArray(items) ? items.find((x) => Array.isArray(x?.vendas_por_vendedor)) : null;
+        const managersItem = Array.isArray(items) ? items.find((x) => Array.isArray(x?.managers)) : null;
+
+        // fallback (endpoint antigo): payload já é o array de registros
+        const fallbackLeads = Array.isArray(items) && items.length && looksLikeLeadRow(items[0]) ? items : [];
+
+        return {
+            registros: Array.isArray(registros) ? registros : fallbackLeads,
+            vendas_por_vendedor: vendasItem?.vendas_por_vendedor || [],
+            managers: managersItem?.managers || [],
+        };
+    }
+
+    function updateSalesKpisForFixedVendor(composite) {
+        const vendasRows = composite?.vendas_por_vendedor || [];
+        const managersRows = composite?.managers || [];
+
+        const vendorVendas = vendasRows.find((r) => isFixedVendor(r?.vendedor));
+        const vendorManager = managersRows.find((r) => isFixedVendor(r?.manager));
+
+        const ticket = vendorManager?.ticket_medio_mensal;
+        const convPct = vendorVendas?.taxa_conversao_pct;
+
+        if (elements.kpiTicketMedio) {
+            elements.kpiTicketMedio.textContent = Number.isFinite(Number(ticket)) ? utils.formatCurrencyBRL(ticket) : '—';
+        }
+
+        if (elements.kpiTaxaConversao) {
+            elements.kpiTaxaConversao.textContent = Number.isFinite(Number(convPct)) ? utils.formatPercentPt(convPct, 2) : '—';
+        }
+    }
+
 
     function getField(obj, keys) {
         for (const k of keys) {
@@ -654,7 +729,12 @@
 
         try {
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
-            const allRows = extractRows(res).map(normalizeRow);
+            const composite = extractCompositePayload(res);
+
+            // KPIs de vendas (Ticket médio mensal + Conversão) para o vendedor fixo
+            updateSalesKpisForFixedVendor(composite);
+
+            const allRows = (composite.registros || []).map(normalizeRow);
 
             // Filtra SOMENTE o vendedor fixo
             const rows = allRows.filter((r) => isFixedVendor(r.VENDEDOR));
@@ -669,6 +749,8 @@
             applyAllFiltersAndRender({ resetPage: true });
         } catch (e) {
             ui.showError(`Failed to load leads: ${e.message}`);
+            if (elements.kpiTicketMedio) elements.kpiTicketMedio.textContent = '—';
+            if (elements.kpiTaxaConversao) elements.kpiTaxaConversao.textContent = '—';
             if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 14);
         } finally {
             ui.hideLoading();

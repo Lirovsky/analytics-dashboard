@@ -52,30 +52,6 @@
         <section class="section">
             <h2 class="section__title">Vendas e LPs</h2>
 
-            <!-- ================= Planilhas Importantes ================= -->
-            <div class="table-block">
-                <div class="table-block__header">
-                    <span class="table-block__icon">📊</span>
-                    <h3>Vendas</h3>
-                    <div class="table-block__meta">
-                        <span class="meta-pill">Total: <strong id="planilhasCount">–</strong></span>
-                    </div>
-                </div>
-
-                <div class="table-wrapper">
-                    <table class="data-table data-table--compact">
-                        <thead>
-                            <tr>
-                                <th data-sort="planilha_name">Vendedor <span class="sort-icon">↕</span>
-                                </th>
-                                <th>Links</th>
-                            </tr>
-                        </thead>
-                        <tbody id="planilhasBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
             <!-- ================= Vendedores (NOVO) ================= -->
             <div class="table-block">
                 <div class="table-block__header">
@@ -123,6 +99,30 @@
             </div>
 
         </section>
+
+        <!-- ================= Planilhas Importantes ================= -->
+        <div class="table-block">
+            <div class="table-block__header">
+                <span class="table-block__icon">📊</span>
+                <h3>Vendas</h3>
+                <div class="table-block__meta">
+                    <span class="meta-pill">Total: <strong id="planilhasCount">–</strong></span>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="data-table data-table--compact">
+                    <thead>
+                        <tr>
+                            <th data-sort="planilha_name">Vendedor <span class="sort-icon">↕</span>
+                            </th>
+                            <th>Links</th>
+                        </tr>
+                    </thead>
+                    <tbody id="planilhasBody"></tbody>
+                </table>
+            </div>
+        </div>
 
         <!-- Loading / Error -->
         <div class="loading-overlay" id="loadingOverlay">

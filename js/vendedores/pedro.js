@@ -3,7 +3,7 @@
     if (page !== 'leads-pedro') return;
 
     const CONFIG = {
-        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor',
+        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor-individual',
     };
 
     // Nome "fixo" do vendedor (use aliases normalizados: minúsculo + sem acentos)
@@ -278,6 +278,9 @@
         kpiGrandes: dom.byId('kpiGrandes'),
         kpiMoneyYes: dom.byId('kpiMoneyYes'),
 
+        kpiTicketMedio: dom.byId('kpiTicketMedio'),
+        kpiTaxaConversao: dom.byId('kpiTaxaConversao'),
+
         recordsBody: dom.byId('recordsBody'),
         recordsPrev: dom.byId('recordsPrev'),
         recordsNext: dom.byId('recordsNext'),
@@ -396,12 +399,22 @@
     };
 
     function extractRows(payload) {
-        if (Array.isArray(payload)) return payload;
+        // Novo payload composto do webhook: [{ registros: [...] }, { vendas_por_vendedor... }, { managers... }]
+        if (Array.isArray(payload)) {
+            const regsObj = payload.find((x) => Array.isArray(x?.registros));
+            if (regsObj) return regsObj.registros;
+
+            // Legacy: o payload já é a lista de linhas
+            return payload;
+        }
+
+        if (payload?.registros && Array.isArray(payload.registros)) return payload.registros;
         if (payload?.data && Array.isArray(payload.data)) return payload.data;
         if (payload?.items && Array.isArray(payload.items)) return payload.items;
         if (payload?.result && Array.isArray(payload.result)) return payload.result;
         return [];
     }
+
 
     function getField(obj, keys) {
         for (const k of keys) {
@@ -484,6 +497,68 @@
             STAGE: stage,
         };
     }
+
+    function toNumber(value) {
+        if (value === null || value === undefined) return 0;
+        if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+
+        const s = String(value).trim();
+        if (!s) return 0;
+
+        // aceita "1.234,56" ou "1234.56"
+        const cleaned = s.includes(',') && s.includes('.')
+            ? s.replace(/\./g, '').replace(',', '.')
+            : s.replace(',', '.');
+
+        const n = Number(cleaned);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function formatBRL(value) {
+        const n = toNumber(value);
+        if (!Number.isFinite(n)) return '—';
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+    }
+
+    function formatPct(value) {
+        const n = toNumber(value);
+        if (!Number.isFinite(n)) return '—';
+        return `${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}%`;
+    }
+
+    function matchesVendorName(name, aliasSet) {
+        const n = normalizeVendor(name);
+        if (!n) return false;
+        if (aliasSet.has(n)) return true;
+        // fallback: contém o alias (caso venha "Pedro ..." etc.)
+        for (const a of aliasSet) {
+            if (n.includes(a)) return true;
+        }
+        return false;
+    }
+
+    function updateSalesKpisFromPayload(payload) {
+        if (!elements.kpiTicketMedio || !elements.kpiTaxaConversao) return;
+
+        const arr = Array.isArray(payload)
+            ? payload
+            : (payload?.data && Array.isArray(payload.data) ? payload.data : []);
+
+        // Ticket médio mensal (vem de "managers")
+        const managersObj = arr.find((x) => Array.isArray(x?.managers));
+        const managerRow = managersObj?.managers?.find((m) => matchesVendorName(m?.manager, FIXED_VENDOR_ALIASES));
+
+        const ticket = managerRow?.ticket_medio_mensal;
+        elements.kpiTicketMedio.textContent = ticket !== undefined && ticket !== null ? formatBRL(ticket) : '—';
+
+        // Taxa de conversão (vem de "vendas_por_vendedor")
+        const vpvObj = arr.find((x) => Array.isArray(x?.vendas_por_vendedor));
+        const vpvRow = vpvObj?.vendas_por_vendedor?.find((v) => matchesVendorName(v?.vendedor, FIXED_VENDOR_ALIASES));
+
+        const convPct = vpvRow?.taxa_conversao_pct;
+        elements.kpiTaxaConversao.textContent = convPct !== undefined && convPct !== null ? formatPct(convPct) : '—';
+    }
+
 
     const render = {
         recordsTable(rows) {
@@ -654,6 +729,7 @@
 
         try {
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
+            updateSalesKpisFromPayload(res);
             const allRows = extractRows(res).map(normalizeRow);
 
             // Filtra SOMENTE o vendedor fixo
