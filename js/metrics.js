@@ -50,6 +50,14 @@ const utils = {
         return n / d;
     },
 
+    normalizeText(text) {
+        return String(text ?? "")
+            .trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+    },
+
     // =========================
     // bases normalizadas
     // =========================
@@ -220,6 +228,14 @@ const campaignsRender = {
         const leadTrial = Number(campaign.lead_trial) || 0;
         const leadTotal = Number.isFinite(Number(campaign.lead_total)) ? Number(campaign.lead_total) : leads + leadTrial;
 
+        const nameRaw = campaign?.name || "–";
+        let displayName = nameRaw;
+
+        // máscara específica: na tabela Orgânico, exibir "orgânico" como "orgânico - trial"
+        if (!includeInvestment && utils.normalizeText(nameRaw) === "organico") {
+            displayName = "orgânico - trial";
+        }
+
         const annualizedValue = utils.getAnnualizedValue(campaign);
         const monthlyEquivValue = utils.getMonthlyEquivValue(campaign);
 
@@ -234,7 +250,7 @@ const campaignsRender = {
         if (includeInvestment) {
             return `
         <tr>
-          <td>${campaign.name || "–"}</td>
+          <td>${displayName}</td>
           <td>${utils.formatNumber(leads)}</td>
           <td>${utils.formatNumber(leadTrial)}</td>
           <td>${utils.formatNumber(leadTotal)}</td>
@@ -253,7 +269,7 @@ const campaignsRender = {
 
         return `
       <tr>
-        <td>${campaign.name || "–"}</td>
+        <td>${displayName}</td>
         <td>${utils.formatNumber(leads)}</td>
         <td>${utils.formatNumber(leadTrial)}</td>
         <td>${utils.formatNumber(leadTotal)}</td>
@@ -428,6 +444,7 @@ const campaignsRender = {
         if (elements.totalAvgGeneral) elements.totalAvgGeneral.textContent = utils.formatDays(totals.weight > 0 ? totals.weightedSum / totals.weight : null);
     },
 };
+
 
 async function loadMetrics(mode = "both") {
     const params = {};
