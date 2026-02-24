@@ -91,6 +91,22 @@
             if (s.includes('test')) return 'badge--substage-teste';
             return 'badge--substage-outro';
         },
+
+        formatCurrencyBRL(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            try {
+                return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+            } catch (e) {
+                return `R$ ${n.toFixed(2)}`.replace('.', ',');
+            }
+        },
+
+        formatPercentPt(value, digits = 2) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            return `${n.toFixed(digits).replace('.', ',')}%`;
+        },
     };
 
     function normalizeVendor(value) {
@@ -107,6 +123,43 @@
         if (['yes', 'sim', 'true', '1', 'y'].includes(v)) return 'yes';
         if (['no', 'não', 'nao', 'false', '0', 'n'].includes(v)) return 'no';
         return 'unknown';
+    }
+
+    function parseMoneyValue(value) {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+
+        let s = String(value).trim();
+        if (!s) return null;
+
+        // remove currency symbols and spaces
+        s = s.replace(/\s/g, '').replace(/R\$/gi, '');
+
+        // keep digits, dot, comma, minus
+        s = s.replace(/[^0-9,\.\-]/g, '');
+        if (!s) return null;
+
+        const lastComma = s.lastIndexOf(',');
+        const lastDot = s.lastIndexOf('.');
+
+        if (lastComma !== -1 && lastDot !== -1) {
+            // decide decimal separator by the last occurrence
+            if (lastComma > lastDot) {
+                // "1.234,56" -> "1234.56"
+                s = s.replace(/\./g, '').replace(/,/g, '.');
+            } else {
+                // "1,234.56" -> "1234.56"
+                s = s.replace(/,/g, '');
+            }
+        } else if (lastComma !== -1) {
+            // "1234,56" -> "1234.56"
+            s = s.replace(/,/g, '.');
+        } else {
+            // only dot or only digits -> ok
+        }
+
+        const n = Number(s);
+        return Number.isFinite(n) ? n : null;
     }
 
     function normalizeStage(value) {
@@ -280,6 +333,8 @@
 
         kpiTicketMedio: dom.byId('kpiTicketMedio'),
         kpiTaxaConversao: dom.byId('kpiTaxaConversao'),
+        kpiTotalPagamentoPendente: dom.byId('kpiTotalPagamentoPendente'),
+        kpiTotalNegociacao: dom.byId('kpiTotalNegociacao'),
 
         recordsBody: dom.byId('recordsBody'),
         recordsPrev: dom.byId('recordsPrev'),
@@ -339,7 +394,7 @@
         hideError() {
             if (elements.errorToast) elements.errorToast.classList.remove('active');
         },
-        renderSkeletonRows(count = 10, cols = 14) {
+        renderSkeletonRows(count = 10, cols = 15) {
             return Array(count)
                 .fill(0)
                 .map(
@@ -351,7 +406,7 @@
                 )
                 .join('');
         },
-        renderEmptyState(message = 'Sem dados', colspan = 14) {
+        renderEmptyState(message = 'Sem dados', colspan = 15) {
             return `
         <tr>
           <td colspan="${colspan}">
@@ -399,20 +454,66 @@
     };
 
     function extractRows(payload) {
-        // Novo payload composto do webhook: [{ registros: [...] }, { vendas_por_vendedor... }, { managers... }]
-        if (Array.isArray(payload)) {
-            const regsObj = payload.find((x) => Array.isArray(x?.registros));
-            if (regsObj) return regsObj.registros;
-
-            // Legacy: o payload já é a lista de linhas
-            return payload;
-        }
-
-        if (payload?.registros && Array.isArray(payload.registros)) return payload.registros;
+        if (Array.isArray(payload)) return payload;
         if (payload?.data && Array.isArray(payload.data)) return payload.data;
         if (payload?.items && Array.isArray(payload.items)) return payload.items;
         if (payload?.result && Array.isArray(payload.result)) return payload.result;
         return [];
+    }
+
+    function looksLikeLeadRow(obj) {
+        if (!obj || typeof obj !== 'object') return false;
+        return (
+            obj.vendedor !== undefined ||
+            obj.VENDEDOR !== undefined ||
+            obj.phone !== undefined ||
+            obj.PHONE !== undefined ||
+            obj.entregue !== undefined ||
+            obj.ENTREGUE !== undefined ||
+            obj.stage !== undefined ||
+            obj.stage_funnel !== undefined ||
+            obj.STAGE !== undefined ||
+            obj.STAGE_FUNNEL !== undefined
+        );
+    }
+
+    // Webhook novo retorna um payload composto (registros + vendas_por_vendedor + managers).
+    function extractCompositePayload(payload) {
+        const items = extractRows(payload);
+
+        const registrosItem = Array.isArray(items) ? items.find((x) => Array.isArray(x?.registros)) : null;
+        const registros = registrosItem?.registros;
+
+        const vendasItem = Array.isArray(items) ? items.find((x) => Array.isArray(x?.vendas_por_vendedor)) : null;
+        const managersItem = Array.isArray(items) ? items.find((x) => Array.isArray(x?.managers)) : null;
+
+        // fallback (endpoint antigo): payload já é o array de registros
+        const fallbackLeads = Array.isArray(items) && items.length && looksLikeLeadRow(items[0]) ? items : [];
+
+        return {
+            registros: Array.isArray(registros) ? registros : fallbackLeads,
+            vendas_por_vendedor: vendasItem?.vendas_por_vendedor || [],
+            managers: managersItem?.managers || [],
+        };
+    }
+
+    function updateSalesKpisForFixedVendor(composite) {
+        const vendasRows = composite?.vendas_por_vendedor || [];
+        const managersRows = composite?.managers || [];
+
+        const vendorVendas = vendasRows.find((r) => isFixedVendor(r?.vendedor));
+        const vendorManager = managersRows.find((r) => isFixedVendor(r?.manager));
+
+        const ticket = vendorManager?.ticket_medio_mensal;
+        const convPct = vendorVendas?.taxa_conversao_pct;
+
+        if (elements.kpiTicketMedio) {
+            elements.kpiTicketMedio.textContent = Number.isFinite(Number(ticket)) ? utils.formatCurrencyBRL(ticket) : '—';
+        }
+
+        if (elements.kpiTaxaConversao) {
+            elements.kpiTaxaConversao.textContent = Number.isFinite(Number(convPct)) ? utils.formatPercentPt(convPct, 2) : '—';
+        }
     }
 
 
@@ -473,6 +574,26 @@
         const substageRaw = getField(raw, ['substage', 'SUBSTAGE', 'Substage', 'sub_stage', 'SUB_STAGE', 'subStage']);
         const substage = normalizeSubstage(substageRaw);
 
+        // Valores por etapa (vêm do payload do n8n)
+        const paymentPendingValueRaw = getField(raw, [
+            'payment_pending_value',
+            'paymentPendingValue',
+            'value_payment_pending',
+            'value_paymentPending',
+            'payment_pendingValue',
+            'payment_pending',
+        ]);
+        const negotiationValueRaw = getField(raw, [
+            'negotiation_value',
+            'negotiationValue',
+            'value_negotiation',
+            'value_negotiation_value',
+            'negotiation',
+        ]);
+
+        const paymentPendingValue = parseMoneyValue(paymentPendingValueRaw);
+        const negotiationValue = parseMoneyValue(negotiationValueRaw);
+
         return {
             row_number: rowNumber,
             ID: id,
@@ -492,80 +613,56 @@
             DESAFIO: desafio,
             ORIGEM: origem,
 
+            PAYMENT_PENDING_VALUE_RAW: paymentPendingValueRaw,
+            NEGOTIATION_VALUE_RAW: negotiationValueRaw,
+            PAYMENT_PENDING_VALUE: paymentPendingValue,
+            NEGOTIATION_VALUE: negotiationValue,
+
             STAGE_FUNNEL: stageFunnel,
             SUBSTAGE: substage,
             STAGE: stage,
         };
     }
 
-    function toNumber(value) {
-        if (value === null || value === undefined) return 0;
-        if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
 
-        const s = String(value).trim();
-        if (!s) return 0;
 
-        // aceita "1.234,56" ou "1234.56"
-        const cleaned = s.includes(',') && s.includes('.')
-            ? s.replace(/\./g, '').replace(',', '.')
-            : s.replace(',', '.');
-
-        const n = Number(cleaned);
-        return Number.isFinite(n) ? n : 0;
+    function getValueForSelectedStage(row, selectedStage) {
+        const stage = String(selectedStage || '').trim();
+        if (stage === 'payment_pending') return row?.PAYMENT_PENDING_VALUE;
+        if (stage === 'negotiation') return row?.NEGOTIATION_VALUE;
+        return null;
     }
 
-    function formatBRL(value) {
-        const n = toNumber(value);
-        if (!Number.isFinite(n)) return '—';
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+    function computeTotalsKpisFromAllRows(allRows) {
+        const rows = Array.isArray(allRows) ? allRows : [];
+
+        let totalPagamento = 0;
+        let totalNegociacao = 0;
+
+        rows.forEach((r) => {
+            const st = normalizeStage(r?.STAGE);
+
+            if (st === 'payment_pending') {
+                const n = parseMoneyValue(r?.PAYMENT_PENDING_VALUE);
+                if (Number.isFinite(n)) totalPagamento += n;
+                else if (Number.isFinite(r?.PAYMENT_PENDING_VALUE)) totalPagamento += r.PAYMENT_PENDING_VALUE;
+            }
+
+            if (st === 'negotiation') {
+                const n = parseMoneyValue(r?.NEGOTIATION_VALUE);
+                if (Number.isFinite(n)) totalNegociacao += n;
+                else if (Number.isFinite(r?.NEGOTIATION_VALUE)) totalNegociacao += r.NEGOTIATION_VALUE;
+            }
+        });
+
+        return { totalPagamento, totalNegociacao };
     }
-
-    function formatPct(value) {
-        const n = toNumber(value);
-        if (!Number.isFinite(n)) return '—';
-        return `${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}%`;
-    }
-
-    function matchesVendorName(name, aliasSet) {
-        const n = normalizeVendor(name);
-        if (!n) return false;
-        if (aliasSet.has(n)) return true;
-        // fallback: contém o alias (caso venha "Pedro ..." etc.)
-        for (const a of aliasSet) {
-            if (n.includes(a)) return true;
-        }
-        return false;
-    }
-
-    function updateSalesKpisFromPayload(payload) {
-        if (!elements.kpiTicketMedio || !elements.kpiTaxaConversao) return;
-
-        const arr = Array.isArray(payload)
-            ? payload
-            : (payload?.data && Array.isArray(payload.data) ? payload.data : []);
-
-        // Ticket médio mensal (vem de "managers")
-        const managersObj = arr.find((x) => Array.isArray(x?.managers));
-        const managerRow = managersObj?.managers?.find((m) => matchesVendorName(m?.manager, FIXED_VENDOR_ALIASES));
-
-        const ticket = managerRow?.ticket_medio_mensal;
-        elements.kpiTicketMedio.textContent = ticket !== undefined && ticket !== null ? formatBRL(ticket) : '—';
-
-        // Taxa de conversão (vem de "vendas_por_vendedor")
-        const vpvObj = arr.find((x) => Array.isArray(x?.vendas_por_vendedor));
-        const vpvRow = vpvObj?.vendas_por_vendedor?.find((v) => matchesVendorName(v?.vendedor, FIXED_VENDOR_ALIASES));
-
-        const convPct = vpvRow?.taxa_conversao_pct;
-        elements.kpiTaxaConversao.textContent = convPct !== undefined && convPct !== null ? formatPct(convPct) : '—';
-    }
-
-
     const render = {
-        recordsTable(rows) {
+        recordsTable(rows, { selectedStage } = {}) {
             if (!elements.recordsBody) return;
 
             if (!rows || rows.length === 0) {
-                elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 14);
+                elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 15);
                 return;
             }
 
@@ -585,6 +682,11 @@
                     const area = utils.escapeHtml(r.AREA ?? '');
                     const time = utils.escapeHtml(r.TIME ?? '');
                     const sistema = utils.escapeHtml(r.SISTEMA ?? '');
+                    const rawValue = getValueForSelectedStage(r, selectedStage);
+                    const valueCell = (rawValue === null || rawValue === undefined || String(rawValue).trim() === '')
+                        ? '—'
+                        : (Number.isFinite(Number(rawValue)) ? utils.formatCurrencyBRL(rawValue) : '—');
+
                     const desafio = utils.escapeHtml(r.DESAFIO ?? '');
                     const origem = utils.escapeHtml(r.ORIGEM ?? '');
 
@@ -610,6 +712,7 @@
               <td>${stageFunnelCell}</td>
               <td>${substageCell}</td>
               <td>${money || '—'}</td>
+              <td class="col-valor-cell mono">${valueCell}</td>
               <td>${area || '—'}</td>
               <td>${time || '—'}</td>
               <td>${sistema || '—'}</td>
@@ -625,7 +728,7 @@
         },
     };
 
-    function sortRows(items) {
+    function sortRows(items, selectedStage) {
         const { key, direction } = state.sort;
         const dir = direction === 'asc' ? 1 : -1;
         const asText = (v) => String(v ?? '').toLowerCase();
@@ -637,6 +740,19 @@
                 return (aTime - bTime) * dir;
             });
         }
+        if (key === 'VALOR') {
+            return [...items].sort((a, b) => {
+                const aVal = getValueForSelectedStage(a, selectedStage);
+                const bVal = getValueForSelectedStage(b, selectedStage);
+                const an = parseMoneyValue(aVal);
+                const bn = parseMoneyValue(bVal);
+                const av = Number.isFinite(an) ? an : (Number.isFinite(Number(aVal)) ? Number(aVal) : 0);
+                const bv = Number.isFinite(bn) ? bn : (Number.isFinite(Number(bVal)) ? Number(bVal) : 0);
+                return (av - bv) * dir;
+            });
+        }
+
+
 
         return [...items].sort((a, b) => asText(a?.[key]).localeCompare(asText(b?.[key]), 'pt-BR') * dir);
     }
@@ -680,6 +796,10 @@
                     r.ENTREGUE,
                     r.MONEY,
                     r.ORIGEM,
+                    r.PAYMENT_PENDING_VALUE_RAW,
+                    r.NEGOTIATION_VALUE_RAW,
+                    r.PAYMENT_PENDING_VALUE,
+                    r.NEGOTIATION_VALUE,
                     r.STAGE_FUNNEL,
                     r.SUBSTAGE,
                     r.STAGE,
@@ -692,9 +812,9 @@
 
         state.filtered = out;
 
-        const sorted = sortRows(state.filtered);
+        const sorted = sortRows(state.filtered, selectedStage);
         const pageRows = paginateRows(sorted);
-        render.recordsTable(pageRows);
+        render.recordsTable(pageRows, { selectedStage });
 
         const totalShown = state.filtered.length || 0;
 
@@ -725,17 +845,31 @@
         }
 
         ui.showLoading();
-        if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 14);
+        if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 15);
 
         try {
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
-            updateSalesKpisFromPayload(res);
-            const allRows = extractRows(res).map(normalizeRow);
+            const composite = extractCompositePayload(res);
+
+            // KPIs de vendas (Ticket médio mensal + Conversão) para o vendedor fixo
+            updateSalesKpisForFixedVendor(composite);
+
+            const allRows = (composite.registros || []).map(normalizeRow);
 
             // Filtra SOMENTE o vendedor fixo
             const rows = allRows.filter((r) => isFixedVendor(r.VENDEDOR));
 
             state.rows = rows;
+
+            // KPIs: Totais (sempre visíveis, independentes do filtro atual)
+            const totals = computeTotalsKpisFromAllRows(state.rows);
+            if (elements.kpiTotalPagamentoPendente) {
+                elements.kpiTotalPagamentoPendente.textContent = utils.formatCurrencyBRL(totals.totalPagamento || 0);
+            }
+            if (elements.kpiTotalNegociacao) {
+                elements.kpiTotalNegociacao.textContent = utils.formatCurrencyBRL(totals.totalNegociacao || 0);
+            }
+
 
             setOptions(elements.substageSelect, uniqueSorted(rows, 'SUBSTAGE'), { keepSelected: true, includeNotInformed: true });
             setOptions(elements.areaSelect, uniqueSorted(rows, 'AREA'), { keepSelected: true, includeNotInformed: true });
@@ -745,7 +879,11 @@
             applyAllFiltersAndRender({ resetPage: true });
         } catch (e) {
             ui.showError(`Failed to load leads: ${e.message}`);
-            if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 14);
+            if (elements.kpiTicketMedio) elements.kpiTicketMedio.textContent = '—';
+            if (elements.kpiTaxaConversao) elements.kpiTaxaConversao.textContent = '—';
+            if (elements.kpiTotalPagamentoPendente) elements.kpiTotalPagamentoPendente.textContent = '—';
+            if (elements.kpiTotalNegociacao) elements.kpiTotalNegociacao.textContent = '—';
+            if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 15);
         } finally {
             ui.hideLoading();
         }

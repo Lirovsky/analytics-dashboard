@@ -577,3 +577,18 @@ a.table-link:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* --- Coluna Valor (Payment Pending / Negociação) --- */
+.col-valor {
+  min-width: 140px;
+}
+
+.data-table--records th.col-valor {
+  text-align: right;
+  padding-right: 14px;
+}
+
+.data-table--records td.col-valor-cell {
+  text-align: right;
+  padding-right: 14px;
+}

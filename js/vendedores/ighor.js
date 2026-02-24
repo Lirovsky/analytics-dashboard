@@ -29,6 +29,30 @@
             return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         },
 
+        parseMoneyNumber(value) {
+            if (value === null || value === undefined || value === '') return NaN;
+
+            if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+
+            const s0 = String(value).trim();
+            if (!s0) return NaN;
+
+            let s = s0.replace(/[R$\s]/g, '').trim();
+
+            const hasComma = s.includes(',');
+            const hasDot = s.includes('.');
+
+            if (hasComma && hasDot) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else if (hasComma && !hasDot) {
+                s = s.replace(',', '.');
+            }
+
+            const n = Number(s);
+            return Number.isFinite(n) ? n : NaN;
+        },
+
+
         formatPct(value, digits = 2) {
             const n = Number(value);
             if (!Number.isFinite(n)) return '—';
@@ -179,6 +203,14 @@
         return raw;
     }
 
+
+    function getActiveValueForStage(row, stage) {
+        const st = normalizeStage(stage);
+        if (st === 'payment_pending') return utils.parseMoneyNumber(row?.PAYMENT_PENDING_VALUE);
+        if (st === 'negotiation') return utils.parseMoneyNumber(row?.NEGOTIATION_VALUE);
+        return NaN;
+    }
+
     function normalizeTimeBucket(value) {
         if (value === null || value === undefined || value === '') return '1-2';
 
@@ -307,6 +339,8 @@
 
         kpiTicketMedio: dom.byId('kpiTicketMedio'),
         kpiTaxaConversao: dom.byId('kpiTaxaConversao'),
+        kpiTotalPaymentPending: dom.byId('kpiTotalPaymentPending'),
+        kpiTotalNegotiation: dom.byId('kpiTotalNegotiation'),
         recordsBody: dom.byId('recordsBody'),
         recordsPrev: dom.byId('recordsPrev'),
         recordsNext: dom.byId('recordsNext'),
@@ -365,7 +399,7 @@
         hideError() {
             if (elements.errorToast) elements.errorToast.classList.remove('active');
         },
-        renderSkeletonRows(count = 10, cols = 14) {
+        renderSkeletonRows(count = 10, cols = 15) {
             return Array(count)
                 .fill(0)
                 .map(
@@ -377,7 +411,7 @@
                 )
                 .join('');
         },
-        renderEmptyState(message = 'Sem dados', colspan = 14) {
+        renderEmptyState(message = 'Sem dados', colspan = 15) {
             return `
         <tr>
           <td colspan="${colspan}">
@@ -502,6 +536,24 @@
         const desafio = getField(raw, ['DESAFIO', 'Desafio', 'desafio', 'CHALLENGE', 'challenge']);
         const origem = getField(raw, ['ORIGEM', 'origem']);
 
+        const paymentPendingValue = getField(raw, [
+            'payment_pending_value',
+            'paymentPendingValue',
+            'value_payment_pending',
+            'VALUE_PAYMENT_PENDING',
+            'Payment Pending Value',
+            'PAYMENT_PENDING_VALUE',
+        ]);
+
+        const negotiationValue = getField(raw, [
+            'negotiation_value',
+            'negotiationValue',
+            'value_negotiation',
+            'VALUE_NEGOTIATION',
+            'Negotiation Value',
+            'NEGOTIATION_VALUE',
+        ]);
+
         const stageFunnel = getField(raw, ['stage_funnel', 'STAGE_FUNNEL', 'stageFunnel', 'Stage_funnel']);
 
         // Alguns payloads não trazem o STAGE (código). Nesses casos, derivamos pelo rótulo do funil.
@@ -530,6 +582,9 @@
             DESAFIO: desafio,
             ORIGEM: origem,
 
+            PAYMENT_PENDING_VALUE: paymentPendingValue,
+            NEGOTIATION_VALUE: negotiationValue,
+
             STAGE_FUNNEL: stageFunnel,
             SUBSTAGE: substage,
             STAGE: stage,
@@ -541,7 +596,7 @@
             if (!elements.recordsBody) return;
 
             if (!rows || rows.length === 0) {
-                elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 14);
+                elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 15);
                 return;
             }
 
@@ -558,6 +613,12 @@
                         : '<span class="mono">—</span>';
 
                     const money = utils.escapeHtml(r.MONEY ?? '');
+
+                    const selectedStage = (elements.stageSelect?.value || 'presentation').trim() || 'presentation';
+                    const activeValueNum = getActiveValueForStage(r, selectedStage);
+                    const valueText = Number.isFinite(activeValueNum) ? utils.formatBRL(activeValueNum) : '—';
+                    const valueCellText = utils.escapeHtml(valueText);
+
                     const area = utils.escapeHtml(r.AREA ?? '');
                     const time = utils.escapeHtml(r.TIME ?? '');
                     const sistema = utils.escapeHtml(r.SISTEMA ?? '');
@@ -586,6 +647,7 @@
               <td>${stageFunnelCell}</td>
               <td>${substageCell}</td>
               <td>${money || '—'}</td>
+              <td class="mono">${valueCellText}</td>
               <td>${area || '—'}</td>
               <td>${time || '—'}</td>
               <td>${sistema || '—'}</td>
@@ -605,6 +667,21 @@
         const { key, direction } = state.sort;
         const dir = direction === 'asc' ? 1 : -1;
         const asText = (v) => String(v ?? '').toLowerCase();
+
+        if (key === 'VALUE') {
+            const selectedStage = (elements.stageSelect?.value || 'presentation').trim() || 'presentation';
+            return [...items].sort((a, b) => {
+                const av = getActiveValueForStage(a, selectedStage);
+                const bv = getActiveValueForStage(b, selectedStage);
+                const aOk = Number.isFinite(av);
+                const bOk = Number.isFinite(bv);
+
+                if (!aOk && !bOk) return 0;
+                if (!aOk) return 1;
+                if (!bOk) return -1;
+                return (av - bv) * dir;
+            });
+        }
 
         if (key === 'ENTRADA' || key === 'ENTREGUE' || key === 'DATA') {
             return [...items].sort((a, b) => {
@@ -658,6 +735,8 @@
                     r.ORIGEM,
                     r.STAGE_FUNNEL,
                     r.SUBSTAGE,
+                    r.PAYMENT_PENDING_VALUE,
+                    r.NEGOTIATION_VALUE,
                     r.STAGE,
                 ]
                     .map((x) => String(x ?? '').toLowerCase())
@@ -691,6 +770,30 @@
         if (elements.kpiMoneyYes) elements.kpiMoneyYes.textContent = totalShown ? `${pct}%` : '—';
     }
 
+    function updateTotalsKPIs(rows) {
+        const all = Array.isArray(rows) ? rows : [];
+
+        let totalPaymentPending = 0;
+        let totalNegotiation = 0;
+
+        all.forEach((r) => {
+            const st = normalizeStage(r?.STAGE);
+            if (st === 'payment_pending') {
+                const v = utils.parseMoneyNumber(r?.PAYMENT_PENDING_VALUE);
+                if (Number.isFinite(v)) totalPaymentPending += v;
+            }
+            if (st === 'negotiation') {
+                const v = utils.parseMoneyNumber(r?.NEGOTIATION_VALUE);
+                if (Number.isFinite(v)) totalNegotiation += v;
+            }
+        });
+
+        if (elements.kpiTotalPaymentPending) elements.kpiTotalPaymentPending.textContent = utils.formatBRL(totalPaymentPending);
+        if (elements.kpiTotalNegotiation) elements.kpiTotalNegotiation.textContent = utils.formatBRL(totalNegotiation);
+    }
+
+
+
     async function loadData() {
         const entryStart = elements.entryStartInput?.value || '';
         const entryEnd = elements.entryEndInput?.value || '';
@@ -701,7 +804,7 @@
         }
 
         ui.showLoading();
-        if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 14);
+        if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 15);
 
         try {
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
@@ -715,6 +818,8 @@
 
 
 
+
+            updateTotalsKPIs(state.rows);
             // KPIs de Vendas (Ticket médio mensal / Conversão) para o vendedor fixo
             const managerRow = (parsed.managers || []).find((m) => hasVendorAlias(m.manager));
             const ticketMedioMensal = managerRow?.ticket_medio_mensal;
@@ -732,7 +837,7 @@
             applyAllFiltersAndRender({ resetPage: true });
         } catch (e) {
             ui.showError(`Failed to load leads: ${e.message}`);
-            if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 14);
+            if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 15);
         } finally {
             ui.hideLoading();
         }

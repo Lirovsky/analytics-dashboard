@@ -76,6 +76,28 @@
         },
 
 
+        toNumber(value) {
+            if (value === null || value === undefined) return NaN;
+            if (typeof value === 'number') return value;
+
+            const s0 = String(value).trim();
+            if (!s0) return NaN;
+
+            let s = s0.replace(/R\$\s?/gi, '').replace(/\s/g, '');
+
+            if (s.includes(',')) {
+                // pt-BR: "." milhar e "," decimal
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else {
+                // remove vírgulas usadas como separador de milhar
+                s = s.replace(/,/g, '');
+            }
+
+            s = s.replace(/[^0-9.-]/g, '');
+            const n = Number(s);
+            return Number.isFinite(n) ? n : NaN;
+        },
+
         removeDiacritics(value) {
             return String(value ?? '')
                 .normalize('NFD')
@@ -201,6 +223,18 @@
         return normalizeTimeBucket(timeValue) === '1-2';
     }
 
+    function getActiveValueNumber(row, selectedStage) {
+        if (selectedStage === 'payment_pending') return row?.PAYMENT_PENDING_VALUE;
+        if (selectedStage === 'negotiation') return row?.NEGOTIATION_VALUE;
+        return NaN;
+    }
+
+    function formatActiveValue(row, selectedStage) {
+        const n = getActiveValueNumber(row, selectedStage);
+        return Number.isFinite(n) ? utils.formatBRL(n) : '—';
+    }
+
+
     function getSelectedValues(selectEl) {
         if (!selectEl) return [];
         return Array.from(selectEl.selectedOptions || []).map((o) => o.value).filter((v) => String(v).trim() !== '');
@@ -293,6 +327,9 @@
         kpiTicketMedio: dom.byId('kpiTicketMedio'),
         kpiTaxaConversao: dom.byId('kpiTaxaConversao'),
 
+        kpiTotalPaymentPending: dom.byId('kpiTotalPaymentPending'),
+        kpiTotalNegotiation: dom.byId('kpiTotalNegotiation'),
+
         recordsBody: dom.byId('recordsBody'),
         recordsPrev: dom.byId('recordsPrev'),
         recordsNext: dom.byId('recordsNext'),
@@ -351,7 +388,7 @@
         hideError() {
             if (elements.errorToast) elements.errorToast.classList.remove('active');
         },
-        renderSkeletonRows(count = 10, cols = 14) {
+        renderSkeletonRows(count = 10, cols = 15) {
             return Array(count)
                 .fill(0)
                 .map(
@@ -363,7 +400,7 @@
                 )
                 .join('');
         },
-        renderEmptyState(message = 'Sem dados', colspan = 14) {
+        renderEmptyState(message = 'Sem dados', colspan = 15) {
             return `
         <tr>
           <td colspan="${colspan}">
@@ -487,6 +524,28 @@
         const link = getField(raw, ['LINK', 'Link', 'link']);
 
         const money = getField(raw, ['MONEY', 'Money', 'money', 'tem_money', 'temMoney']);
+
+        const paymentPendingValueRaw = getField(raw, [
+            'payment_pending_value',
+            'paymentPendingValue',
+            'value_payment_pending',
+            'PAYMENT_PENDING_VALUE',
+            'Payment Pending Value',
+            'payment pending value',
+        ]);
+
+        const negotiationValueRaw = getField(raw, [
+            'negotiation_value',
+            'negotiationValue',
+            'value_negotiation',
+            'NEGOTIATION_VALUE',
+            'Negotiation Value',
+            'negotiation value',
+        ]);
+
+        const paymentPendingValue = utils.toNumber(paymentPendingValueRaw);
+        const negotiationValue = utils.toNumber(negotiationValueRaw);
+
         const area = getField(raw, ['AREA', 'Área', 'area']);
         const time = getField(raw, ['TIME', 'Time', 'time']);
         const sistema = getField(raw, ['SISTEMA', 'Sistema', 'sistema', 'SYSTEM', 'system']);
@@ -515,6 +574,8 @@
             LINK: link,
 
             MONEY: money,
+            PAYMENT_PENDING_VALUE: paymentPendingValue,
+            NEGOTIATION_VALUE: negotiationValue,
             AREA: area,
             TIME: time,
             SISTEMA: sistema,
@@ -528,11 +589,11 @@
     }
 
     const render = {
-        recordsTable(rows) {
+        recordsTable(rows, selectedStage) {
             if (!elements.recordsBody) return;
 
             if (!rows || rows.length === 0) {
-                elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 14);
+                elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 15);
                 return;
             }
 
@@ -549,6 +610,7 @@
                         : '<span class="mono">—</span>';
 
                     const money = utils.escapeHtml(r.MONEY ?? '');
+                    const valueCell = utils.escapeHtml(formatActiveValue(r, selectedStage));
                     const area = utils.escapeHtml(r.AREA ?? '');
                     const time = utils.escapeHtml(r.TIME ?? '');
                     const sistema = utils.escapeHtml(r.SISTEMA ?? '');
@@ -577,6 +639,7 @@
               <td>${stageFunnelCell}</td>
               <td>${substageCell}</td>
               <td>${money || '—'}</td>
+              <td class="mono">${valueCell || '—'}</td>
               <td>${area || '—'}</td>
               <td>${time || '—'}</td>
               <td>${sistema || '—'}</td>
@@ -602,6 +665,24 @@
                 const aTime = utils.parseAnyDate(a?.[key])?.getTime?.() || 0;
                 const bTime = utils.parseAnyDate(b?.[key])?.getTime?.() || 0;
                 return (aTime - bTime) * dir;
+            });
+        }
+
+
+        if (key === 'VALUE') {
+            const selectedStage = normalizeStage(elements.stageSelect?.value || 'presentation');
+
+            return [...items].sort((a, b) => {
+                const av = getActiveValueNumber(a, selectedStage);
+                const bv = getActiveValueNumber(b, selectedStage);
+
+                const aOk = Number.isFinite(av);
+                const bOk = Number.isFinite(bv);
+
+                if (aOk && bOk) return (av - bv) * dir;
+                if (aOk && !bOk) return -1;
+                if (!aOk && bOk) return 1;
+                return 0;
             });
         }
 
@@ -661,7 +742,7 @@
 
         const sorted = sortRows(state.filtered);
         const pageRows = paginateRows(sorted);
-        render.recordsTable(pageRows);
+        render.recordsTable(pageRows, selectedStage);
 
         const totalShown = state.filtered.length || 0;
 
@@ -692,7 +773,7 @@
         }
 
         ui.showLoading();
-        if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 14);
+        if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 15);
 
         try {
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
@@ -704,6 +785,21 @@
 
             state.rows = rows;
 
+
+            const totalPaymentPending = rows.reduce((acc, r) => {
+                if (normalizeStage(r.STAGE) !== 'payment_pending') return acc;
+                const n = Number.isFinite(r.PAYMENT_PENDING_VALUE) ? r.PAYMENT_PENDING_VALUE : 0;
+                return acc + n;
+            }, 0);
+
+            const totalNegotiation = rows.reduce((acc, r) => {
+                if (normalizeStage(r.STAGE) !== 'negotiation') return acc;
+                const n = Number.isFinite(r.NEGOTIATION_VALUE) ? r.NEGOTIATION_VALUE : 0;
+                return acc + n;
+            }, 0);
+
+            if (elements.kpiTotalPaymentPending) elements.kpiTotalPaymentPending.textContent = utils.formatBRL(totalPaymentPending);
+            if (elements.kpiTotalNegotiation) elements.kpiTotalNegotiation.textContent = utils.formatBRL(totalNegotiation);
 
 
             // KPIs agregados (Ticket médio mensal / Taxa de conversão) — filtrados apenas para o vendedor fixo
@@ -724,7 +820,7 @@
             applyAllFiltersAndRender({ resetPage: true });
         } catch (e) {
             ui.showError(`Failed to load leads: ${e.message}`);
-            if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 14);
+            if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 15);
         } finally {
             ui.hideLoading();
         }

@@ -113,6 +113,48 @@
         if (['no', 'não', 'nao', 'false', '0', 'n'].includes(v)) return 'no';
         return 'unknown';
     }
+    // Converte strings monetárias (pt-BR / en-US) em número
+    function parseMoneyValue(value) {
+        if (value === null || value === undefined || value === '') return null;
+
+        if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+
+        let s = String(value).trim();
+        if (!s) return null;
+
+        // remove "R$", espaços e outros símbolos comuns
+        s = s.replace(/R\$|\s/g, '');
+
+        // mantém somente dígitos, ponto, vírgula e sinal
+        s = s.replace(/[^0-9,\.\-+]/g, '');
+
+        if (!s) return null;
+
+        // Caso tenha '.' e ',', decide qual é o decimal pelo último separador
+        const hasDot = s.includes('.');
+        const hasComma = s.includes(',');
+
+        if (hasDot && hasComma) {
+            if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+                // 1.234,56 -> 1234.56
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else {
+                // 1,234.56 -> 1234.56
+                s = s.replace(/,/g, '');
+            }
+        } else if (hasComma && !hasDot) {
+            // 1234,56 -> 1234.56
+            s = s.replace(',', '.');
+        } else {
+            // 1,234 -> 1234
+            s = s.replace(/,/g, '');
+        }
+
+        const n = Number(s);
+        return Number.isFinite(n) ? n : null;
+    }
+
+
 
     function normalizeStage(value) {
         const raw = String(value ?? '').trim();
@@ -284,6 +326,8 @@
         kpiMoneyYes: dom.byId('kpiMoneyYes'),
         kpiTicketMedio: dom.byId('kpiTicketMedio'),
         kpiTaxaConversao: dom.byId('kpiTaxaConversao'),
+        kpiTotalPagamentoPendente: dom.byId('kpiTotalPagamentoPendente'),
+        kpiTotalNegociacao: dom.byId('kpiTotalNegociacao'),
 
         recordsBody: dom.byId('recordsBody'),
         recordsPrev: dom.byId('recordsPrev'),
@@ -343,7 +387,7 @@
         hideError() {
             if (elements.errorToast) elements.errorToast.classList.remove('active');
         },
-        renderSkeletonRows(count = 10, cols = 14) {
+        renderSkeletonRows(count = 10, cols = 15) {
             return Array(count)
                 .fill(0)
                 .map(
@@ -355,7 +399,7 @@
                 )
                 .join('');
         },
-        renderEmptyState(message = 'Sem dados', colspan = 14) {
+        renderEmptyState(message = 'Sem dados', colspan = 15) {
             return `
         <tr>
           <td colspan="${colspan}">
@@ -494,6 +538,27 @@
         const substageRaw = getField(raw, ['substage', 'SUBSTAGE', 'Substage', 'sub_stage', 'SUB_STAGE', 'subStage']);
         const substage = normalizeSubstage(substageRaw);
 
+
+        // Valores por etapa (vêm do payload do n8n)
+        const paymentPendingValueRaw = getField(raw, [
+            'payment_pending_value',
+            'paymentPendingValue',
+            'value_payment_pending',
+            'value_paymentPending',
+            'payment_pendingValue',
+            'payment_pending',
+        ]);
+        const negotiationValueRaw = getField(raw, [
+            'negotiation_value',
+            'negotiationValue',
+            'value_negotiation',
+            'value_negotiation_value',
+            'negotiation',
+        ]);
+
+        const paymentPendingValue = parseMoneyValue(paymentPendingValueRaw);
+        const negotiationValue = parseMoneyValue(negotiationValueRaw);
+
         return {
             row_number: rowNumber,
             ID: id,
@@ -513,18 +578,59 @@
             DESAFIO: desafio,
             ORIGEM: origem,
 
+            PAYMENT_PENDING_VALUE_RAW: paymentPendingValueRaw,
+            NEGOTIATION_VALUE_RAW: negotiationValueRaw,
+            PAYMENT_PENDING_VALUE: paymentPendingValue,
+            NEGOTIATION_VALUE: negotiationValue,
+
             STAGE_FUNNEL: stageFunnel,
             SUBSTAGE: substage,
             STAGE: stage,
         };
+
+
+    }
+
+
+
+    function getValueForSelectedStage(row, selectedStage) {
+        const stage = String(selectedStage || '').trim();
+        if (stage === 'payment_pending') return row?.PAYMENT_PENDING_VALUE;
+        if (stage === 'negotiation') return row?.NEGOTIATION_VALUE;
+        return null;
+    }
+
+    function computeTotalsKpisFromAllRows(allRows) {
+        const rows = Array.isArray(allRows) ? allRows : [];
+
+        let totalPagamento = 0;
+        let totalNegociacao = 0;
+
+        rows.forEach((r) => {
+            const st = normalizeStage(r?.STAGE);
+
+            if (st === 'payment_pending') {
+                const n = parseMoneyValue(r?.PAYMENT_PENDING_VALUE);
+                if (Number.isFinite(n)) totalPagamento += n;
+                else if (Number.isFinite(r?.PAYMENT_PENDING_VALUE)) totalPagamento += r.PAYMENT_PENDING_VALUE;
+            }
+
+            if (st === 'negotiation') {
+                const n = parseMoneyValue(r?.NEGOTIATION_VALUE);
+                if (Number.isFinite(n)) totalNegociacao += n;
+                else if (Number.isFinite(r?.NEGOTIATION_VALUE)) totalNegociacao += r.NEGOTIATION_VALUE;
+            }
+        });
+
+        return { totalPagamento, totalNegociacao };
     }
 
     const render = {
-        recordsTable(rows) {
+        recordsTable(rows, { selectedStage } = {}) {
             if (!elements.recordsBody) return;
 
             if (!rows || rows.length === 0) {
-                elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 14);
+                elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 15);
                 return;
             }
 
@@ -544,6 +650,12 @@
                     const area = utils.escapeHtml(r.AREA ?? '');
                     const time = utils.escapeHtml(r.TIME ?? '');
                     const sistema = utils.escapeHtml(r.SISTEMA ?? '');
+
+                    const rawValue = getValueForSelectedStage(r, selectedStage);
+                    const valueCell = (rawValue === null || rawValue === undefined || String(rawValue).trim() === '')
+                        ? '—'
+                        : (Number.isFinite(Number(rawValue)) ? utils.formatCurrencyBRL(rawValue) : '—');
+
                     const desafio = utils.escapeHtml(r.DESAFIO ?? '');
                     const origem = utils.escapeHtml(r.ORIGEM ?? '');
 
@@ -569,6 +681,7 @@
               <td>${stageFunnelCell}</td>
               <td>${substageCell}</td>
               <td>${money || '—'}</td>
+              <td class="col-valor-cell mono">${valueCell}</td>
               <td>${area || '—'}</td>
               <td>${time || '—'}</td>
               <td>${sistema || '—'}</td>
@@ -584,7 +697,7 @@
         },
     };
 
-    function sortRows(items) {
+    function sortRows(items, selectedStage) {
         const { key, direction } = state.sort;
         const dir = direction === 'asc' ? 1 : -1;
         const asText = (v) => String(v ?? '').toLowerCase();
@@ -596,6 +709,19 @@
                 return (aTime - bTime) * dir;
             });
         }
+
+        if (key === 'VALOR') {
+            return [...items].sort((a, b) => {
+                const aVal = getValueForSelectedStage(a, selectedStage);
+                const bVal = getValueForSelectedStage(b, selectedStage);
+                const an = parseMoneyValue(aVal);
+                const bn = parseMoneyValue(bVal);
+                const av = Number.isFinite(an) ? an : (Number.isFinite(Number(aVal)) ? Number(aVal) : 0);
+                const bv = Number.isFinite(bn) ? bn : (Number.isFinite(Number(bVal)) ? Number(bVal) : 0);
+                return (av - bv) * dir;
+            });
+        }
+
 
         return [...items].sort((a, b) => asText(a?.[key]).localeCompare(asText(b?.[key]), 'pt-BR') * dir);
     }
@@ -639,6 +765,10 @@
                     r.ENTREGUE,
                     r.MONEY,
                     r.ORIGEM,
+                    r.PAYMENT_PENDING_VALUE_RAW,
+                    r.NEGOTIATION_VALUE_RAW,
+                    r.PAYMENT_PENDING_VALUE,
+                    r.NEGOTIATION_VALUE,
                     r.STAGE_FUNNEL,
                     r.SUBSTAGE,
                     r.STAGE,
@@ -651,9 +781,9 @@
 
         state.filtered = out;
 
-        const sorted = sortRows(state.filtered);
+        const sorted = sortRows(state.filtered, selectedStage);
         const pageRows = paginateRows(sorted);
-        render.recordsTable(pageRows);
+        render.recordsTable(pageRows, { selectedStage });
 
         const totalShown = state.filtered.length || 0;
 
@@ -717,7 +847,7 @@
         }
 
         ui.showLoading();
-        if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 14);
+        if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 15);
 
         try {
             const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
@@ -729,6 +859,15 @@
 
             state.rows = rows;
 
+            // KPIs: Totais (sempre visíveis, independentes do filtro atual)
+            const totals = computeTotalsKpisFromAllRows(state.rows);
+            if (elements.kpiTotalPagamentoPendente) {
+                elements.kpiTotalPagamentoPendente.textContent = utils.formatCurrencyBRL(totals.totalPagamento || 0);
+            }
+            if (elements.kpiTotalNegociacao) {
+                elements.kpiTotalNegociacao.textContent = utils.formatCurrencyBRL(totals.totalNegociacao || 0);
+            }
+
             updateVendorKpis(vendasPorVendedor, managers);
 
             setOptions(elements.substageSelect, uniqueSorted(rows, 'SUBSTAGE'), { keepSelected: true, includeNotInformed: true });
@@ -739,7 +878,11 @@
             applyAllFiltersAndRender({ resetPage: true });
         } catch (e) {
             ui.showError(`Failed to load leads: ${e.message}`);
-            if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 14);
+            if (elements.kpiTicketMedio) elements.kpiTicketMedio.textContent = '—';
+            if (elements.kpiTaxaConversao) elements.kpiTaxaConversao.textContent = '—';
+            if (elements.kpiTotalPagamentoPendente) elements.kpiTotalPagamentoPendente.textContent = '—';
+            if (elements.kpiTotalNegociacao) elements.kpiTotalNegociacao.textContent = '—';
+            if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 15);
         } finally {
             ui.hideLoading();
         }
