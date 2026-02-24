@@ -2,6 +2,10 @@ const CONFIG = {
     CAMPAIGNS_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/campaigns",
 };
 
+const STORAGE_KEYS = {
+    HIDE_ZERO_INVESTMENT: "metrics.hideZeroInvestment",
+};
+
 const formatters = {
     number: new Intl.NumberFormat("pt-BR"),
     currency: new Intl.NumberFormat("pt-BR", {
@@ -127,6 +131,8 @@ const elements = {
     purchaseStartInput: $id("purchaseStartDateInput"),
     purchaseEndInput: $id("purchaseEndDateInput"),
 
+    hideZeroInvestment: $id("hideZeroInvestment"),
+
     applyFilters: $id("applyFilters"),
     applyEntryOnly: $id("applyEntryOnly"),
     applyPurchaseOnly: $id("applyPurchaseOnly"),
@@ -163,12 +169,57 @@ const elements = {
 const state = {
     sort: { key: null, direction: "desc" },
     campaignsData: null,
+    campaignsDataRaw: null,
+    filters: {
+        hideZeroInvestment: true,
+    },
     pagination: {
         facebook: { page: 1, pageSize: 10 },
         google: { page: 1, pageSize: 10 },
         organic: { page: 1, pageSize: 10 },
     },
 };
+
+function readPersistedHideZeroInvestment() {
+    // default = true
+    const raw = localStorage.getItem(STORAGE_KEYS.HIDE_ZERO_INVESTMENT);
+    if (raw === null) return true;
+    return raw === "1";
+}
+
+function persistHideZeroInvestment(value) {
+    localStorage.setItem(STORAGE_KEYS.HIDE_ZERO_INVESTMENT, value ? "1" : "0");
+}
+
+function isZeroInvestment(campaign) {
+    // considera 0, "0", null/undefined como zero
+    const inv = Number(campaign?.investment);
+    return !Number.isFinite(inv) || inv === 0;
+}
+
+function applyCampaignFilters(data) {
+    if (!data) return data;
+
+    const hideZero = !!state.filters.hideZeroInvestment;
+    if (!hideZero) return data;
+
+    const filterList = (list) => (Array.isArray(list) ? list.filter((c) => !isZeroInvestment(c)) : list);
+
+    return {
+        ...data,
+        facebook: filterList(data.facebook),
+        google: filterList(data.google),
+        // orgânico não tem investimento na tabela (não filtra)
+        organic: Array.isArray(data.organic) ? data.organic : data.organic,
+    };
+}
+
+function renderAll() {
+    const filtered = applyCampaignFilters(state.campaignsDataRaw);
+    state.campaignsData = filtered;
+    campaignsRender.campaignTables(filtered);
+    campaignsRender.summary(filtered);
+}
 
 const ui = {
     showLoading() {
@@ -463,9 +514,8 @@ async function loadMetrics(mode = "both") {
         const response = await fetch(url);
         const data = await response.json();
 
-        state.campaignsData = Array.isArray(data) ? data[0] : data;
-        campaignsRender.campaignTables(state.campaignsData);
-        campaignsRender.summary(state.campaignsData);
+        state.campaignsDataRaw = Array.isArray(data) ? data[0] : data;
+        renderAll();
     } catch (e) {
         ui.showError(`Erro: ${e.message}`);
     } finally {
@@ -488,6 +538,19 @@ function init() {
         loadMetrics("both");
     };
     elements.closeToast.onclick = () => ui.hideError();
+
+    // filtro: ocultar investimento zerado (persistente)
+    state.filters.hideZeroInvestment = readPersistedHideZeroInvestment();
+    if (elements.hideZeroInvestment) {
+        elements.hideZeroInvestment.checked = state.filters.hideZeroInvestment;
+        elements.hideZeroInvestment.onchange = (e) => {
+            state.filters.hideZeroInvestment = !!e.target.checked;
+            persistHideZeroInvestment(state.filters.hideZeroInvestment);
+            // reseta paginação para não cair em página vazia
+            Object.keys(state.pagination).forEach((k) => (state.pagination[k].page = 1));
+            renderAll();
+        };
+    }
 
     document.querySelectorAll(".pagination").forEach((wrap) => {
         wrap.onclick = (e) => {
