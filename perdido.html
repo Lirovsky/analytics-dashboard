@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-page="lead-perdido">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analytics Dashboard • Leads Perdidos</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+
+    <link rel="stylesheet" href="css/perdido.css" />
+</head>
+
+<body>
+    <header class="top-nav">
+        <div class="top-nav__inner">
+            <div class="top-nav__brand">Analytics</div>
+
+            <nav class="top-nav__links">
+                <a class="top-nav__link" href="metrics.html">Métricas</a>
+                <a class="top-nav__link" href="stages.html">Stages</a>
+                <a class="top-nav__link" href="leads.html">Leads</a>
+                <a class="top-nav__link" href="leads-vendedor.html">Leads • Vendedor</a>
+                <a class="top-nav__link" href="vendas.html">Vendas</a>
+                <a class="top-nav__link" href="lp.html">LPs</a>
+                <a class="top-nav__link" href="mrr.html">MRR</a>
+                <a class="top-nav__link is-active" href="perdido.html">Perdidos</a>
+                <a class="top-nav__link" href="tabela-vendas-lp.html">Planilhas</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <aside class="filter-panel">
+            <h3 class="filter-panel__title">Filtro</h3>
+
+            <div class="filter-panel__controls">
+                <div class="filter-row filter-row--date">
+                    <div class="filter-group">
+                        <label for="startDate">Data inicial</label>
+                        <input type="date" id="startDate" class="date-input" />
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="endDate">Data final</label>
+                        <input type="date" id="endDate" class="date-input" />
+                    </div>
+                </div>
+
+                <div class="filter-row filter-row--main">
+                    <div class="filter-group">
+                        <label for="sellerSelect">Vendedor</label>
+                        <select id="sellerSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="objectionSelect">Objeção</label>
+                        <select id="objectionSelect" class="date-input">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <hr class="filter-sep" />
+
+                <div class="filter-row filter-row--actions">
+                    <button id="applyFilters" class="btn btn--primary" type="button">Aplicar</button>
+                    <button id="clearAllFilters" class="btn btn--ghost" type="button">Limpar tudo</button>
+                </div>
+            </div>
+        </aside>
+
+        <section class="section">
+            <h2 class="section__title">Leads Perdidos</h2>
+
+            <div class="analytics-block" id="analyticsBlock">
+                <div class="kpi-grid kpi-grid--one">
+                    <div class="kpi-card">
+                        <div class="kpi-label">Total</div>
+                        <div class="kpi-value" id="kpiTotal">—</div>
+                    </div>
+                </div>
+
+                <div class="charts-grid charts-grid--two">
+                    <div class="chart-card">
+                        <div class="chart-title">Registros por vendedor</div>
+                        <canvas id="chartBySeller" height="110"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-title">Registros por objeção</div>
+                        <canvas id="chartByObjection" height="110"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-block">
+                <div class="table-block__header">
+                    <span class="table-block__icon">🧾</span>
+                    <h3>Lista</h3>
+
+                    <div class="table-block__meta">
+                        <span class="meta-pill">Total: <strong id="totalCount">–</strong></span>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="date">Data <span class="sort-icon">↕</span></th>
+                                <th data-sort="seller">Vendedor <span class="sort-icon">↕</span></th>
+                                <th data-sort="objection">Objeção <span class="sort-icon">↕</span></th>
+                                <th>Descrição</th>
+                                <th>Chat</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rowsBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="pagination" data-channel="lost">
+                    <button class="pg-btn" data-action="prev" type="button">‹</button>
+                    <span class="pg-info" id="pageInfo">1 / 1</span>
+                    <button class="pg-btn" data-action="next" type="button">›</button>
+
+                    <span class="pg-sep"></span>
+
+                    <label class="pg-label">Linhas</label>
+                    <select class="pg-size" data-action="size">
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="spinner"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <div class="toast toast--error" id="errorToast">
+            <span class="toast__icon">⚠️</span>
+            <span class="toast__message" id="errorMessage">Error loading data</span>
+            <button class="toast__close" id="closeToast" type="button">×</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="js/perdido.js"></script>
+</body>
+
+</html>
