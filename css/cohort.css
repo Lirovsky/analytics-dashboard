@@ -1,0 +1,178 @@
+:root {
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-border-light: #f1f5f9;
+
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+
+  --color-success: #dcfce7;
+  --color-success-dark: #22c55e;
+  --color-error: #fee2e2;
+  --color-error-dark: #ef4444;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  --font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-xl: 1.25rem;
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ===== Cohort table ===== */
+.table-block--cohort .table-block__header {
+  background: #f5f7ff;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.55);
+}
+
+.cohort-hint {
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.cohort-legend {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.cohort-legend__swatch {
+  width: 110px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: linear-gradient(90deg,
+      rgba(59, 130, 246, 0.06),
+      rgba(59, 130, 246, 0.42));
+}
+
+.cohort-legend__text {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* tabela: largura dinâmica conforme colunas */
+.cohort-table.data-table {
+  min-width: calc(360px + (var(--cohort-cols, 14) * 72px));
+}
+
+/* colunas fixas (sticky) */
+.cohort-table {
+  --col-cohort: 150px;
+  --col-entries: 92px;
+  --col-total: 92px;
+  --col-conv: 82px;
+}
+
+.cohort-table th,
+.cohort-table td {
+  text-align: center;
+}
+
+.cohort-table th.sticky-col-1,
+.cohort-table td.sticky-col-1 {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  text-align: left;
+  min-width: var(--col-cohort);
+  max-width: var(--col-cohort);
+  background: var(--color-surface);
+  box-shadow: 8px 0 10px -12px rgba(15, 23, 42, 0.35);
+}
+
+.cohort-table thead th.sticky-col-1 {
+  background: var(--color-background);
+}
+
+.cohort-table th.sticky-col-2,
+.cohort-table td.sticky-col-2 {
+  position: sticky;
+  left: var(--col-cohort);
+  z-index: 3;
+  min-width: var(--col-entries);
+  max-width: var(--col-entries);
+  background: var(--color-surface);
+  box-shadow: 8px 0 10px -12px rgba(15, 23, 42, 0.35);
+}
+
+.cohort-table thead th.sticky-col-2 {
+  background: var(--color-background);
+}
+
+.cohort-table th.sticky-col-total,
+.cohort-table td.sticky-col-total {
+  min-width: var(--col-total);
+  max-width: var(--col-total);
+  font-weight: 800;
+}
+
+.cohort-table th.sticky-col-conv,
+.cohort-table td.sticky-col-conv {
+  min-width: var(--col-conv);
+  max-width: var(--col-conv);
+  font-weight: 800;
+}
+
+.cohort-cell {
+  font-variant-numeric: tabular-nums;
+  border-left: 1px solid rgba(226, 232, 240, 0.7);
+  border-right: 1px solid rgba(226, 232, 240, 0.7);
+  background: rgba(59, 130, 246, calc(0.06 + (var(--heat, 0) * 0.34)));
+}
+
+.cohort-cell.is-zero {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.cohort-cell.has-value {
+  font-weight: 800;
+  color: rgba(15, 23, 42, 0.95);
+}
+
+.cohort-table tfoot td,
+.cohort-table tfoot th {
+  background: rgba(15, 23, 42, 0.03);
+  font-weight: 800;
+}
+
+@media (max-width: 520px) {
+  .cohort-table {
+    --col-cohort: 130px;
+    --col-entries: 86px;
+  }
+}

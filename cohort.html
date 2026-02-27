@@ -1,16 +1,19 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-page="lp-conversoes">
+<html lang="pt-BR" data-page="cohort">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Analytics Dashboard • Conversões LP</title>
+  <title>Analytics Dashboard • Cohort</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="css/lp.css" />
+  <!-- Base do projeto (mesma estética do Leads) -->
+  <link rel="stylesheet" href="css/leads.css" />
+  <!-- Ajustes específicos do Cohort -->
+  <link rel="stylesheet" href="css/cohort.css" />
 </head>
 
 <body>
@@ -24,8 +27,8 @@
         <a class="top-nav__link" href="leads.html">Leads</a>
         <a class="top-nav__link" href="leads-vendedor.html">Leads • Vendedor</a>
         <a class="top-nav__link" href="vendas.html">Vendas</a>
-        <a class="top-nav__link" href="cohort.html">Cohort</a>
-        <a class="top-nav__link is-active" href="lp.html">LPs</a>
+        <a class="top-nav__link is-active" href="cohort.html">Cohort</a>
+        <a class="top-nav__link" href="lp.html">LPs</a>
         <a class="top-nav__link" href="mrr.html">MRR</a>
         <a class="top-nav__link" href="perdido.html">Perdidos</a>
         <a class="top-nav__link" href="tabela-vendas-lp.html">Planilhas</a>
@@ -52,12 +55,19 @@
           <div class="filter-group filter-group--shortcuts">
             <label>Atalhos</label>
             <div class="filter-shortcuts">
-              <button id="presetPrevDay" class="btn btn--ghost" type="button">Dia anterior</button>
-              <button id="presetNextDay" class="btn btn--ghost" type="button">Dia seguinte</button>
-              <button id="preset7" class="btn btn--ghost" type="button">7 dias</button>
-              <button id="preset14" class="btn btn--ghost" type="button">14 dias</button>
-              <button id="preset30" class="btn btn--ghost" type="button">30 dias</button>
+              <button id="presetAll" class="btn btn--ghost" type="button">2025 → Hoje</button>
+              <button id="preset12m" class="btn btn--ghost" type="button">Últimos 12 meses</button>
+              <button id="presetYtd" class="btn btn--ghost" type="button">Ano atual</button>
             </div>
+          </div>
+        </div>
+
+        <div class="filter-row filter-row--main">
+          <div class="filter-group">
+            <label for="sellerSelect">Vendedor</label>
+            <select id="sellerSelect" class="date-input">
+              <option value="">Todos</option>
+            </select>
           </div>
         </div>
 
@@ -71,39 +81,29 @@
     </aside>
 
     <section class="section">
-      <h2 class="section__title">Conversões da LP</h2>
+      <h2 class="section__title">Cohort</h2>
 
-      <div class="analytics-block" id="analyticsBlock">
-        <div class="kpi-grid kpi-grid--4">
-          <div class="kpi-card">
-            <div class="kpi-label">Total visitas</div>
-            <div class="kpi-value" id="kpiVisits">—</div>
-          </div>
+      <div class="table-block table-block--cohort">
+        <div class="table-block__header">
+          <span class="table-block__icon">📈</span>
+          <h3>Cohort por mês</h3>
 
-          <div class="kpi-card">
-            <div class="kpi-label">Total leads</div>
-            <div class="kpi-value" id="kpiLeads">—</div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-label">Conversão geral</div>
-            <div class="kpi-value" id="kpiConv">—</div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-label">LPs</div>
-            <div class="kpi-value" id="kpiLps">—</div>
+          <div class="table-block__meta">
+            <span class="meta-pill">Período: <strong id="metaPeriod">–</strong></span>
+            <span class="meta-pill">Entradas: <strong id="metaEntries">–</strong></span>
+            <span class="meta-pill">Compras: <strong id="metaPurchases">–</strong></span>
+            <span class="meta-pill">Atualizado: <strong id="metaUpdated">–</strong></span>
           </div>
         </div>
 
-        <div class="lp-kpi-block">
-          <div class="lp-kpi-header">
-            <span class="table-block__icon">🎯</span>
-            <h3>Conversão por LP</h3>
-          </div>
-
-          <div class="lp-kpi-grid" id="lpKpis"></div>
+        <div class="table-wrapper">
+          <table class="data-table cohort-table" id="cohortTable">
+            <thead id="cohortHead"></thead>
+            <tbody id="cohortBody"></tbody>
+            <tfoot id="cohortFoot"></tfoot>
+          </table>
         </div>
+      </div>
     </section>
 
     <div class="loading-overlay" id="loadingOverlay">
@@ -118,9 +118,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-  <script src="js/lp.js"></script>
+  <script src="js/cohort.js"></script>
 </body>
 
 </html>
