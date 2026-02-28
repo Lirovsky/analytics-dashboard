@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-page="gerenciador">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics Dashboard • Gerenciador</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/gerenciador.css?v=3" />
+</head>
+
+<body>
+  <header class="top-nav">
+    <div class="top-nav__inner">
+      <div class="top-nav__brand">Analytics</div>
+
+      <nav class="top-nav__links">
+        <a class="top-nav__link" href="metrics.html">Métricas</a>
+        <a class="top-nav__link" href="stages.html">Stages</a>
+        <a class="top-nav__link" href="leads.html">Leads</a>
+        <a class="top-nav__link" href="leads-vendedor.html">Leads • Vendedor</a>
+        <a class="top-nav__link" href="vendas.html">Vendas</a>
+        <a class="top-nav__link is-active" href="gerenciador.html">Gerenciador</a>
+        <a class="top-nav__link" href="cohort.html">Cohort</a>
+        <a class="top-nav__link" href="lp.html">LPs</a>
+        <a class="top-nav__link" href="mrr.html">MRR</a>
+        <a class="top-nav__link" href="perdido.html">Perdidos</a>
+        <a class="top-nav__link" href="tabela-vendas-lp.html">Planilhas</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="dashboard">
+    <aside class="filter-panel">
+      <h3 class="filter-panel__title">Filtro</h3>
+
+      <div class="filter-panel__controls">
+        <div class="filter-group">
+          <label for="campaignNameFilter">Nome da campanha</label>
+          <select id="campaignNameFilter" class="date-input">
+            <option value="ALL" selected>Todos</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="statusFilter">Status</label>
+          <select id="statusFilter" class="date-input">
+            <option value="ALL" selected>Todos</option>
+            <option value="ACTIVE">Ativa</option>
+            <option value="PAUSED">Pausada</option>
+          </select>
+        </div>
+
+        <div class="filter-actions">
+          <button id="applyFilters" class="btn btn--primary" type="button">Buscar</button>
+          <button id="clearFilters" class="btn btn--primary" type="button">Limpar</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="section section--campaigns">
+      <h2 class="section__title">Gerenciador</h2>
+
+      <div class="table-block table-block--manager">
+        <div class="table-block__header">
+          <h3>Campanhas</h3>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+
+                <th class="th-sortable" data-sort-key="spend" aria-sort="none">
+                  <button class="th-sort" type="button" data-sort-key="spend" aria-label="Ordenar por Spend">
+                    <span class="th-sort__label">Spend</span>
+                    <span class="sort-icons" aria-hidden="true">
+                      <span class="sort-icon sort-icon--up">▲</span>
+                      <span class="sort-icon sort-icon--down">▼</span>
+                    </span>
+                  </button>
+                </th>
+
+                <th class="th-sortable" data-sort-key="leads" aria-sort="none">
+                  <button class="th-sort" type="button" data-sort-key="leads" aria-label="Ordenar por Leads">
+                    <span class="th-sort__label">Leads</span>
+                    <span class="sort-icons" aria-hidden="true">
+                      <span class="sort-icon sort-icon--up">▲</span>
+                      <span class="sort-icon sort-icon--down">▼</span>
+                    </span>
+                  </button>
+                </th>
+
+                <th class="th-sortable" data-sort-key="cpl" aria-sort="none">
+                  <button class="th-sort" type="button" data-sort-key="cpl" aria-label="Ordenar por CPL">
+                    <span class="th-sort__label">CPL</span>
+                    <span class="sort-icons" aria-hidden="true">
+                      <span class="sort-icon sort-icon--up">▲</span>
+                      <span class="sort-icon sort-icon--down">▼</span>
+                    </span>
+                  </button>
+                </th>
+
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="gerenciadorBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+      <p>Loading data...</p>
+    </div>
+
+    <div class="toast toast--error" id="errorToast">
+      <span class="toast__icon">⚠️</span>
+      <span class="toast__message" id="errorMessage">Error loading data</span>
+      <button class="toast__close" id="closeToast" type="button">×</button>
+    </div>
+  </div>
+
+  <script src="js/gerenciador.js?v=3"></script>
+</body>
+
+</html>

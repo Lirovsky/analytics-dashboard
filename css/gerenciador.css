@@ -1,0 +1,189 @@
+@import url("./metrics.css");
+
+/* =========================================================
+   Gerenciador — extras (expansão + status pill)
+   ========================================================= */
+
+.table-block--manager .table-block__header {
+  background: #f7f7ff;
+  border-bottom: 2px solid #8b5cf6;
+}
+
+.helper-text {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* Nome + expander na mesma coluna */
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.name-cell__label {
+  text-align: left;
+}
+
+.name-cell--child {
+  padding-left: 34px;
+  position: relative;
+}
+
+.name-cell--child::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: #cbd5e1;
+}
+
+.expander {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  flex: 0 0 auto;
+}
+
+.expander:hover {
+  background: var(--color-background);
+}
+
+.expander:active {
+  transform: scale(0.96);
+}
+
+.group-row td {
+  background: #d8e4ff;
+  font-weight: 600;
+}
+
+.child-row td {
+  background: #ffffff;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+}
+
+.status-pill::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.9;
+}
+
+.status--active {
+  color: #16a34a;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.status--paused {
+  color: #ef4444;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.status--unknown {
+  color: #64748b;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+/* =========================================================
+   Totais (linha final)
+   ========================================================= */
+.total-row td {
+  background: #f7f7ff;
+  font-weight: 700;
+  border-top: 2px solid #8b5cf6;
+}
+
+.expander--ghost {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* =========================================================
+   Ordenação (Spend / Leads / CPL)
+   ========================================================= */
+
+.th-sortable {
+  white-space: nowrap;
+}
+
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.th-sort:focus-visible {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.sort-icons {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 9px;
+  font-size: 9px;
+  transform: translateY(-1px);
+}
+
+.sort-icon {
+  display: block;
+  opacity: 0.25;
+}
+
+.th-sortable:hover .sort-icon {
+  opacity: 0.55;
+}
+
+.th-sortable.is-sorted .sort-icon {
+  opacity: 0.25;
+}
+
+.th-sortable.is-sorted[data-sort-dir="asc"] .sort-icon--up {
+  opacity: 1;
+}
+
+.th-sortable.is-sorted[data-sort-dir="desc"] .sort-icon--down {
+  opacity: 1;
+}
