@@ -163,6 +163,22 @@ body {
   transform: scale(0.98);
 }
 
+
+
+.btn--secondary {
+  background: var(--color-all);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.btn--secondary:hover {
+  background: var(--color-background);
+}
+
+.btn--secondary:active {
+  transform: scale(0.98);
+}
+
 .filter-sep {
   opacity: 0.2;
   width: 100%;

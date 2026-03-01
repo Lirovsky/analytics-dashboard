@@ -220,20 +220,39 @@ function applyFilters(groups) {
   const nameFilter = selectedName === "ALL" ? "" : utils.normalizeText(selectedName);
   const statusFilter = String(state.filters.status || "ALL").toUpperCase();
 
-  return groups.filter((g) => {
-    // Seleção via dropdown: match exato (normalizado)
-    const okName = !nameFilter || utils.normalizeText(g.campaignName) === nameFilter;
+  return groups
+    .filter((g) => {
+      const okName = !nameFilter || utils.normalizeText(g.campaignName) === nameFilter;
+      return okName;
+    })
+    .map((g) => {
+      let items = Array.isArray(g.items) ? g.items : [];
 
-    // Status é dos conjuntos (itens). Filtra campanhas que tenham pelo menos 1 conjunto no status.
-    let okStatus = true;
-    if (statusFilter !== "ALL") {
-      if (statusFilter === "ACTIVE") okStatus = !!g.hasActive;
-      else if (statusFilter === "PAUSED") okStatus = !!g.hasPaused;
-      else okStatus = g.items.some((it) => it.status?.key === statusFilter);
-    }
+      // filtra os conjuntos (itens) pelo status
+      if (statusFilter !== "ALL") {
+        items = items.filter((it) => String(it?.status?.key || "").toUpperCase() === statusFilter);
+      }
 
-    return okName && okStatus;
-  });
+      // se não sobrou nenhum item, remove a campanha da lista
+      if (!items.length) return null;
+
+      // recalcula totais com base apenas nos itens visíveis
+      const spend = items.reduce((acc, it) => acc + (utils.toNumber(it?.spend) || 0), 0);
+      const leads = items.reduce((acc, it) => acc + (utils.toNumber(it?.leads) || 0), 0);
+
+      return {
+        ...g,
+        items,
+        totals: {
+          spend,
+          leads,
+          cpl: utils.safeDivide(spend, leads),
+        },
+        hasActive: items.some((it) => String(it?.status?.key || "").toUpperCase() === "ACTIVE"),
+        hasPaused: items.some((it) => String(it?.status?.key || "").toUpperCase() === "PAUSED"),
+      };
+    })
+    .filter(Boolean);
 }
 
 function updateSortUI() {

@@ -78,6 +78,7 @@
     preset7: dom.byId("preset7"),
     preset14: dom.byId("preset14"),
     preset30: dom.byId("preset30"),
+    presetMonth: dom.byId("presetMonth"),
 
     // KPIs
     kpiVisits: dom.byId("kpiVisits"),
@@ -261,6 +262,16 @@
     loadData();
   }
 
+  function applyCurrentMonth() {
+    const end = new Date();          // hoje
+    const start = new Date(end);     // cópia
+    start.setDate(1);                // 1º dia do mês
+
+    if (el.entryStart) el.entryStart.value = utils.getDateString(start);
+    if (el.entryEnd) el.entryEnd.value = utils.getDateString(end);
+    loadData();
+  }
+
   function applyRelativeDay(delta) {
     const startStr = el.entryStart?.value || "";
     const endStr = el.entryEnd?.value || "";
@@ -292,6 +303,7 @@
     el.preset7?.addEventListener("click", () => applyPresetDays(7));
     el.preset14?.addEventListener("click", () => applyPresetDays(14));
     el.preset30?.addEventListener("click", () => applyPresetDays(30));
+    el.presetMonth?.addEventListener("click", applyCurrentMonth);
 
     el.presetPrevDay?.addEventListener("click", () => applyRelativeDay(-1));
     el.presetNextDay?.addEventListener("click", () => applyRelativeDay(1));

@@ -465,6 +465,8 @@
         presetPrevDay: dom.byId('presetPrevDay'),
         presetNextDay: dom.byId('presetNextDay'),
 
+        presetMonth: dom.byId('presetMonth'),
+
         leadsBody: dom.byId('leadsBody'),
         totalCount: dom.byId('totalCount'),
         leadsPageInfo: dom.byId('leadsPageInfo'),
@@ -998,6 +1000,18 @@
         if (elements.preset7) elements.preset7.addEventListener('click', () => applyPresetDays(7));
         if (elements.preset14) elements.preset14.addEventListener('click', () => applyPresetDays(14));
         if (elements.preset30) elements.preset30.addEventListener('click', () => applyPresetDays(30));
+        const applyCurrentMonth = () => {
+            const end = new Date();
+            const start = new Date(end.getFullYear(), end.getMonth(), 1);
+
+            if (elements.entryStartInput) elements.entryStartInput.value = utils.getDateString(start);
+            if (elements.entryEndInput) elements.entryEndInput.value = utils.getDateString(end);
+
+            loadLeads();
+        };
+
+        if (elements.presetMonth) elements.presetMonth.addEventListener('click', applyCurrentMonth);
+
 
         const applyRelativeDay = (delta) => {
             const startStr = elements.entryStartInput?.value || '';

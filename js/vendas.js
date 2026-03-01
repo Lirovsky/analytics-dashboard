@@ -102,6 +102,28 @@
             if (v.endsWith("_google")) return "Google";
             return "Orgânico";
         },
+        // Origem da venda (LP / Trial / Orgânico / Não informado)
+        // Regras:
+        // - null/undefined/"" => "Não informado"
+        // - contém "orgânico"/"organico" => "Orgânico" (prioridade)
+        // - contém "trial" + termina com Facebook/Google => "Trial"
+        // - termina com Facebook/Google => "LP"
+        // - demais => "Orgânico"
+        normalizeSaleOrigin(value) {
+            const s = String(value ?? "").trim();
+            if (!s) return "Não informado";
+            const v = s.toLowerCase();
+            if (v === "undefined" || v === "null") return "Não informado";
+
+            if (v.includes("organico") || v.includes("orgânico")) return "Orgânico";
+
+            const hasTrial = v.includes("trial");
+            const endsPaid = /(^|[_\-\s])(facebook|google)$/.test(v);
+            if (hasTrial && endsPaid) return "Trial";
+            if (endsPaid) return "LP";
+            return "Orgânico";
+        },
+
 
         formatBRL(value) {
             const n = Number(value);
@@ -132,6 +154,7 @@
         timeSelect: $id("timeSelect"),
         sistemaSelect: $id("sistemaSelect"),
         desafioSelect: $id("desafioSelect"),
+        tagSelect: $id("tagSelect"),
         quickSearch: $id("globalSearch"),
 
         presetPrevDay: $id("presetPrevDay"),
@@ -139,6 +162,7 @@
         preset7: $id("preset7"),
         preset14: $id("preset14"),
         preset30: $id("preset30"),
+        presetCurrentMonth: $id("presetCurrentMonth"),
 
         applyFilters: $id("applyFilters"),
         clearVendor: $id("clearVendor"),
@@ -464,6 +488,24 @@
             },
             options: PIE_OPTIONS,
         });
+
+        // Origem da venda (LP / Trial / Orgânico / Não informado)
+        const saleOriginLabels = ["LP", "Trial", "Orgânico", "Não informado"];
+        const saleOriginCounts = countBy(rows, "sale_origin");
+        ensureChart("chartOrigemVenda", {
+            type: "pie",
+            data: {
+                labels: saleOriginLabels,
+                datasets: [
+                    pieDataset(
+                        saleOriginLabels.map((l) => saleOriginCounts[l] || 0),
+                        saleOriginLabels
+                    ),
+                ],
+            },
+            options: PIE_OPTIONS,
+        });
+
     }
 
     function getField(obj, keys) {
@@ -492,7 +534,9 @@
             // novo campo (no payload) + fallback para lead_tag
             lead_underline_tag: leadUnderlineTag ?? null,
             lead_tag: leadTag ?? null,
+            lead_tag_display: (leadTag ?? leadUnderlineTag) ?? null,
             lead_origin: utils.normalizeLeadOrigin(originRaw),
+            sale_origin: utils.normalizeSaleOrigin(originRaw),
         };
     }
 
@@ -502,6 +546,7 @@
         setOptions(elements.timeSelect, uniqueSorted(rows, "team"), { keepSelected: true, includeNotInformed: true });
         setOptions(elements.sistemaSelect, uniqueSorted(rows, "system"), { keepSelected: true, includeNotInformed: true });
         setOptions(elements.desafioSelect, uniqueSorted(rows, "challenge"), { keepSelected: true, includeNotInformed: true });
+        setOptions(elements.tagSelect, uniqueSorted(rows, "lead_tag_display"), { keepSelected: true, includeNotInformed: true });
     }
 
     function applyAllFiltersAndRender() {
@@ -511,6 +556,7 @@
         const times = getSelectedValues(elements.timeSelect);
         const sistemas = getSelectedValues(elements.sistemaSelect);
         const desafios = getSelectedValues(elements.desafioSelect);
+        const tags = getSelectedValues(elements.tagSelect);
         const q = String(elements.quickSearch?.value ?? "").trim().toLowerCase();
 
         let out = [...state.salesData];
@@ -521,6 +567,7 @@
         if (times.length) out = out.filter((r) => matchesSelectValue(r.team, times));
         if (sistemas.length) out = out.filter((r) => matchesSelectValue(r.system, sistemas));
         if (desafios.length) out = out.filter((r) => matchesSelectValue(r.challenge, desafios));
+        if (tags.length) out = out.filter((r) => matchesSelectValue(r.lead_tag_display, tags));
 
         if (q) {
             out = out.filter((r) => {
@@ -535,6 +582,7 @@
                     r.system,
                     r.challenge,
                     r.lead_origin,
+                    r.lead_tag_display,
                     r.lead_underline_tag,
                     r.lead_tag,
                 ]
@@ -667,7 +715,7 @@
             if (elements.moneySelect) elements.moneySelect.value = "";
             if (elements.quickSearch) elements.quickSearch.value = "";
 
-            [elements.managerSelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect]
+            [elements.managerSelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
                 .filter(Boolean)
                 .forEach((sel) => {
                     sel.value = "";
@@ -677,7 +725,7 @@
         });
 
         const onAnyFilterChange = () => applyAllFiltersAndRender();
-        [elements.managerSelect, elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect]
+        [elements.managerSelect, elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
             .filter(Boolean)
             .forEach((el) => el.addEventListener("change", onAnyFilterChange));
 
@@ -699,6 +747,16 @@
         elements.preset7?.addEventListener("click", () => applyPresetDays(7));
         elements.preset14?.addEventListener("click", () => applyPresetDays(14));
         elements.preset30?.addEventListener("click", () => applyPresetDays(30));
+
+        const applyCurrentMonth = () => {
+            const end = new Date();
+            const start = new Date(end.getFullYear(), end.getMonth(), 1);
+            if (elements.entryStartInput) elements.entryStartInput.value = utils.getDateString(start);
+            if (elements.entryEndInput) elements.entryEndInput.value = utils.getDateString(end);
+            loadSales();
+        };
+
+        elements.presetCurrentMonth?.addEventListener("click", applyCurrentMonth);
 
         const applyRelativeDay = (delta) => {
             const startStr = elements.entryStartInput?.value || "";

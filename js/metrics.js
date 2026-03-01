@@ -26,6 +26,12 @@ const utils = {
     today() {
         return this.getDateString(new Date());
     },
+    monthStart(date = new Date()) {
+        return new Date(date.getFullYear(), date.getMonth(), 1);
+    },
+    monthEnd(date = new Date()) {
+        return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    },
     safeNumber(value) {
         if (value === null || value === undefined || isNaN(value)) return null;
         const n = Number(value);
@@ -138,6 +144,9 @@ const elements = {
     applyPurchaseOnly: $id("applyPurchaseOnly"),
     clearEntryDates: $id("clearEntryDates"),
 
+
+    entryThisMonth: $id("entryThisMonth"),
+    purchaseThisMonth: $id("purchaseThisMonth"),
     facebookBody: $id("facebookBody"),
     googleBody: $id("googleBody"),
     organicBody: $id("organicBody"),
@@ -537,6 +546,28 @@ function init() {
         elements.entryStartInput.value = "2025-01-01";
         loadMetrics("both");
     };
+
+    // preset: mês atual (Entrada) => 1º dia do mês até o último dia do mês
+    if (elements.entryThisMonth) {
+        elements.entryThisMonth.onclick = () => {
+            const start = utils.monthStart();
+            const end = utils.monthEnd();
+            elements.entryStartInput.value = utils.getDateString(start);
+            elements.entryEndInput.value = utils.getDateString(end);
+            loadMetrics("both");
+        };
+    }
+
+    // preset: mês atual (Compra) => 1º dia do mês até hoje
+    if (elements.purchaseThisMonth) {
+        elements.purchaseThisMonth.onclick = () => {
+            const start = utils.monthStart();
+            const end = new Date();
+            elements.purchaseStartInput.value = utils.getDateString(start);
+            elements.purchaseEndInput.value = utils.getDateString(end);
+            loadMetrics("both");
+        };
+    }
     elements.closeToast.onclick = () => ui.hideError();
 
     // filtro: ocultar investimento zerado (persistente)

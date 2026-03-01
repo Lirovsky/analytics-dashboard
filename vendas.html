@@ -55,9 +55,12 @@
                         <div class="filter-shortcuts">
                             <button id="presetPrevDay" class="btn btn--ghost" type="button">Dia anterior</button>
                             <button id="presetNextDay" class="btn btn--ghost" type="button">Dia seguinte</button>
+                            <!--
                             <button id="preset7" class="btn btn--ghost" type="button">7 dias</button>
                             <button id="preset14" class="btn btn--ghost" type="button">14 dias</button>
                             <button id="preset30" class="btn btn--ghost" type="button">30 dias</button>
+                            -->
+                            <button id="presetCurrentMonth" class="btn btn--ghost" type="button">Mês atual</button>
                         </div>
                     </div>
                 </div>
@@ -108,6 +111,13 @@
                         </select>
                     </div>
 
+
+                    <div class="filter-group">
+                        <label for="tagSelect">Tag</label>
+                        <select id="tagSelect" class="date-input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
                     <div class="filter-group filter-group--search">
                         <label for="globalSearch">Busca</label>
                         <input type="text" id="globalSearch" class="text-input"
@@ -175,8 +185,13 @@
                     </div>
 
                     <div class="chart-card">
-                        <div class="chart-title">Vendas por origem</div>
+                        <div class="chart-title">Vendas por canal</div>
                         <canvas id="chartOrigem" height="96"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-title">Vendas por origem</div>
+                        <canvas id="chartOrigemVenda" height="96"></canvas>
                     </div>
 
                     <div class="chart-card">

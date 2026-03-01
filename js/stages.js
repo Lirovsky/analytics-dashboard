@@ -56,6 +56,7 @@ const elements = {
   entryEndInput: $id("entryEndDate"),
   stageSelect: $id("stageSelect"),
   applyEntryOnly: $id("applyEntryOnly"),
+  quickCurrentMonth: $id("quickCurrentMonth"),
 
   moneyStatusChart: $id("moneyStatusChart"),
 
@@ -139,7 +140,7 @@ const funnelChart = {
 
     // Labels no centro do slice (sempre com valores REAIS)
     series.labels.template.setAll({
-      text: "{category}: {rawValueText} ({cumPctText})",
+      text: "{category}: {labelValueText} ({labelPctText})",
       centerX: am5.p50,
       x: am5.p50,
       oversizedBehavior: "wrap",
@@ -148,8 +149,7 @@ const funnelChart = {
 
     // Tooltip com detalhes (reais)
     series.slices.template.setAll({
-      tooltipText:
-        "{category}\nAcumulado: {rawValueText} ({cumPctText})\nNo estágio: {stageCountText} ({stagePctText})",
+      tooltipText: "{category}\n{labelKind}: {labelValueText} ({labelPctText})",
     });
 
     // Remove ticks (mais limpo)
@@ -198,6 +198,14 @@ const funnelChart = {
         // acumulado %
         cumPctText: utils.formatPercentage(cumPct),
       };
+
+      const isLeadStage = stage === "Lead";
+      const labelValue = isLeadStage ? rawCum : stageCount;
+      const labelPct = isLeadStage ? cumPct : stagePct;
+      item.labelKind = isLeadStage ? "Acumulado" : "No estágio";
+      item.labelValue = labelValue;
+      item.labelValueText = utils.formatNumber(labelValue);
+      item.labelPctText = utils.formatPercentage(labelPct);
 
       remaining -= stageCount;
       return item;
@@ -294,7 +302,7 @@ const funnelChart = {
     );
 
     series.labels.template.setAll({
-      text: "{category}: {rawValueText} ({cumPctText})",
+      text: "{category}: {labelValueText} ({labelPctText})",
       centerX: am5.p50,
       x: am5.p50,
       oversizedBehavior: "wrap",
@@ -302,8 +310,7 @@ const funnelChart = {
     });
 
     series.slices.template.setAll({
-      tooltipText:
-        "{category}\nAcumulado: {rawValueText} ({cumPctText})\nNo estágio: {stageCountText} ({stagePctText})",
+      tooltipText: "{category}\n{labelKind}: {labelValueText} ({labelPctText})",
     });
 
     series.ticks.template.setAll({ forceHidden: true });
@@ -346,6 +353,14 @@ const funnelChart = {
 
         cumPctText: utils.formatPercentage(cumPct),
       };
+
+      const isLeadStage = stage === "Lead";
+      const labelValue = isLeadStage ? rawCum : stageCount;
+      const labelPct = isLeadStage ? cumPct : stagePct;
+      item.labelKind = isLeadStage ? "Acumulado" : "No estágio";
+      item.labelValue = labelValue;
+      item.labelValueText = utils.formatNumber(labelValue);
+      item.labelPctText = utils.formatPercentage(labelPct);
 
       remaining -= stageCount;
       return item;
@@ -631,6 +646,14 @@ function init() {
 
   elements.closeToast?.addEventListener("click", () => ui.hideError());
   elements.applyEntryOnly?.addEventListener("click", loadStages);
+  elements.quickCurrentMonth?.addEventListener("click", () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    if (elements.entryStartInput) elements.entryStartInput.value = utils.getDateString(firstDay);
+    if (elements.entryEndInput) elements.entryEndInput.value = utils.getDateString(now);
+    loadStages();
+  });
+
 
   const onEnter = (e) => {
     if (e.key === "Enter") loadStages();
