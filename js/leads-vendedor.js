@@ -1108,14 +1108,23 @@
   const BAR_VENDOR_STACKED_OPTIONS = {
     responsive: true,
     maintainAspectRatio: false,
-
     interaction: { mode: "index", intersect: false },
 
-    // 1) espaço extra acima do gráfico (pra caber o total)
-    layout: { padding: { top: 18 } },
+    // antes era só top: 18
+    layout: { padding: { top: 18, bottom: 10 } },
 
     plugins: {
-      legend: { display: true, position: "bottom" },
+      legend: {
+        display: true,
+        position: "bottom",
+        align: "center",
+        labels: {
+          boxWidth: 9,
+          boxHeight: 9,
+          padding: 14,
+          font: { size: 12, weight: "600" },
+        },
+      },
       tooltip: { mode: "index", intersect: false },
 
       datalabels: {
@@ -1133,14 +1142,13 @@
               return n > 0 ? String(n) : "";
             },
           },
-
           total: {
             display: (ctx) => ctx.datasetIndex === ctx.chart.data.datasets.length - 1,
             anchor: "end",
             align: "end",
-            offset: 6,     // (opcional) afasta um pouco mais do topo da barra
-            clamp: false,  // deixa desenhar fora da área do plot
-            clip: false,   // não recorta o texto
+            offset: 6,
+            clamp: false,
+            clip: false,
             font: { size: 12, weight: "800" },
             color: "rgba(15, 23, 42, 0.9)",
             formatter: (_v, ctx) => {
@@ -1160,8 +1168,6 @@
         stacked: true,
         beginAtZero: true,
         ticks: { precision: 0 },
-
-        // 2) folga automática no topo do eixo Y (resolve o "8" cortado)
         grace: "20%",
       },
     },

@@ -86,7 +86,7 @@
 
 /* tabela: largura dinâmica conforme colunas */
 .cohort-table.data-table {
-  min-width: calc(360px + (var(--cohort-cols, 14) * 72px));
+  min-width: calc(360px + (var(--cohort-cols, 13) * 72px));
 }
 
 /* colunas fixas (sticky) */

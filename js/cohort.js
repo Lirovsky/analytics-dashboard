@@ -9,6 +9,9 @@
 
   const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+  // Limite visual: até M+12 (remove M+13 e M+14)
+  const MAX_M_OFFSET = 12;
+
   const utils = {
     pad2(n) {
       return String(n).padStart(2, '0');
@@ -114,8 +117,6 @@
     preset12m: dom.byId('preset12m'),
     presetYtd: dom.byId('presetYtd'),
 
-    sellerSelect: dom.byId('sellerSelect'),
-
     applyFilters: dom.byId('applyFilters'),
     clearAllFilters: dom.byId('clearAllFilters'),
 
@@ -161,7 +162,6 @@
     raw: [],
     normalized: [],
     filtered: [],
-    sellers: [],
     cohort: null,
   };
 
@@ -240,12 +240,7 @@
     const endClamp = new Date(end.getTime());
     endClamp.setHours(23, 59, 59, 999);
 
-    const seller = (elements.sellerSelect?.value || '').trim();
-
     let out = [...state.normalized];
-
-    // filtro por vendedor
-    if (seller) out = out.filter((r) => String(r.manager || '').trim() === seller);
 
     // filtro por intervalo de entrada
     out = out.filter((r) => {
@@ -284,7 +279,8 @@
 
     const startKey = months[0] || utils.monthKeyFromDate(startDate);
     const endKey = months[months.length - 1] || utils.monthKeyFromDate(endDate);
-    const maxOffset = Math.max(0, utils.monthsDiff(startKey, endKey) ?? 0);
+    const computedMaxOffset = Math.max(0, utils.monthsDiff(startKey, endKey) ?? 0);
+    const maxOffset = Math.min(computedMaxOffset, MAX_M_OFFSET);
 
     const entries = Array(months.length).fill(0);
     const matrix = Array.from({ length: months.length }, () => Array(maxOffset + 1).fill(0));
@@ -456,9 +452,6 @@
       state.raw = vendas;
       state.normalized = vendas.map(normalizeRow);
 
-      // options (seller)
-      setOptions(elements.sellerSelect, uniqueSorted(state.normalized, 'manager'), { keepSelected: true });
-
       applyClientFilters();
     } catch (e) {
       ui.showError(`Erro: ${e.message}`);
@@ -486,14 +479,11 @@
 
     if (elements.clearAllFilters) {
       elements.clearAllFilters.addEventListener('click', () => {
-        if (elements.sellerSelect) elements.sellerSelect.value = '';
         if (elements.entryStartInput) elements.entryStartInput.value = utils.getDateString(hardStart);
         if (elements.entryEndInput) elements.entryEndInput.value = utils.getDateString(today);
         loadData();
       });
     }
-
-    if (elements.sellerSelect) elements.sellerSelect.addEventListener('change', applyClientFilters);
 
     // Presets
     if (elements.presetAll) {
