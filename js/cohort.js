@@ -3,13 +3,10 @@
   if (page !== 'cohort') return;
 
   const CONFIG = {
-    // Cole aqui o webhook que você vai enviar
     COHORT_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/cohort',
   };
 
   const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-  // Limite visual: até M+12 (remove M+13 e M+14)
   const MAX_M_OFFSET = 12;
 
   const utils = {

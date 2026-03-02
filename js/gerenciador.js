@@ -100,6 +100,11 @@ const elements = {
   clearFilters: $id("clearFilters"),
   body: $id("gerenciadorBody"),
 
+  // KPIs (Conjuntos)
+  kpiAdsetsTotal: $id("kpiAdsetsTotal"),
+  kpiAdsetsActive: $id("kpiAdsetsActive"),
+  kpiAdsetsPaused: $id("kpiAdsetsPaused"),
+
   table: document.querySelector("table.data-table"),
   thead: document.querySelector("table.data-table thead"),
 
@@ -336,12 +341,34 @@ function expanderButton(id) {
   </button>`;
 }
 
+
+function updateAdsetKPIs(groups) {
+  const totals = { total: 0, active: 0, paused: 0 };
+
+  for (const g of groups || []) {
+    const items = Array.isArray(g?.items) ? g.items : [];
+    totals.total += items.length;
+
+    for (const it of items) {
+      const key = String(it?.status?.key || "").toUpperCase();
+      if (key === "ACTIVE") totals.active += 1;
+      else if (key === "PAUSED") totals.paused += 1;
+    }
+  }
+
+  if (elements.kpiAdsetsTotal) elements.kpiAdsetsTotal.textContent = formatters.number.format(totals.total);
+  if (elements.kpiAdsetsActive) elements.kpiAdsetsActive.textContent = formatters.number.format(totals.active);
+  if (elements.kpiAdsetsPaused) elements.kpiAdsetsPaused.textContent = formatters.number.format(totals.paused);
+}
+
 function render() {
   if (!elements.body) return;
 
   updateSortUI();
 
   const filtered = applyFilters(state.groups);
+  updateAdsetKPIs(filtered);
+
   const data = applySorting(filtered);
 
   if (!data.length) {

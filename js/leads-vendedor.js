@@ -145,19 +145,10 @@
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, ''); // remove acentos
 
-    // Apresentação
     if (s === 'presentation' || s.includes('present') || s.includes('apres') || s.startsWith('pres')) return 'presentation';
-
-    // Proposta
     if (s === 'proposal_sent' || s.includes('proposal') || s.includes('propost')) return 'proposal_sent';
-
-    // Pagamento
     if (s === 'payment_pending' || s.includes('payment') || s.includes('pagam') || s.includes('pagto')) return 'payment_pending';
-
-    // Negociação
     if (s === 'negotiation' || s.includes('nego') || s.includes('negoci')) return 'negotiation';
-
-    // Assinatura
     if (s === 'signature' || s.includes('signat') || s.includes('assin')) return 'signature';
 
     return 'presentation';
@@ -176,7 +167,6 @@
     if (s.includes('meet')) return 'Meet';
     if (s.includes('test')) return 'Teste';
 
-    // fallback: mantém o valor original (sem mexer)
     return raw;
   }
 
@@ -434,7 +424,7 @@
     rows: [],
     filtered: [],
     vendorCounts: {},
-    sort: { key: 'ENTREGUE', direction: 'desc' }, // default: Entregue desc
+    sort: { key: 'ENTREGUE', direction: 'desc' },
     charts: {},
 
     pagination: {
@@ -787,7 +777,7 @@
     const entryStart = elements.entryStartInput?.value || '';
     const entryEnd = elements.entryEndInput?.value || '';
 
-    const moneyMode = (elements.moneySelect?.value || '').trim(); // '', yes, no, unknown
+    const moneyMode = (elements.moneySelect?.value || '').trim();
     const areas = getSelectedValues(elements.areaSelect);
     const times = getSelectedValues(elements.timeSelect);
     const sistemas = getSelectedValues(elements.sistemaSelect);
