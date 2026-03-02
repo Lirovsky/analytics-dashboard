@@ -67,6 +67,25 @@ const utils = {
     return ins !== null ? ins : 0;
   },
 
+  pickDailyBudget(item) {
+    const raw = item?.daily_budget ?? item?.dailyBudget ?? null;
+    if (raw === null || raw === undefined) return null;
+
+    const s = String(raw).trim();
+    if (!s) return null;
+
+    // Meta Ads API geralmente retorna em centavos (string inteira)
+    if (/^\d+$/.test(s)) {
+      const n = Number(s);
+      if (!Number.isFinite(n) || n === 0) return null;
+      return n / 100;
+    }
+
+    const n = this.toNumber(s);
+    if (n === null || n === 0) return null;
+    return n;
+  },
+
   pickLeads(item) {
     const leads = this.toNumber(item?.count_utm_term_adset);
     if (leads !== null) return leads;
@@ -146,7 +165,7 @@ const ui = {
   hideError() {
     elements.errorToast?.classList.remove("active");
   },
-  emptyState(message = "Sem dados", colspan = 5) {
+  emptyState(message = "Sem dados", colspan = 6) {
     return `<tr><td colspan="${colspan}"><div class="empty-state"><p>${message}</p></div></td></tr>`;
   },
 };
@@ -170,12 +189,13 @@ function buildGroups(items) {
         campaignId,
         campaignName,
         items: [],
-        totals: { spend: 0, leads: 0 },
+        totals: { spend: 0, dailyBudget: 0, leads: 0 },
         hasActive: false,
         hasPaused: false,
       };
 
     const spend = utils.pickSpend(item);
+    const dailyBudget = utils.pickDailyBudget(item);
     const leads = utils.pickLeads(item);
 
     const status = utils.mapStatus(item?.status);
@@ -183,12 +203,14 @@ function buildGroups(items) {
     if (status.key === "PAUSED") node.hasPaused = true;
 
     node.totals.spend += spend || 0;
+    node.totals.dailyBudget += dailyBudget || 0;
     node.totals.leads += leads || 0;
 
     node.items.push({
       name: item?.name ?? "–",
       status,
       spend: spend || 0,
+      dailyBudget: dailyBudget,
       leads: leads || 0,
       cpl: utils.safeDivide(spend, leads),
     });
@@ -201,6 +223,7 @@ function buildGroups(items) {
     campaignName: g.campaignName,
     totals: {
       spend: g.totals.spend,
+      dailyBudget: g.totals.dailyBudget,
       leads: g.totals.leads,
       cpl: utils.safeDivide(g.totals.spend, g.totals.leads),
     },
@@ -243,6 +266,7 @@ function applyFilters(groups) {
 
       // recalcula totais com base apenas nos itens visíveis
       const spend = items.reduce((acc, it) => acc + (utils.toNumber(it?.spend) || 0), 0);
+      const dailyBudget = items.reduce((acc, it) => acc + (utils.toNumber(it?.dailyBudget) || 0), 0);
       const leads = items.reduce((acc, it) => acc + (utils.toNumber(it?.leads) || 0), 0);
 
       return {
@@ -250,6 +274,7 @@ function applyFilters(groups) {
         items,
         totals: {
           spend,
+          dailyBudget,
           leads,
           cpl: utils.safeDivide(spend, leads),
         },
@@ -372,7 +397,7 @@ function render() {
   const data = applySorting(filtered);
 
   if (!data.length) {
-    elements.body.innerHTML = ui.emptyState("Sem dados", 5);
+    elements.body.innerHTML = ui.emptyState("Sem dados", 6);
     return;
   }
 
@@ -387,6 +412,7 @@ function render() {
           </div>
         </td>
         <td>${utils.formatCurrency(group.totals.spend)}</td>
+        <td>${utils.formatCurrency(group.totals.dailyBudget)}</td>
         <td>${utils.formatNumber(group.totals.leads)}</td>
         <td>${utils.formatCurrency(group.totals.cpl)}</td>
         <td class="text-muted"></td>
@@ -398,7 +424,7 @@ function render() {
       if (!group.items.length) {
         rows.push(`
           <tr class="child-row" data-parent="${String(group.campaignId).replace(/"/g, "&quot;")}">
-            <td colspan="5" class="text-muted">Sem registros dentro desta campanha.</td>
+            <td colspan="6" class="text-muted">Sem registros dentro desta campanha.</td>
           </tr>
         `);
       } else {
@@ -411,6 +437,7 @@ function render() {
                 </div>
               </td>
               <td>${utils.formatCurrency(item.spend)}</td>
+              <td>${utils.formatCurrency(item.dailyBudget)}</td>
               <td>${utils.formatNumber(item.leads)}</td>
               <td>${utils.formatCurrency(item.cpl)}</td>
               <td>${statusPill(item.status)}</td>
@@ -425,10 +452,11 @@ function render() {
   const totals = data.reduce(
     (acc, g) => {
       acc.spend += utils.toNumber(g?.totals?.spend) || 0;
+      acc.dailyBudget += utils.toNumber(g?.totals?.dailyBudget) || 0;
       acc.leads += utils.toNumber(g?.totals?.leads) || 0;
       return acc;
     },
-    { spend: 0, leads: 0 }
+    { spend: 0, dailyBudget: 0, leads: 0 }
   );
 
   rows.push(`
@@ -440,6 +468,7 @@ function render() {
         </div>
       </td>
       <td>${utils.formatCurrency(totals.spend)}</td>
+      <td>${utils.formatCurrency(totals.dailyBudget)}</td>
       <td>${utils.formatNumber(totals.leads)}</td>
       <td>${utils.formatCurrency(utils.safeDivide(totals.spend, totals.leads))}</td>
       <td class="text-muted"></td>

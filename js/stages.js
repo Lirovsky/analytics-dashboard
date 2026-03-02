@@ -326,7 +326,7 @@ const funnelChart = {
 
     const stageCounts = STAGES_ORDER.map((stage) => {
       const s = stages?.[stage];
-      return (s?.[channelKey]?.count || 0) * 1;
+      return readChannelCount(s, channelKey) * 1;
     });
 
     const totalAll = stageCounts.reduce((acc, n) => acc + (n || 0), 0);
@@ -486,11 +486,71 @@ const STAGES_ORDER = ["Lead", "Apresentação", "Proposta Enviada", "Pagamento P
 const bucketKeys = (stageLabel) =>
   stageLabel === "Apresentação" ? ["Apresentação", "1ª Interação"] : [stageLabel];
 
+function readChannelCount(stageObj, channelKey) {
+  if (!stageObj) return 0;
+
+  // direct (payload já no formato stages[stage][channel])
+  const direct = stageObj?.[channelKey]?.count;
+  if (typeof direct === "number") return direct || 0;
+
+  // prefer total/all if present
+  const all =
+    stageObj?.all?.[channelKey]?.count ??
+    stageObj?.ALL?.[channelKey]?.count ??
+    null;
+
+  if (typeof all === "number") return all || 0;
+
+  // if payload split by money buckets, sum them
+  const buckets = ["yes", "no", "other", "YES", "NO", "OTHER"];
+  let sum = 0;
+  let found = false;
+
+  for (const b of buckets) {
+    const c = stageObj?.[b]?.[channelKey]?.count;
+    if (typeof c === "number") {
+      sum += c || 0;
+      found = true;
+    }
+  }
+
+  if (found) return sum;
+
+  return 0;
+}
+
 const readMoneyCount = (stages, key) => {
   const v = stages?.[key];
   if (!v) return 0;
+
+  // Prefer "all/total" if present (isso representa TODOS os leads, sem filtrar money = YES)
+  const allCount =
+    v?.all?.count ??
+    v?.ALL?.count ??
+    v?.total?.count ??
+    v?.Total?.count ??
+    null;
+
+  if (typeof allCount === "number") return allCount || 0;
+
+  // If payload comes split by buckets (yes/no/other), sum to get total
+  const buckets = ["yes", "no", "other", "YES", "NO", "OTHER"];
+  let sum = 0;
+  let found = false;
+
+  for (const b of buckets) {
+    const c = v?.[b]?.count;
+    if (typeof c === "number") {
+      sum += c || 0;
+      found = true;
+    }
+  }
+
+  if (found) return sum;
+
+  // Fallback (some payloads may already put total here)
   if (typeof v.count === "number") return v.count || 0;
-  if (v.all && typeof v.all.count === "number") return v.all.count || 0;
+
   return 0;
 };
 
