@@ -580,6 +580,12 @@ function fillCampaignSelect(groups) {
 
 async function loadData() {
   ui.showLoading();
+  const btn = elements.applyFilters;
+  const btnOriginalText = btn?.textContent;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Buscando...";
+  }
   try {
     const url = `${CONFIG.ENDPOINT}?_ts=${Date.now()}`;
     const res = await fetch(url);
@@ -589,20 +595,39 @@ async function loadData() {
     state.groups = buildGroups(state.raw);
 
     fillCampaignSelect(state.groups);
+
+    // mantém o state alinhado com o valor efetivo do select (pode voltar para ALL se não existir na lista)
+    state.filters.name = elements.campaignNameFilter?.value || "ALL";
     render();
   } catch (e) {
     ui.showError(`Erro: ${e?.message || "Falha ao carregar dados"}`);
   } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = btnOriginalText || "Buscar";
+    }
     ui.hideLoading();
   }
 }
 
 function bindEvents() {
-  elements.applyFilters.onclick = () => {
-    state.filters.name = elements.campaignNameFilter.value || "ALL";
-    state.filters.status = elements.statusFilter.value || "ALL";
-    render();
+  // Buscar SEMPRE refaz a consulta no n8n (refresh de dados)
+  elements.applyFilters.onclick = async () => {
+    state.filters.name = elements.campaignNameFilter?.value || "ALL";
+    state.filters.status = elements.statusFilter?.value || "ALL";
+    await loadData();
   };
+
+  // Mudou filtro? Atualiza a tabela na hora (sem bater na API)
+  elements.statusFilter?.addEventListener("change", () => {
+    state.filters.status = elements.statusFilter?.value || "ALL";
+    render();
+  });
+
+  elements.campaignNameFilter?.addEventListener("change", () => {
+    state.filters.name = elements.campaignNameFilter?.value || "ALL";
+    render();
+  });
 
   elements.clearFilters.onclick = () => {
     elements.campaignNameFilter.value = "ALL";
