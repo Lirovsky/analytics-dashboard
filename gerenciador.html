@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="css/gerenciador.css?v=4" />
+  <link rel="stylesheet" href="css/gerenciador.css?v=5" />
 </head>
 
 <body>
@@ -35,34 +35,74 @@
   </header>
 
   <div class="dashboard">
-    <aside class="filter-panel">
+    <aside class="filter-panel filter-panel--wide">
       <h3 class="filter-panel__title">Filtro</h3>
 
-      <div class="filter-panel__controls">
-        <div class="filter-group">
-          <label for="campaignNameFilter">Nome da campanha</label>
-          <select id="campaignNameFilter" class="date-input">
-            <option value="ALL" selected>Todos</option>
-          </select>
+      <div class="filter-panel__controls filter-panel__controls--split">
+        <!-- ESQUERDA: filtros da tabela -->
+        <div class="filter-panel__col filter-panel__col--left">
+          <div class="filter-group">
+            <label for="campaignNameFilter">Nome da campanha</label>
+            <select id="campaignNameFilter" class="date-input">
+              <option value="ALL" selected>Todos</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="statusFilter">Status</label>
+            <select id="statusFilter" class="date-input">
+              <option value="ALL" selected>Todos</option>
+              <option value="ACTIVE">Ativa</option>
+              <option value="PAUSED">Pausada</option>
+            </select>
+          </div>
+
+          <div class="filter-actions">
+            <button id="applyFilters" class="btn btn--primary" type="button">Buscar</button>
+            <button id="clearFilters" class="btn btn--primary" type="button">Limpar</button>
+          </div>
         </div>
 
-        <div class="filter-group">
-          <label for="statusFilter">Status</label>
-          <select id="statusFilter" class="date-input">
-            <option value="ALL" selected>Todos</option>
-            <option value="ACTIVE">Ativa</option>
-            <option value="PAUSED">Pausada</option>
-          </select>
-        </div>
+        <div class="filter-panel__divider" aria-hidden="true"></div>
 
-        <div class="filter-actions">
-          <button id="applyFilters" class="btn btn--primary" type="button">Buscar</button>
-          <button id="clearFilters" class="btn btn--primary" type="button">Limpar</button>
+        <!-- DIREITA: envio de budgets -->
+        <div class="filter-panel__col filter-panel__col--right">
+          <div class="budget-grid">
+            <div class="filter-group">
+              <label for="budgetSemana">Semana</label>
+              <input id="budgetSemana" class="date-input" type="text" inputmode="numeric" value="1000000" />
+            </div>
+
+            <div class="filter-group">
+              <label for="budgetSabado">Sábado</label>
+              <input id="budgetSabado" class="date-input" type="text" inputmode="numeric" value="250000" />
+            </div>
+
+            <div class="filter-group">
+              <label for="budgetDomingo1">Domingo 1</label>
+              <input id="budgetDomingo1" class="date-input" type="text" inputmode="numeric" value="250000" />
+            </div>
+
+            <div class="filter-group">
+              <label for="budgetDomingo2">Domingo 2</label>
+              <input id="budgetDomingo2" class="date-input" type="text" inputmode="numeric" value="500000" />
+            </div>
+
+            <div class="filter-group">
+              <label for="budgetPassword">Password</label>
+              <input id="budgetPassword" class="date-input" type="password" value="" />
+            </div>
+
+            <div class="filter-group filter-group--send">
+              <label aria-hidden="true">&nbsp;</label>
+              <button id="sendBudget" class="btn btn--primary" type="button">Enviar</button>
+            </div>
+          </div>
         </div>
       </div>
     </aside>
 
-    <section class="section section--campaigns">
+    <section class="section section--campaigns section--wide">
       <h2 class="section__title">Gerenciador</h2>
 
       <div class="kpi-grid kpi-grid--3" aria-label="KPIs de conjuntos">
@@ -147,7 +187,7 @@
     </div>
   </div>
 
-  <script src="js/gerenciador.js?v=4"></script>
+  <script src="js/gerenciador.js?v=5"></script>
 </body>
 
 </html>

@@ -1,5 +1,7 @@
 const CONFIG = {
   ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/gerenciador",
+  BUDGET_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/budget",
+  BUDGET_ID: 2,
 };
 
 const formatters = {
@@ -119,6 +121,14 @@ const elements = {
   clearFilters: $id("clearFilters"),
   body: $id("gerenciadorBody"),
 
+  // Budget (POST separado)
+  budgetSemana: $id("budgetSemana"),
+  budgetSabado: $id("budgetSabado"),
+  budgetDomingo1: $id("budgetDomingo1"),
+  budgetDomingo2: $id("budgetDomingo2"),
+  budgetPassword: $id("budgetPassword"),
+  sendBudget: $id("sendBudget"),
+
   // KPIs (Conjuntos)
   kpiAdsetsTotal: $id("kpiAdsetsTotal"),
   kpiAdsetsActive: $id("kpiAdsetsActive"),
@@ -132,6 +142,71 @@ const elements = {
   errorMessage: $id("errorMessage"),
   closeToast: $id("closeToast"),
 };
+
+function parseBudgetInt(value) {
+  const s = String(value ?? "").trim();
+  if (!s) return null;
+
+  // Aceita 1000000, 1.000.000, 1 000 000, etc.
+  const digits = s.replace(/[^\d]/g, "");
+  if (!digits) return null;
+
+  const n = Number(digits);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function sendBudgetRequest() {
+  if (!elements.sendBudget) return;
+
+  const payload = {
+    id: CONFIG.BUDGET_ID,
+    semana: parseBudgetInt(elements.budgetSemana?.value),
+    sabado: parseBudgetInt(elements.budgetSabado?.value),
+    domingo1: parseBudgetInt(elements.budgetDomingo1?.value),
+    domingo2: parseBudgetInt(elements.budgetDomingo2?.value),
+    password: String(elements.budgetPassword?.value ?? ""),
+  };
+
+  const missing = [];
+  if (payload.semana === null) missing.push("Semana");
+  if (payload.sabado === null) missing.push("Sábado");
+  if (payload.domingo1 === null) missing.push("Domingo 1");
+  if (payload.domingo2 === null) missing.push("Domingo 2");
+
+  if (missing.length) {
+    ui.showError(`Preencha com números: ${missing.join(", ")}.`);
+    return;
+  }
+
+  const btn = elements.sendBudget;
+  const originalText = btn.textContent;
+
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+
+  try {
+    const res = await fetch(CONFIG.BUDGET_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status}${txt ? ` — ${txt}` : ""}`);
+    }
+
+    btn.textContent = "Enviado!";
+    setTimeout(() => {
+      btn.textContent = originalText;
+    }, 1400);
+  } catch (e) {
+    ui.showError(`Erro ao enviar budgets: ${e?.message || "Falha"}`);
+    btn.textContent = originalText;
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 const state = {
   raw: [],
@@ -538,6 +613,11 @@ function bindEvents() {
   };
 
   elements.closeToast.onclick = () => ui.hideError();
+
+  // POST separado (budgets)
+  if (elements.sendBudget) {
+    elements.sendBudget.onclick = sendBudgetRequest;
+  }
 
   // Ordenação pelos headers (Spend / Leads / CPL)
   elements.thead?.addEventListener("click", (e) => {
