@@ -3,7 +3,7 @@
   if (page !== 'leads-vendedor') return;
 
   const CONFIG = {
-    ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor',
+    ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedores',
   };
   const NAO_INFORMADO_VALUE = '__nao_informado__';
 

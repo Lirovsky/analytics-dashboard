@@ -3,7 +3,7 @@
   if (page !== "mrr") return;
 
   const CONFIG = {
-    MRR_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/mrr",
+    MRR_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/mrr-new",
   };
 
   const DEBUG_UNMAPPED = new URLSearchParams(window.location.search).has("debug");

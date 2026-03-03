@@ -3,7 +3,7 @@
     if (page !== "vendas") return;
 
     const CONFIG = {
-        SALES_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/vendas",
+        SALES_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/vendas-totais",
     };
 
     const NAO_INFORMADO_VALUE = "__nao_informado__";

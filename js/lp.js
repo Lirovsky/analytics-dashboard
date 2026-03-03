@@ -4,7 +4,7 @@
 
   // Ajuste para o seu webhook real (precisa retornar: { resumo: {...}, por_lp: [...] })
   const CONFIG = {
-    ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/analytics",
+    ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/analytics-new",
     TIMEOUT_MS: 20000,
   };
 

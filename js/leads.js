@@ -3,7 +3,7 @@
     if (page !== 'leads') return;
 
     const CONFIG = {
-        LEADS_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads',
+        LEADS_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-banco',
         CHAT_URL_PREFIX: 'https://app-utalk.umbler.com/chats/',
         MANAGER_MAP: {
         },

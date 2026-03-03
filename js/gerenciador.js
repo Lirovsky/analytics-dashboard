@@ -1,5 +1,5 @@
 const CONFIG = {
-  ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/gerenciador",
+  ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/gerenciador-de-anuncios",
   BUDGET_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/budget",
   BUDGET_ID: 2,
 };

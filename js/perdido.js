@@ -3,7 +3,7 @@
   if (page !== "lead-perdido") return;
 
   const CONFIG = {
-    ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/lead-perdido",
+    ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/perdidos",
   };
 
   const dom = { byId: (id) => document.getElementById(id) };

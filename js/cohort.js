@@ -3,7 +3,7 @@
   if (page !== 'cohort') return;
 
   const CONFIG = {
-    COHORT_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/cohort',
+    COHORT_ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/cohorte',
   };
 
   const MONTHS_PT = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];

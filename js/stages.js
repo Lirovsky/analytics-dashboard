@@ -1,5 +1,5 @@
 const CONFIG = {
-  FUNNEL_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/funnel",
+  FUNNEL_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/stages",
 };
 
 // --------------------------------------------------

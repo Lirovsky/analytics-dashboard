@@ -1,5 +1,5 @@
 const CONFIG = {
-    CAMPAIGNS_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/campaigns",
+    CAMPAIGNS_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/metrics",
 };
 
 const STORAGE_KEYS = {
@@ -140,10 +140,6 @@ const elements = {
     hideZeroInvestment: $id("hideZeroInvestment"),
 
     applyFilters: $id("applyFilters"),
-    applyEntryOnly: $id("applyEntryOnly"),
-    applyPurchaseOnly: $id("applyPurchaseOnly"),
-    clearEntryDates: $id("clearEntryDates"),
-
 
     entryThisMonth: $id("entryThisMonth"),
     purchaseThisMonth: $id("purchaseThisMonth"),
@@ -538,14 +534,7 @@ function init() {
     elements.entryEndInput.value = today;
     elements.purchaseStartInput.value = today;
     elements.purchaseEndInput.value = today;
-
-    elements.applyEntryOnly.onclick = () => loadMetrics("entry");
-    elements.applyPurchaseOnly.onclick = () => loadMetrics("purchase");
     elements.applyFilters.onclick = () => loadMetrics("both");
-    elements.clearEntryDates.onclick = () => {
-        elements.entryStartInput.value = "2025-01-01";
-        loadMetrics("both");
-    };
 
     // preset: mês atual (Entrada) => 1º dia do mês até o último dia do mês
     if (elements.entryThisMonth) {

@@ -3,7 +3,7 @@
     if (page !== 'leads-yan') return;
 
     const CONFIG = {
-        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/leads-vendedor-individual',
+        ENDPOINT: 'https://n8n.clinicaexperts.com.br/webhook/new-leads-vendedor-individual',
     };
 
     // Nome "fixo" do vendedor (use aliases normalizados: minúsculo + sem acentos)

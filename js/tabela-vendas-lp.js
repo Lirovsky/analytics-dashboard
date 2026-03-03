@@ -2,7 +2,7 @@
 // Configuration
 // ========================================
 const CONFIG = {
-    ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/tabela-vendas-lp",
+    ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/tabela",
 };
 
 // ========================================
