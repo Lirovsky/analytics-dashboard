@@ -49,7 +49,7 @@
                     <input type="date" id="entryEndDate" class="date-input" />
                 </div>
 
-                <button id="clearEntryDates" class="btn btn--primary" type="button">Limpar</button>
+                <button id="entryThisMonth" class="btn btn--all" type="button">Mês atual</button>
 
                 <div class="filter-group">
                     <label for="purchaseStartDateInput">Compra • Data inicial</label>
@@ -61,6 +61,8 @@
                     <input type="date" id="purchaseEndDateInput" class="date-input" />
                 </div>
 
+                <button id="purchaseThisMonth" class="btn btn--all" type="button">Mês atual</button>
+
                 <div class="filter-group filter-group--inline">
                     <label class="checkbox" for="hideZeroInvestment">
                         0,00
@@ -71,9 +73,7 @@
                 <hr class="filter-sep" />
 
                 <div class="filter-actions">
-                    <button id="applyEntryOnly" class="btn btn--primary" type="button">Entrada</button>
-                    <button id="applyPurchaseOnly" class="btn btn--primary" type="button">Compra</button>
-                    <button id="applyFilters" class="btn btn--primary" type="button">Entrada + Compra</button>
+                    <button id="applyFilters" class="btn btn--primary" type="button">Aplicar</button>
                 </div>
             </div>
         </aside>
