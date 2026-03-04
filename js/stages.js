@@ -1,5 +1,5 @@
 const CONFIG = {
-  FUNNEL_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/stages",
+  FUNNEL_ENDPOINT: "https://n8n.clinicaexperts.com.br/webhook/stages2",
 };
 
 // --------------------------------------------------
@@ -54,6 +54,7 @@ const $id = (id) => document.getElementById(id);
 const elements = {
   entryStartInput: $id("entryStartDate"),
   entryEndInput: $id("entryEndDate"),
+  campaignSelect: $id("campaignSelect"),
   stageSelect: $id("stageSelect"),
   applyEntryOnly: $id("applyEntryOnly"),
   quickCurrentMonth: $id("quickCurrentMonth"),
@@ -85,6 +86,72 @@ const state = {
     },
   },
 };
+
+// ----------------------------
+// Campanha (tag) filter
+// ----------------------------
+const escapeHtml = (str) =>
+  String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+function populateCampaignSelect(payload) {
+  if (!elements.campaignSelect) return;
+
+  const list = payload?.byChannel?.campaigns?.list;
+  const current = elements.campaignSelect.value;
+
+  let options = `<option value="">Todas (geral)</option>`;
+
+  if (Array.isArray(list) && list.length) {
+    for (const tag of list) {
+      const safe = escapeHtml(tag);
+      options += `<option value="${safe}">${safe}</option>`;
+    }
+
+    elements.campaignSelect.innerHTML = options;
+
+    // tenta manter seleção se ainda existir
+    if (current && list.includes(current)) elements.campaignSelect.value = current;
+    else elements.campaignSelect.value = "";
+
+    elements.campaignSelect.disabled = false;
+    return;
+  }
+
+  // sem campanhas no payload (backend antigo ou sem dados)
+  elements.campaignSelect.innerHTML = options;
+  elements.campaignSelect.value = "";
+  elements.campaignSelect.disabled = true;
+}
+
+function resolveByChannelForSelection(payload) {
+  if (!payload?.byChannel) return null;
+
+  const selected = elements.campaignSelect?.value?.trim() || "";
+  if (!selected) return payload.byChannel;
+
+  // novo payload: byChannel.campaigns.byTag[tag].stagesByChannel
+  const stagesByChannel = payload?.byChannel?.campaigns?.byTag?.[selected]?.stagesByChannel;
+  if (!stagesByChannel) return payload.byChannel; // fallback
+
+  // formato esperado pelos renderizadores atuais: { stages: ... }
+  return { stages: stagesByChannel };
+}
+
+function renderByChannelWithSelection() {
+  const payload = state.funnelData;
+  const byChannel = resolveByChannelForSelection(payload);
+
+  // tabela (se existir)
+  funnelRender.channelTable(byChannel);
+
+  // 3 funis
+  funnelChart.renderByChannelFunnels(byChannel);
+}
 
 // ----------------------------
 // Funnel chart (amCharts)
@@ -660,11 +727,9 @@ async function loadStages() {
 
     funnelRender.moneyStatusTable(payload?.moneyStatus || null);
 
-    // tabela (se você mantiver)
-    funnelRender.channelTable(payload?.byChannel || null);
-
-    // 3 funis por canal (se os containers existirem no HTML)
-    funnelChart.renderByChannelFunnels(payload?.byChannel || null);
+    // popula filtro de campanha (se vier no payload) e renderiza os funis por canal (geral ou filtrado)
+    populateCampaignSelect(payload);
+    renderByChannelWithSelection();
   } catch (e) {
     ui.showError(`Failed to load funnel: ${e.message}`);
 
@@ -704,6 +769,8 @@ function init() {
   if (elements.entryStartInput) elements.entryStartInput.value = today;
   if (elements.entryEndInput) elements.entryEndInput.value = today;
 
+
+  if (elements.campaignSelect) elements.campaignSelect.disabled = true;
   elements.closeToast?.addEventListener("click", () => ui.hideError());
   elements.applyEntryOnly?.addEventListener("click", loadStages);
   elements.quickCurrentMonth?.addEventListener("click", () => {
@@ -715,6 +782,11 @@ function init() {
   });
 
 
+
+  elements.campaignSelect?.addEventListener("change", () => {
+    // não refaz fetch; só re-renderiza com base no payload já carregado
+    renderByChannelWithSelection();
+  });
   const onEnter = (e) => {
     if (e.key === "Enter") loadStages();
   };
