@@ -126,10 +126,25 @@
 
 
                     <div class="filter-group">
-                        <label for="timeSelect">Time</label>
-                        <select id="timeSelect" class="date-input">
-                            <option value="">Todos</option>
-                        </select>
+                        <label for="timeTrigger">Time</label>
+
+                        <div class="multi-select" id="timeMulti">
+                            <button id="timeTrigger" type="button" class="date-input multi-select__trigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                                <span id="timeTriggerText">Todos</span>
+                                <span class="multi-select__chevron" aria-hidden="true"></span>
+                            </button>
+
+                            <div id="timeMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                                <div class="multi-select__actions">
+                                    <button type="button" class="multi-select__action" id="timeSelectAll">Marcar
+                                        todos</button>
+                                    <button type="button" class="multi-select__action" id="timeClear">Limpar</button>
+                                </div>
+
+                                <div id="timeCheckboxes" class="multi-select__list"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="filter-group">
