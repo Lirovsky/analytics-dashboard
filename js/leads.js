@@ -187,6 +187,39 @@
         updateAreaTriggerText();
     }
 
+    function setTimeMenuOpen(open) {
+        if (!elements?.timeMulti || !elements?.timeTrigger) return;
+        elements.timeMulti.classList.toggle('is-open', !!open);
+        elements.timeTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function updateTimeTriggerText() {
+        if (!elements?.timeTriggerText) return;
+
+        const selected = getCheckedValues(elements.timeCheckboxes);
+
+        if (!selected.length) {
+            elements.timeTriggerText.textContent = 'Todos';
+            return;
+        }
+
+        if (selected.length === 1) {
+            const v = selected[0];
+            elements.timeTriggerText.textContent = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
+            return;
+        }
+
+        elements.timeTriggerText.textContent = `${selected.length} selecionados`;
+    }
+
+    function setAllTimeCheckboxes(checked) {
+        if (!elements?.timeCheckboxes) return;
+        elements.timeCheckboxes
+            .querySelectorAll('input[type="checkbox"]')
+            .forEach((i) => (i.checked = !!checked));
+        updateTimeTriggerText();
+    }
+
     function setCheckboxOptions(containerEl, values, { keepSelected = true, includeNotInformed = false } = {}) {
         if (!containerEl) return;
 
@@ -452,7 +485,14 @@
 
         sellerSelect: dom.byId('sellerSelect'),
 
-        timeSelect: dom.byId('timeSelect'),
+        timeMulti: dom.byId('timeMulti'),
+        timeTrigger: dom.byId('timeTrigger'),
+        timeTriggerText: dom.byId('timeTriggerText'),
+        timeMenu: dom.byId('timeMenu'),
+        timeSelectAll: dom.byId('timeSelectAll'),
+        timeClear: dom.byId('timeClear'),
+        timeCheckboxes: dom.byId('timeCheckboxes'),
+
         sistemaSelect: dom.byId('sistemaSelect'),
         desafioSelect: dom.byId('desafioSelect'),
         tagSelect: dom.byId('tagSelect'),
@@ -826,7 +866,7 @@
         const areas = getCheckedValues(elements.areaCheckboxes);
         const sellers = getSelectedValues(elements.sellerSelect);
 
-        const times = getSelectedValues(elements.timeSelect);
+        const times = getCheckedValues(elements.timeCheckboxes);
         const sistemas = getSelectedValues(elements.sistemaSelect);
         const desafios = getSelectedValues(elements.desafioSelect);
         const tags = getSelectedValues(elements.tagSelect);
@@ -858,7 +898,7 @@
 
         setOptions(elements.sellerSelect, uniqueSorted(rows, 'manager'), { keepSelected: true, includeNotInformed: true });
 
-        setOptions(elements.timeSelect, uniqueSorted(rows, 'team'), { keepSelected: true, includeNotInformed: true });
+        setCheckboxOptions(elements.timeCheckboxes, uniqueSorted(rows, 'team'), { keepSelected: true, includeNotInformed: true });
         setOptions(elements.sistemaSelect, uniqueSorted(rows, 'system'), { keepSelected: true, includeNotInformed: true });
         setOptions(elements.desafioSelect, uniqueSorted(rows, 'challenge'), { keepSelected: true, includeNotInformed: true });
         setOptions(elements.tagSelect, uniqueSorted(rows, 'tag'), { keepSelected: true, includeNotInformed: true });
@@ -867,6 +907,7 @@
 
 
         updateAreaTriggerText();
+        updateTimeTriggerText();
     }
 
     async function loadLeads() {
@@ -919,7 +960,7 @@
                 if (elements.moneySelect) elements.moneySelect.value = '';
                 if (elements.sellerSelect) elements.sellerSelect.value = '';
 
-                [elements.moneySelect, elements.sellerSelect, elements.stageSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
+                [elements.moneySelect, elements.sellerSelect, elements.stageSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
                     .filter(Boolean)
                     .forEach((sel) => {
                         if (!sel) return;
@@ -931,7 +972,9 @@
                     });
 
                 setAllAreaCheckboxes(false);
+                setAllTimeCheckboxes(false);
                 setAreaMenuOpen(false);
+                setTimeMenuOpen(false);
 
                 loadLeads();
             });
@@ -939,7 +982,7 @@
 
         const onAnyFilterChange = () => applyAllFiltersAndRender({ resetPage: true });
 
-        [elements.moneySelect, elements.sellerSelect, elements.stageSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
+        [elements.moneySelect, elements.sellerSelect, elements.stageSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
             .filter(Boolean)
             .forEach((el) => el.addEventListener('change', onAnyFilterChange));
 
@@ -952,11 +995,19 @@
             });
         }
 
+        if (elements.timeCheckboxes) {
+            elements.timeCheckboxes.addEventListener('change', () => {
+                updateTimeTriggerText();
+                onAnyFilterChange();
+            });
+        }
+
         // ====== eventos do dropdown de Área ======
         if (elements.areaTrigger) {
             elements.areaTrigger.addEventListener('click', (e) => {
                 e.preventDefault();
                 const open = !elements.areaMulti?.classList.contains('is-open');
+                setTimeMenuOpen(false);
                 setAreaMenuOpen(open);
             });
         }
@@ -977,16 +1028,46 @@
             });
         }
 
+        if (elements.timeTrigger) {
+            elements.timeTrigger.addEventListener('click', (e) => {
+                e.preventDefault();
+                const open = !elements.timeMulti?.classList.contains('is-open');
+                setAreaMenuOpen(false);
+                setTimeMenuOpen(open);
+            });
+        }
+
+        if (elements.timeSelectAll) {
+            elements.timeSelectAll.addEventListener('click', (e) => {
+                e.preventDefault();
+                setAllTimeCheckboxes(true);
+                onAnyFilterChange();
+            });
+        }
+
+        if (elements.timeClear) {
+            elements.timeClear.addEventListener('click', (e) => {
+                e.preventDefault();
+                setAllTimeCheckboxes(false);
+                onAnyFilterChange();
+            });
+        }
+
         // fechar ao clicar fora
         document.addEventListener('pointerdown', (e) => {
-            const wrap = elements.areaMulti;
-            if (!wrap) return;
-            if (wrap.classList.contains('is-open') && !wrap.contains(e.target)) setAreaMenuOpen(false);
+            const areaWrap = elements.areaMulti;
+            if (areaWrap && areaWrap.classList.contains('is-open') && !areaWrap.contains(e.target)) setAreaMenuOpen(false);
+
+            const timeWrap = elements.timeMulti;
+            if (timeWrap && timeWrap.classList.contains('is-open') && !timeWrap.contains(e.target)) setTimeMenuOpen(false);
         });
 
         // fechar no ESC
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') setAreaMenuOpen(false);
+            if (e.key === 'Escape') {
+                setAreaMenuOpen(false);
+                setTimeMenuOpen(false);
+            }
         });
 
         const applyPresetDays = (days) => {
