@@ -107,14 +107,33 @@
     },
     stageClass(stage) {
       const s = this.removeDiacritics(String(stage || '').toLowerCase());
+
       if (s.includes('lead')) return 'badge--stage-lead';
-      // Negociação deve ser rosa
-      if (s.includes('negoci') || s.includes('negoti')) return 'badge--stage-negociacao';
-      if (s.includes('apresent')) return 'badge--stage-apresentacao';
-      if (s.includes('intera')) return 'badge--stage-interacao';
-      if (s.includes('pagamento')) return 'badge--stage-pagamento';
-      if (s.includes('proposta')) return 'badge--stage-proposta';
-      if (s.includes('assinou')) return 'badge--stage-assinou';
+
+      if (s.includes('negoci') || s.includes('negoti')) {
+        return 'badge--stage-negociacao';
+      }
+
+      if (s.includes('apresent') || s.includes('present')) {
+        return 'badge--stage-apresentacao';
+      }
+
+      if (s.includes('pagamento') || s.includes('payment') || s.includes('pending')) {
+        return 'badge--stage-pagamento';
+      }
+
+      if (s.includes('proposta') || s.includes('proposal')) {
+        return 'badge--stage-proposta';
+      }
+
+      if (s.includes('assin') || s.includes('signat') || s.includes('signature')) {
+        return 'badge--stage-assinou';
+      }
+
+      if (s.includes('intera') || s.includes('interaction')) {
+        return 'badge--stage-interacao';
+      }
+
       return 'badge--stage-outro';
     },
     substageClass(substage) {
@@ -171,7 +190,7 @@
   }
 
   function getCurrentStage(row) {
-    return normalizeStage(row?.CURRENT_STAGE ?? row?.STAGE_FUNNEL ?? row?.STAGE);
+    return normalizeStage(row?.STAGE);
   }
 
   function normalizeTimeBucket(value) {
@@ -606,7 +625,7 @@
       'stageFunnel',
       'Stage_funnel',
     ]);
-    const currentStage = normalizeStage(stageFunnel || stageRaw);
+    const currentStage = normalizeStage(stageRaw);
 
     const substageRaw = getField(raw, [
       'substage',
@@ -716,16 +735,17 @@
 
           const desafio = utils.escapeHtml(r.DESAFIO ?? '');
           const origem = utils.escapeHtml(r.ORIGEM ?? '');
-          const stageFunnelRaw = String(r.STAGE_FUNNEL ?? '').trim();
-          const stageFunnelCell = stageFunnelRaw
-            ? `<span class="badge ${utils.stageClass(stageFunnelRaw)}">${utils.escapeHtml(stageFunnelRaw)}</span>`
+          const stageRaw = String(r.STAGE ?? '').trim();
+          const stageCell = stageRaw
+            ? `<span class="badge ${utils.stageClass(stageRaw)}">${utils.escapeHtml(stageRaw)}</span>`
             : '<span class="mono">—</span>';
 
           const substageRaw = String(r.SUBSTAGE ?? '').trim();
           const substageCell = substageRaw
             ? `<span class="badge badge--substage ${utils.substageClass(substageRaw)}">${utils.escapeHtml(substageRaw)}</span>`
             : '<span class="mono">—</span>';
-          const stage = utils.escapeHtml(r.STAGE ?? '');
+
+          const stageFunnel = utils.escapeHtml(r.STAGE_FUNNEL ?? '');
 
           return `
             <tr>
@@ -734,7 +754,7 @@
               <td>${vendor}</td>
               <td class="mono">${phone}</td>
               <td>${linkCell}</td>
-              <td>${stageFunnelCell}</td>
+              <td>${stageCell}</td>
               <td>${substageCell}</td>
               <td>${money || '—'}</td>
               <td>${area || '—'}</td>
@@ -743,7 +763,7 @@
               <td class="mono td-valor">${valorDisplay}</td>
               <td>${desafio || '—'}</td>
               <td>${origem || '—'}</td>
-              <td>${stage || '—'}</td>
+              <td>${stageFunnel || '—'}</td>
             </tr>
           `;
         })
