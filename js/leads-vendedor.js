@@ -170,6 +170,10 @@
     return raw;
   }
 
+  function getCurrentStage(row) {
+    return normalizeStage(row?.CURRENT_STAGE ?? row?.STAGE_FUNNEL ?? row?.STAGE);
+  }
+
   function normalizeTimeBucket(value) {
     if (value === null || value === undefined || value === '') return '1-2';
 
@@ -602,6 +606,7 @@
       'stageFunnel',
       'Stage_funnel',
     ]);
+    const currentStage = normalizeStage(stageFunnel || stageRaw);
 
     const substageRaw = getField(raw, [
       'substage',
@@ -651,6 +656,7 @@
       STAGE_FUNNEL: stageFunnel,
       SUBSTAGE: substage,
       STAGE: stage,
+      CURRENT_STAGE: currentStage,
 
       PAYMENT_PENDING_VALUE: paymentPendingValue,
       NEGOTIATION_VALUE: negotiationValue,
@@ -789,7 +795,7 @@
     let out = [...state.rows];
 
     if (selectedStage) {
-      out = out.filter((r) => normalizeStage(r.STAGE) === selectedStage);
+      out = out.filter((r) => getCurrentStage(r) === selectedStage);
     }
 
     if (selectedVendor) {
@@ -850,7 +856,7 @@
     });
 
     const rowsByStage = state.rows.filter(
-      (r) => normalizeStage(r.STAGE) === selectedStage
+      (r) => getCurrentStage(r) === selectedStage
     );
     if (elements.kpiTotal) elements.kpiTotal.textContent = String(rowsByStage.length);
 

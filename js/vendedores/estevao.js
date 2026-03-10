@@ -315,6 +315,7 @@
 
         presetPrevDay: dom.byId('presetPrevDay'),
         presetNextDay: dom.byId('presetNextDay'),
+        presetMonth: dom.byId('presetMonth'),
         preset7: dom.byId('preset7'),
         preset14: dom.byId('preset14'),
         preset30: dom.byId('preset30'),
@@ -554,9 +555,9 @@
 
         const stageFunnel = getField(raw, ['stage_funnel', 'STAGE_FUNNEL', 'stageFunnel', 'Stage_funnel']);
 
-        // Alguns payloads não trazem o STAGE (código). Nesses casos, derivamos pelo rótulo do funil.
         const stageRaw = getField(raw, ['STAGE', 'stage', 'stage_code', 'STAGE_CODE', 'stageCode']);
-        const stage = normalizeStage(stageRaw || stageFunnel);
+        const stage = normalizeStage(stageRaw);
+        const currentStage = normalizeStage(stageFunnel || stageRaw);
 
         const substageRaw = getField(raw, ['substage', 'SUBSTAGE', 'Substage', 'sub_stage', 'SUB_STAGE', 'subStage']);
         const substage = normalizeSubstage(substageRaw);
@@ -583,9 +584,14 @@
             ORIGEM: origem,
 
             STAGE_FUNNEL: stageFunnel,
+            CURRENT_STAGE: currentStage,
             SUBSTAGE: substage,
             STAGE: stage,
         };
+    }
+
+    function getCurrentStage(row) {
+        return normalizeStage(row?.CURRENT_STAGE ?? row?.STAGE_FUNNEL ?? row?.STAGE);
     }
 
     const render = {
@@ -704,7 +710,7 @@
 
         let out = [...state.rows];
 
-        if (selectedStage) out = out.filter((r) => normalizeStage(r.STAGE) === selectedStage);
+        if (selectedStage) out = out.filter((r) => getCurrentStage(r) === selectedStage);
 
         if (substages.length) out = out.filter((r) => matchesSelectValue(r.SUBSTAGE, substages));
 
@@ -729,6 +735,7 @@
                     r.MONEY,
                     r.ORIGEM,
                     r.STAGE_FUNNEL,
+                    r.CURRENT_STAGE,
                     r.SUBSTAGE,
                     r.STAGE,
                 ]
@@ -862,6 +869,17 @@
             loadData();
         };
 
+        const applyCurrentMonth = () => {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = now;
+
+            if (elements.entryStartInput) elements.entryStartInput.value = utils.getDateString(start);
+            if (elements.entryEndInput) elements.entryEndInput.value = utils.getDateString(end);
+
+            loadData();
+        };
+
         const applyNextDay = () => {
             const startStr = elements.entryStartInput?.value || '';
             const endStr = elements.entryEndInput?.value || '';
@@ -899,9 +917,7 @@
         if (elements.presetNextDay) elements.presetNextDay.addEventListener('click', applyNextDay);
         if (elements.presetPrevDay) elements.presetPrevDay.addEventListener('click', applyPreviousDay);
 
-        if (elements.preset7) elements.preset7.addEventListener('click', () => applyPresetDays(7));
-        if (elements.preset14) elements.preset14.addEventListener('click', () => applyPresetDays(14));
-        if (elements.preset30) elements.preset30.addEventListener('click', () => applyPresetDays(30));
+        if (elements.presetMonth) elements.presetMonth.addEventListener('click', applyCurrentMonth);
 
         if (elements.clearAllFilters) {
             elements.clearAllFilters.addEventListener('click', () => {
