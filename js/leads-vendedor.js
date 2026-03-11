@@ -284,6 +284,100 @@
     return Array.from(selectEl.selectedOptions || []).map((o) => o.value).filter((v) => String(v).trim() !== '');
   }
 
+  function getCheckedValues(containerEl) {
+    if (!containerEl) return [];
+    return Array.from(containerEl.querySelectorAll('input[type="checkbox"]:checked'))
+      .map((i) => i.value)
+      .filter((v) => String(v).trim() !== '');
+  }
+
+  function setFaturamentoMenuOpen(open) {
+    if (!elements?.faturamentoMulti || !elements?.faturamentoTrigger) return;
+    elements.faturamentoMulti.classList.toggle('is-open', !!open);
+    elements.faturamentoTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function updateFaturamentoTriggerText() {
+    if (!elements?.faturamentoTriggerText) return;
+
+    const selected = getCheckedValues(elements.faturamentoCheckboxes);
+
+    if (!selected.length) {
+      elements.faturamentoTriggerText.textContent = 'Todos';
+      return;
+    }
+
+    if (selected.length === 1) {
+      const v = selected[0];
+      elements.faturamentoTriggerText.textContent = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
+      return;
+    }
+
+    elements.faturamentoTriggerText.textContent = `${selected.length} selecionados`;
+  }
+
+  function setAllFaturamentoCheckboxes(checked) {
+    if (!elements?.faturamentoCheckboxes) return;
+    elements.faturamentoCheckboxes
+      .querySelectorAll('input[type="checkbox"]')
+      .forEach((i) => (i.checked = !!checked));
+    updateFaturamentoTriggerText();
+  }
+
+  function setCheckboxOptions(containerEl, values, { keepSelected = true, includeNotInformed = false } = {}) {
+    if (!containerEl) return;
+
+    const current = keepSelected ? new Set(getCheckedValues(containerEl)) : new Set();
+
+    const safeValues = Array.isArray(values) ? values : [];
+    const finalValues = [...safeValues];
+
+    if (includeNotInformed && !finalValues.includes(NAO_INFORMADO_VALUE)) {
+      finalValues.push(NAO_INFORMADO_VALUE);
+    }
+
+    containerEl.innerHTML = finalValues
+      .map((v) => {
+        const label = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
+        const checked = current.has(v) ? 'checked' : '';
+        return `
+        <label class="multi-select__item">
+          <input type="checkbox" value="${utils.escapeHtml(v)}" ${checked} />
+          <span>${utils.escapeHtml(label)}</span>
+        </label>
+      `;
+      })
+      .join('');
+
+    updateFaturamentoTriggerText();
+  }
+
+  function faturamentoSortValue(value) {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (!raw) return Number.POSITIVE_INFINITY;
+
+    const noSpaces = raw.replace(/\s+/g, '');
+    const firstNumber = Number((noSpaces.match(/\d+(?:[.,]\d+)?/) || [])[0]?.replace(',', '.'));
+
+    if (noSpaces.startsWith('<')) return Number.isFinite(firstNumber) ? firstNumber - 0.5 : -0.5;
+    if (noSpaces.startsWith('>')) return Number.isFinite(firstNumber) ? firstNumber + 0.5 : Number.MAX_SAFE_INTEGER;
+    if (noSpaces.includes('-')) return Number.isFinite(firstNumber) ? firstNumber : Number.MAX_SAFE_INTEGER - 1;
+    if (Number.isFinite(firstNumber)) return firstNumber;
+
+    return Number.POSITIVE_INFINITY;
+  }
+
+  function uniqueSortedFaturamento(rows, key) {
+    const values = uniqueSorted(rows, key);
+    return values.sort((a, b) => {
+      const aSort = faturamentoSortValue(a);
+      const bSort = faturamentoSortValue(b);
+
+      if (aSort !== bSort) return aSort - bSort;
+      return String(a).localeCompare(String(b), 'pt-BR');
+    });
+  }
+
   function setOptions(selectEl, values, { keepSelected = true, includeNotInformed = false } = {}) {
     if (!selectEl) return;
 
@@ -404,6 +498,15 @@
     clearVendor: dom.byId('clearVendor'),
 
     moneySelect: dom.byId('moneySelect'),
+
+    faturamentoMulti: dom.byId('faturamentoMulti'),
+    faturamentoTrigger: dom.byId('faturamentoTrigger'),
+    faturamentoTriggerText: dom.byId('faturamentoTriggerText'),
+    faturamentoMenu: dom.byId('faturamentoMenu'),
+    faturamentoSelectAll: dom.byId('faturamentoSelectAll'),
+    faturamentoClear: dom.byId('faturamentoClear'),
+    faturamentoCheckboxes: dom.byId('faturamentoCheckboxes'),
+
     areaSelect: dom.byId('areaSelect'),
     timeSelect: dom.byId('timeSelect'),
     sistemaSelect: dom.byId('sistemaSelect'),
@@ -511,7 +614,7 @@
         )
         .join('');
     },
-    renderEmptyState(message = 'Sem dados', colspan = 10) {
+    renderEmptyState(message = 'Sem dados', colspan = 16) {
       return `
         <tr>
           <td colspan="${colspan}">
@@ -611,6 +714,7 @@
     const link = getField(raw, ['LINK', 'Link', 'link']);
 
     const money = getField(raw, ['MONEY', 'Money', 'money', 'tem_money', 'temMoney']);
+    const moneyRaw = getField(raw, ['MONEYRAW', 'moneyraw', 'MONEY_RAW', 'money_raw', 'faturamento', 'FATURAMENTO', '-faturamento']);
     const area = getField(raw, ['AREA', 'Área', 'area']);
     const time = getField(raw, ['TIME', 'Time', 'time']);
     const sistema = getField(raw, ['SISTEMA', 'Sistema', 'sistema', 'SYSTEM', 'system']);
@@ -667,6 +771,7 @@
       LINK: link,
 
       MONEY: money,
+      MONEYRAW: moneyRaw,
       AREA: area,
       TIME: time,
       SISTEMA: sistema,
@@ -701,7 +806,7 @@
       if (!elements.recordsBody) return;
 
       if (!rows || rows.length === 0) {
-        elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 15);
+        elements.recordsBody.innerHTML = ui.renderEmptyState('Sem registros no filtro selecionado', 16);
         return;
       }
 
@@ -720,6 +825,7 @@
             : '<span class="mono">—</span>';
 
           const money = utils.escapeHtml(r.MONEY ?? '');
+          const moneyRaw = utils.escapeHtml(r.MONEYRAW ?? '');
           const area = utils.escapeHtml(r.AREA ?? '');
           const time = utils.escapeHtml(r.TIME ?? '');
           const sistema = utils.escapeHtml(r.SISTEMA ?? '');
@@ -757,6 +863,7 @@
               <td>${stageCell}</td>
               <td>${substageCell}</td>
               <td>${money || '—'}</td>
+              <td>${moneyRaw || '—'}</td>
               <td>${area || '—'}</td>
               <td>${time || '—'}</td>
               <td>${sistema || '—'}</td>
@@ -804,6 +911,7 @@
     const entryEnd = elements.entryEndInput?.value || '';
 
     const moneyMode = (elements.moneySelect?.value || '').trim();
+    const faturamentos = getCheckedValues(elements.faturamentoCheckboxes);
     const areas = getSelectedValues(elements.areaSelect);
     const times = getSelectedValues(elements.timeSelect);
     const sistemas = getSelectedValues(elements.sistemaSelect);
@@ -826,6 +934,10 @@
       out = out.filter((r) => normalizeMoney(r.MONEY) === moneyMode);
     }
 
+    if (faturamentos.length) {
+      out = out.filter((r) => matchesSelectValue(r.MONEYRAW, faturamentos));
+    }
+
     if (areas.length) out = out.filter((r) => matchesSelectValue(r.AREA, areas));
     if (times.length) out = out.filter((r) => matchesSelectValue(r.TIME, times));
     if (sistemas.length) out = out.filter((r) => matchesSelectValue(r.SISTEMA, sistemas));
@@ -845,6 +957,7 @@
           r.ENTRADA,
           r.ENTREGUE,
           r.MONEY,
+          r.MONEYRAW,
           r.ORIGEM,
           r.STAGE_FUNNEL,
           r.SUBSTAGE,
@@ -942,6 +1055,14 @@
         if (selectedStage === 'negotiation') return parseCurrencyValue(r.NEGOTIATION_VALUE);
         return null;
       };
+
+      if (key === 'MONEYRAW') {
+        return [...items].sort((a, b) => {
+          const av = faturamentoSortValue(a?.MONEYRAW);
+          const bv = faturamentoSortValue(b?.MONEYRAW);
+          return (av - bv) * dir;
+        });
+      }
 
       return [...items].sort((a, b) => {
         const av = pick(a);
@@ -1302,6 +1423,13 @@
       options: PIE_OPTIONS,
     });
 
+    const faturamentoPie = buildPieFromCounts(countBy(rows, 'MONEYRAW'), 8);
+    ensureChart('chartFaturamento', {
+      type: 'pie',
+      data: { labels: faturamentoPie.labels, datasets: [pieDataset(faturamentoPie.data, faturamentoPie.labels)] },
+      options: PIE_OPTIONS,
+    });
+
     const origemPie = buildPieFromCounts(countBy(rows, 'ORIGEM'), 8);
     ensureChart('chartOrigem', {
       type: 'pie',
@@ -1503,7 +1631,7 @@
     }
 
     ui.showLoading();
-    if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 14);
+    if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderSkeletonRows(10, 16);
 
     try {
       const res = await api.fetchRows({ entry_start: entryStart, entry_end: entryEnd });
@@ -1517,6 +1645,10 @@
 
       setOptions(elements.areaSelect, uniqueSorted(rows, 'AREA'), { keepSelected: true, includeNotInformed: true });
       setOptions(elements.timeSelect, uniqueSorted(rows, 'TIME'), { keepSelected: true, includeNotInformed: true });
+      setCheckboxOptions(elements.faturamentoCheckboxes, uniqueSortedFaturamento(rows, 'MONEYRAW'), {
+        keepSelected: true,
+        includeNotInformed: true,
+      });
       setOptions(elements.sistemaSelect, uniqueSorted(rows, 'SISTEMA'), { keepSelected: true, includeNotInformed: true });
       setOptions(elements.substageSelect, uniqueSorted(rows, 'SUBSTAGE'), { keepSelected: true, includeNotInformed: true });
       setOptions(elements.desafioSelect, uniqueSorted(rows, 'DESAFIO'), { keepSelected: true, includeNotInformed: true });
@@ -1524,7 +1656,7 @@
       applyAllFiltersAndRender({ resetPage: true });
     } catch (e) {
       ui.showError(`Failed to load leads: ${e.message}`);
-      if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 14);
+      if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 16);
 
     } finally {
       ui.hideLoading();
@@ -1561,6 +1693,34 @@
 
     if (elements.substageSelect) {
       elements.substageSelect.addEventListener('change', onAnyFilterChange);
+    }
+
+    if (elements.faturamentoCheckboxes) {
+      elements.faturamentoCheckboxes.addEventListener('change', () => onAnyFilterChange());
+    }
+
+    if (elements.faturamentoTrigger) {
+      elements.faturamentoTrigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        const open = !elements.faturamentoMulti?.classList.contains('is-open');
+        setFaturamentoMenuOpen(open);
+      });
+    }
+
+    if (elements.faturamentoSelectAll) {
+      elements.faturamentoSelectAll.addEventListener('click', (e) => {
+        e.preventDefault();
+        setAllFaturamentoCheckboxes(true);
+        onAnyFilterChange();
+      });
+    }
+
+    if (elements.faturamentoClear) {
+      elements.faturamentoClear.addEventListener('click', (e) => {
+        e.preventDefault();
+        setAllFaturamentoCheckboxes(false);
+        onAnyFilterChange();
+      });
     }
 
     let searchTimer = null;
@@ -1650,8 +1810,23 @@
           .forEach((sel) => Array.from(sel.options).forEach((o) => (o.selected = false)));
 
         applyAllFiltersAndRender({ resetPage: true });
+        setAllFaturamentoCheckboxes(false);
+        setFaturamentoMenuOpen(false);
       });
     }
+
+    document.addEventListener('pointerdown', (e) => {
+      const faturamentoWrap = elements.faturamentoMulti;
+      if (faturamentoWrap && faturamentoWrap.classList.contains('is-open') && !faturamentoWrap.contains(e.target)) {
+        setFaturamentoMenuOpen(false);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        setFaturamentoMenuOpen(false);
+      }
+    });
 
     const onEnter = (e) => {
       if (e.key !== 'Enter') return;

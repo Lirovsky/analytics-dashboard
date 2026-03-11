@@ -30,7 +30,6 @@ const utils = {
     const s = String(value).trim();
     if (!s) return null;
 
-    // aceita "195.82" ou "195,82"
     const normalized = s.replace(/\s+/g, "").replace(/,/g, ".");
     const n = Number(normalized);
     return Number.isFinite(n) ? n : null;
@@ -76,7 +75,6 @@ const utils = {
     const s = String(raw).trim();
     if (!s) return null;
 
-    // Meta Ads API geralmente retorna em centavos (string inteira)
     if (/^\d+$/.test(s)) {
       const n = Number(s);
       if (!Number.isFinite(n) || n === 0) return null;
@@ -89,13 +87,36 @@ const utils = {
   },
 
   pickLeads(item) {
-    const leads = this.toNumber(item?.count_utm_term_adset);
-    if (leads !== null) return leads;
+    const candidates = [
+      item?.count_external_id,
+      item?.count_utm_term_adset,
+      item?.count,
+      item?.leads,
+    ];
 
-    const alt = this.toNumber(item?.leads);
-    if (alt !== null) return alt;
+    for (const candidate of candidates) {
+      const n = this.toNumber(candidate);
+      if (n !== null) return n;
+    }
 
     return 0;
+  },
+
+  pickLeadICP(item) {
+    return String(item?.lead_icp ?? item?.leadIcp ?? "")
+      .trim()
+      .toLowerCase();
+  },
+
+  pickAdsetKey(item) {
+    return (
+      item?.utm_term_adset ??
+      item?.adset_id ??
+      item?.adsetId ??
+      item?.id ??
+      item?.name ??
+      JSON.stringify(item)
+    );
   },
 
   pickCampaignName(item) {
@@ -121,7 +142,6 @@ const elements = {
   clearFilters: $id("clearFilters"),
   body: $id("gerenciadorBody"),
 
-  // Budget (POST separado)
   budgetSemana: $id("budgetSemana"),
   budgetSabado: $id("budgetSabado"),
   budgetDomingo1: $id("budgetDomingo1"),
@@ -129,7 +149,6 @@ const elements = {
   budgetPassword: $id("budgetPassword"),
   sendBudget: $id("sendBudget"),
 
-  // KPIs (Conjuntos)
   kpiAdsetsTotal: $id("kpiAdsetsTotal"),
   kpiAdsetsActive: $id("kpiAdsetsActive"),
   kpiAdsetsPaused: $id("kpiAdsetsPaused"),
@@ -147,7 +166,6 @@ function parseBudgetInt(value) {
   const s = String(value ?? "").trim();
   if (!s) return null;
 
-  // Aceita 1000000, 1.000.000, 1 000 000, etc.
   const digits = s.replace(/[^\d]/g, "");
   if (!digits) return null;
 
@@ -217,9 +235,7 @@ const state = {
     status: "ALL",
   },
   sort: {
-    // key: 'spend' | 'leads' | 'cpl'
     key: null,
-    // dir: 'asc' | 'desc'
     dir: null,
   },
 };
@@ -240,7 +256,7 @@ const ui = {
   hideError() {
     elements.errorToast?.classList.remove("active");
   },
-  emptyState(message = "Sem dados", colspan = 6) {
+  emptyState(message = "Sem dados", colspan = 7) {
     return `<tr><td colspan="${colspan}"><div class="empty-state"><p>${message}</p></div></td></tr>`;
   },
 };
@@ -252,65 +268,99 @@ function normalizePayload(payload) {
 }
 
 function buildGroups(items) {
-  const byId = new Map();
+  const byCampaign = new Map();
 
   for (const item of items) {
     const campaignId = utils.pickCampaignId(item);
     const campaignName = utils.pickCampaignName(item);
+    const adsetKey = String(utils.pickAdsetKey(item));
 
-    const node =
-      byId.get(campaignId) ||
+    const campaignNode =
+      byCampaign.get(campaignId) ||
       {
         campaignId,
         campaignName,
-        items: [],
-        totals: { spend: 0, dailyBudget: 0, leads: 0 },
-        hasActive: false,
-        hasPaused: false,
+        itemsByAdset: new Map(),
       };
 
-    const spend = utils.pickSpend(item);
+    const spend = utils.pickSpend(item) || 0;
     const dailyBudget = utils.pickDailyBudget(item);
-    const leads = utils.pickLeads(item);
-
+    const leads = utils.pickLeads(item) || 0;
+    const leadIcp = utils.pickLeadICP(item) === "yes" ? leads : 0;
     const status = utils.mapStatus(item?.status);
-    if (status.key === "ACTIVE") node.hasActive = true;
-    if (status.key === "PAUSED") node.hasPaused = true;
 
-    node.totals.spend += spend || 0;
-    node.totals.dailyBudget += dailyBudget || 0;
-    node.totals.leads += leads || 0;
+    const adsetNode =
+      campaignNode.itemsByAdset.get(adsetKey) ||
+      {
+        adsetKey,
+        name: item?.name ?? "–",
+        status,
+        spend: spend || 0,
+        dailyBudget,
+        leads: 0,
+        leadsIcp: 0,
+      };
 
-    node.items.push({
-      name: item?.name ?? "–",
-      status,
-      spend: spend || 0,
-      dailyBudget: dailyBudget,
-      leads: leads || 0,
-      cpl: utils.safeDivide(spend, leads),
-    });
+    adsetNode.leads += leads;
+    adsetNode.leadsIcp += leadIcp;
 
-    byId.set(campaignId, node);
+    if ((utils.toNumber(adsetNode.spend) || 0) === 0 && spend) {
+      adsetNode.spend = spend;
+    }
+
+    if (adsetNode.dailyBudget === null && dailyBudget !== null) {
+      adsetNode.dailyBudget = dailyBudget;
+    }
+
+    if (!adsetNode.name || adsetNode.name === "–") {
+      adsetNode.name = item?.name ?? "–";
+    }
+
+    if (adsetNode.status?.key === "UNKNOWN" && status.key !== "UNKNOWN") {
+      adsetNode.status = status;
+    }
+
+    campaignNode.itemsByAdset.set(adsetKey, adsetNode);
+    byCampaign.set(campaignId, campaignNode);
   }
 
-  const groups = Array.from(byId.values()).map((g) => ({
-    campaignId: g.campaignId,
-    campaignName: g.campaignName,
-    totals: {
-      spend: g.totals.spend,
-      dailyBudget: g.totals.dailyBudget,
-      leads: g.totals.leads,
-      cpl: utils.safeDivide(g.totals.spend, g.totals.leads),
-    },
-    items: g.items,
-    hasActive: g.hasActive,
-    hasPaused: g.hasPaused,
-  }));
+  const groups = Array.from(byCampaign.values()).map((campaign) => {
+    const adsets = Array.from(campaign.itemsByAdset.values()).map((item) => ({
+      ...item,
+      cpl: utils.safeDivide(item.spend, item.leads),
+      cplIcp: utils.safeDivide(item.spend, item.leadsIcp),
+    }));
 
-  // default: A-Z por campanha
+    const totals = adsets.reduce(
+      (acc, item) => {
+        acc.spend += utils.toNumber(item?.spend) || 0;
+        acc.dailyBudget += utils.toNumber(item?.dailyBudget) || 0;
+        acc.leads += utils.toNumber(item?.leads) || 0;
+        acc.leadsIcp += utils.toNumber(item?.leadsIcp) || 0;
+        return acc;
+      },
+      { spend: 0, dailyBudget: 0, leads: 0, leadsIcp: 0 }
+    );
+
+    return {
+      campaignId: campaign.campaignId,
+      campaignName: campaign.campaignName,
+      totals: {
+        spend: totals.spend,
+        dailyBudget: totals.dailyBudget,
+        leads: totals.leads,
+        leadsIcp: totals.leadsIcp,
+        cpl: utils.safeDivide(totals.spend, totals.leads),
+        cplIcp: utils.safeDivide(totals.spend, totals.leadsIcp),
+      },
+      items: adsets,
+      hasActive: adsets.some((it) => String(it?.status?.key || "").toUpperCase() === "ACTIVE"),
+      hasPaused: adsets.some((it) => String(it?.status?.key || "").toUpperCase() === "PAUSED"),
+    };
+  });
+
   groups.sort((a, b) => a.campaignName.localeCompare(b.campaignName, "pt-BR"));
 
-  // default: A-Z por conjunto (dentro da campanha)
   for (const g of groups) {
     g.items.sort((a, b) => String(a.name).localeCompare(b.name, "pt-BR"));
   }
@@ -331,18 +381,16 @@ function applyFilters(groups) {
     .map((g) => {
       let items = Array.isArray(g.items) ? g.items : [];
 
-      // filtra os conjuntos (itens) pelo status
       if (statusFilter !== "ALL") {
         items = items.filter((it) => String(it?.status?.key || "").toUpperCase() === statusFilter);
       }
 
-      // se não sobrou nenhum item, remove a campanha da lista
       if (!items.length) return null;
 
-      // recalcula totais com base apenas nos itens visíveis
       const spend = items.reduce((acc, it) => acc + (utils.toNumber(it?.spend) || 0), 0);
       const dailyBudget = items.reduce((acc, it) => acc + (utils.toNumber(it?.dailyBudget) || 0), 0);
       const leads = items.reduce((acc, it) => acc + (utils.toNumber(it?.leads) || 0), 0);
+      const leadsIcp = items.reduce((acc, it) => acc + (utils.toNumber(it?.leadsIcp) || 0), 0);
 
       return {
         ...g,
@@ -351,7 +399,9 @@ function applyFilters(groups) {
           spend,
           dailyBudget,
           leads,
+          leadsIcp,
           cpl: utils.safeDivide(spend, leads),
+          cplIcp: utils.safeDivide(spend, leadsIcp),
         },
         hasActive: items.some((it) => String(it?.status?.key || "").toUpperCase() === "ACTIVE"),
         hasPaused: items.some((it) => String(it?.status?.key || "").toUpperCase() === "PAUSED"),
@@ -388,7 +438,6 @@ function compareNullableNumber(aVal, bVal, dir) {
   const aNull = a === null;
   const bNull = b === null;
 
-  // null sempre vai para o final
   if (aNull && bNull) return 0;
   if (aNull) return 1;
   if (bNull) return -1;
@@ -403,21 +452,18 @@ function applySorting(groups) {
 
   if (!key || (dir !== "asc" && dir !== "desc")) return groups;
 
-  // clone raso para não mutar state.groups
   const sorted = groups.map((g) => ({
     ...g,
     items: Array.isArray(g.items) ? [...g.items] : [],
     totals: { ...g.totals },
   }));
 
-  // ordena campanhas pelo total
   sorted.sort((a, b) => {
     const cmp = compareNullableNumber(a?.totals?.[key], b?.totals?.[key], dir);
     if (cmp !== 0) return cmp;
     return String(a.campaignName).localeCompare(String(b.campaignName), "pt-BR");
   });
 
-  // ordena itens dentro de cada campanha pelo mesmo critério
   for (const g of sorted) {
     g.items.sort((a, b) => {
       const cmp = compareNullableNumber(a?.[key], b?.[key], dir);
@@ -429,18 +475,12 @@ function applySorting(groups) {
   return sorted;
 }
 
-function statusPill(status) {
-  if (!status) return `<span class="status-pill status--unknown">–</span>`;
-  return `<span class="status-pill ${status.cls}">${status.label}</span>`;
-}
-
 function expanderButton(id) {
   const expanded = state.expanded.has(String(id));
   return `<button class="expander" type="button" data-action="toggle" data-id="${String(id).replace(/"/g, "&quot;")}" aria-expanded="${expanded}">
     ${expanded ? "–" : "+"}
   </button>`;
 }
-
 
 function updateAdsetKPIs(groups) {
   const totals = { total: 0, active: 0, paused: 0 };
@@ -472,83 +512,86 @@ function render() {
   const data = applySorting(filtered);
 
   if (!data.length) {
-    elements.body.innerHTML = ui.emptyState("Sem dados", 6);
+    elements.body.innerHTML = ui.emptyState("Sem dados", 7);
     return;
   }
 
   const rows = [];
   for (const group of data) {
     rows.push(`
-      <tr class="group-row" data-campaign-id="${String(group.campaignId).replace(/"/g, "&quot;")}">
-        <td>
-          <div class="name-cell">
-            ${expanderButton(group.campaignId)}
-            <span class="name-cell__label">${group.campaignName}</span>
-          </div>
-        </td>
-        <td>${utils.formatCurrency(group.totals.spend)}</td>
-        <td>${utils.formatCurrency(group.totals.dailyBudget)}</td>
-        <td>${utils.formatNumber(group.totals.leads)}</td>
-        <td>${utils.formatCurrency(group.totals.cpl)}</td>
-        <td class="text-muted"></td>
-      </tr>
-    `);
+  <tr class="group-row" data-campaign-id="${String(group.campaignId).replace(/"/g, "&quot;")}">
+    <td>
+      <div class="name-cell">
+        ${expanderButton(group.campaignId)}
+        <span class="name-cell__label">${group.campaignName}</span>
+      </div>
+    </td>
+    <td>${utils.formatCurrency(group.totals.spend)}</td>
+    <td>${utils.formatCurrency(group.totals.dailyBudget)}</td>
+    <td>${utils.formatNumber(group.totals.leads)}</td>
+    <td>${utils.formatNumber(group.totals.leadsIcp)}</td>
+    <td>${utils.formatCurrency(group.totals.cpl)}</td>
+    <td>${utils.formatCurrency(group.totals.cplIcp)}</td>
+  </tr>
+`);
 
     const isExpanded = state.expanded.has(String(group.campaignId));
     if (isExpanded) {
       if (!group.items.length) {
         rows.push(`
           <tr class="child-row" data-parent="${String(group.campaignId).replace(/"/g, "&quot;")}">
-            <td colspan="6" class="text-muted">Sem registros dentro desta campanha.</td>
+            <td colspan="7" class="text-muted">Sem registros dentro desta campanha.</td>
           </tr>
         `);
       } else {
         for (const item of group.items) {
           rows.push(`
-            <tr class="child-row" data-parent="${String(group.campaignId).replace(/"/g, "&quot;")}">
-              <td>
-                <div class="name-cell name-cell--child">
-                  <span class="name-cell__label">${item.name}</span>
-                </div>
-              </td>
-              <td>${utils.formatCurrency(item.spend)}</td>
-              <td>${utils.formatCurrency(item.dailyBudget)}</td>
-              <td>${utils.formatNumber(item.leads)}</td>
-              <td>${utils.formatCurrency(item.cpl)}</td>
-              <td>${statusPill(item.status)}</td>
-            </tr>
-          `);
+  <tr class="child-row" data-parent="${String(group.campaignId).replace(/"/g, "&quot;")}">
+    <td>
+      <div class="name-cell name-cell--child">
+        <span class="name-cell__label">${item.name}</span>
+      </div>
+    </td>
+    <td>${utils.formatCurrency(item.spend)}</td>
+    <td>${utils.formatCurrency(item.dailyBudget)}</td>
+    <td>${utils.formatNumber(item.leads)}</td>
+    <td>${utils.formatNumber(item.leadsIcp)}</td>
+    <td>${utils.formatCurrency(item.cpl)}</td>
+    <td>${utils.formatCurrency(item.cplIcp)}</td>
+  </tr>
+`);
         }
       }
     }
   }
 
-  // Linha de total (somando apenas o nível de campanha, para não duplicar com os itens expandidos)
   const totals = data.reduce(
     (acc, g) => {
       acc.spend += utils.toNumber(g?.totals?.spend) || 0;
       acc.dailyBudget += utils.toNumber(g?.totals?.dailyBudget) || 0;
       acc.leads += utils.toNumber(g?.totals?.leads) || 0;
+      acc.leadsIcp += utils.toNumber(g?.totals?.leadsIcp) || 0;
       return acc;
     },
-    { spend: 0, dailyBudget: 0, leads: 0 }
+    { spend: 0, dailyBudget: 0, leads: 0, leadsIcp: 0 }
   );
 
   rows.push(`
-    <tr class="total-row">
-      <td>
-        <div class="name-cell">
-          <span class="expander expander--ghost" aria-hidden="true"></span>
-          <span class="name-cell__label">Total</span>
-        </div>
-      </td>
-      <td>${utils.formatCurrency(totals.spend)}</td>
-      <td>${utils.formatCurrency(totals.dailyBudget)}</td>
-      <td>${utils.formatNumber(totals.leads)}</td>
-      <td>${utils.formatCurrency(utils.safeDivide(totals.spend, totals.leads))}</td>
-      <td class="text-muted"></td>
-    </tr>
-  `);
+  <tr class="total-row">
+    <td>
+      <div class="name-cell">
+        <span class="expander expander--ghost" aria-hidden="true"></span>
+        <span class="name-cell__label">Total</span>
+      </div>
+    </td>
+    <td>${utils.formatCurrency(totals.spend)}</td>
+    <td>${utils.formatCurrency(totals.dailyBudget)}</td>
+    <td>${utils.formatNumber(totals.leads)}</td>
+    <td>${utils.formatNumber(totals.leadsIcp)}</td>
+    <td>${utils.formatCurrency(utils.safeDivide(totals.spend, totals.leads))}</td>
+    <td>${utils.formatCurrency(utils.safeDivide(totals.spend, totals.leadsIcp))}</td>
+  </tr>
+`);
 
   elements.body.innerHTML = rows.join("");
 }
@@ -573,7 +616,6 @@ function fillCampaignSelect(groups) {
 
   elements.campaignNameFilter.innerHTML = options.join("");
 
-  // preserva seleção atual (se ainda existir)
   if (unique.includes(current)) elements.campaignNameFilter.value = current;
   else elements.campaignNameFilter.value = "ALL";
 }
@@ -596,7 +638,6 @@ async function loadData() {
 
     fillCampaignSelect(state.groups);
 
-    // mantém o state alinhado com o valor efetivo do select (pode voltar para ALL se não existir na lista)
     state.filters.name = elements.campaignNameFilter?.value || "ALL";
     render();
   } catch (e) {
@@ -611,14 +652,12 @@ async function loadData() {
 }
 
 function bindEvents() {
-  // Buscar SEMPRE refaz a consulta no n8n (refresh de dados)
   elements.applyFilters.onclick = async () => {
     state.filters.name = elements.campaignNameFilter?.value || "ALL";
     state.filters.status = elements.statusFilter?.value || "ALL";
     await loadData();
   };
 
-  // Mudou filtro? Atualiza a tabela na hora (sem bater na API)
   elements.statusFilter?.addEventListener("change", () => {
     state.filters.status = elements.statusFilter?.value || "ALL";
     render();
@@ -639,12 +678,10 @@ function bindEvents() {
 
   elements.closeToast.onclick = () => ui.hideError();
 
-  // POST separado (budgets)
   if (elements.sendBudget) {
     elements.sendBudget.onclick = sendBudgetRequest;
   }
 
-  // Ordenação pelos headers (Spend / Leads / CPL)
   elements.thead?.addEventListener("click", (e) => {
     const btn = e.target.closest("button.th-sort");
     if (!btn) return;
@@ -656,7 +693,7 @@ function bindEvents() {
       state.sort.dir = state.sort.dir === "desc" ? "asc" : "desc";
     } else {
       state.sort.key = key;
-      state.sort.dir = "desc"; // 1º clique: maior → menor
+      state.sort.dir = "desc";
     }
 
     render();

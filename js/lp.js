@@ -44,9 +44,8 @@
     fmtPct(frac) {
       const v = Number(frac);
       if (!Number.isFinite(v)) return "—";
-      const pct = v <= 1.2 ? v * 100 : v; // aceita 0-1 ou 0-100
-      const out = pct >= 10 ? pct.toFixed(1) : pct.toFixed(2);
-      return `${out.replace(".", ",")}%`;
+      const pct = v <= 1.2 ? v * 100 : v;
+      return `${pct.toFixed(2).replace(".", ",")}%`;
     },
     pctClass(frac) {
       const v = Number(frac);
@@ -133,14 +132,24 @@
     const visitas = utils.toInt(x?.visitas ?? x?.visits ?? x?.total_visitas ?? 0);
     const leads = utils.toInt(x?.leads ?? x?.total_leads ?? x?.conversions ?? 0);
 
-    let conv = utils.toFloat(x?.conversao ?? x?.conversion ?? 0);
-    if (typeof x?.conversao === "string" && String(x.conversao).includes("%")) {
-      conv = utils.toFloat(String(x.conversao).replace("%", ""));
-    }
-    if (conv > 1.2 && conv <= 100) conv = conv / 100;
+    let conv = 0;
 
-    // fallback: calcula se não veio
-    if (!Number.isFinite(conv) || conv <= 0) conv = visitas ? leads / visitas : 0;
+    // prioridade: calcula com base nos números reais
+    if (visitas > 0) {
+      conv = leads / visitas;
+    } else {
+      // fallback: usa o valor vindo do backend só se não der para calcular
+      conv = utils.toFloat(x?.conversao ?? x?.conversion ?? 0);
+
+      if (
+        (typeof x?.conversao === "string" && String(x.conversao).includes("%")) ||
+        (typeof x?.conversion === "string" && String(x.conversion).includes("%"))
+      ) {
+        conv = utils.toFloat(String(x?.conversao ?? x?.conversion).replace("%", ""));
+      }
+
+      if (conv > 1.2 && conv <= 100) conv = conv / 100;
+    }
 
     return {
       lp: lp ? String(lp) : "—",

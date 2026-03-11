@@ -67,6 +67,32 @@
 
                 <!-- LINHA DE CIMA: Money, Tag, Vendedor, Área -->
                 <div class="filter-row filter-row--main">
+
+                    <div class="filter-group">
+                        <label for="faturamentoTrigger">Faturamento</label>
+
+                        <div class="multi-select" id="faturamentoMulti">
+                            <button id="faturamentoTrigger" type="button" class="date-input multi-select__trigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                                <span id="faturamentoTriggerText">Todos</span>
+                                <span class="multi-select__chevron" aria-hidden="true"></span>
+                            </button>
+
+                            <div id="faturamentoMenu" class="multi-select__menu" role="listbox"
+                                aria-multiselectable="true">
+                                <div class="multi-select__actions">
+                                    <button type="button" class="multi-select__action" id="faturamentoSelectAll">Marcar
+                                        todos</button>
+                                    <button type="button" class="multi-select__action"
+                                        id="faturamentoClear">Limpar</button>
+                                </div>
+
+                                <div id="faturamentoCheckboxes" class="multi-select__list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!--
+                    
                     <div class="filter-group">
                         <label for="moneySelect">Budget</label>
                         <select id="moneySelect" class="date-input">
@@ -76,26 +102,71 @@
                             <option value="unknown">Não informado</option>
                         </select>
                     </div>
-
+-->
                     <div class="filter-group">
-                        <label for="tagSelect">Tag</label>
-                        <select id="tagSelect" class="date-input">
-                            <option value="">Todos</option>
-                        </select>
+                        <label for="tagTrigger">Tag</label>
+
+                        <div class="multi-select" id="tagMulti">
+                            <button id="tagTrigger" type="button" class="date-input multi-select__trigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                                <span id="tagTriggerText">Todos</span>
+                                <span class="multi-select__chevron" aria-hidden="true"></span>
+                            </button>
+
+                            <div id="tagMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                                <div class="multi-select__actions">
+                                    <button type="button" class="multi-select__action" id="tagSelectAll">Marcar
+                                        todos</button>
+                                    <button type="button" class="multi-select__action" id="tagClear">Limpar</button>
+                                </div>
+
+                                <div id="tagCheckboxes" class="multi-select__list"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="filter-group">
-                        <label for="sellerSelect">Vendedor</label>
-                        <select id="sellerSelect" class="date-input">
-                            <option value="">Todos</option>
-                        </select>
+                        <label for="sellerTrigger">Vendedor</label>
+
+                        <div class="multi-select" id="sellerMulti">
+                            <button id="sellerTrigger" type="button" class="date-input multi-select__trigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                                <span id="sellerTriggerText">Todos</span>
+                                <span class="multi-select__chevron" aria-hidden="true"></span>
+                            </button>
+
+                            <div id="sellerMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                                <div class="multi-select__actions">
+                                    <button type="button" class="multi-select__action" id="sellerSelectAll">Marcar
+                                        todos</button>
+                                    <button type="button" class="multi-select__action" id="sellerClear">Limpar</button>
+                                </div>
+
+                                <div id="sellerCheckboxes" class="multi-select__list"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="filter-group">
-                        <label for="stageSelect">Etapa</label>
-                        <select id="stageSelect" class="date-input">
-                            <option value="">Todos</option>
-                        </select>
+                        <label for="stageTrigger">Etapa</label>
+
+                        <div class="multi-select" id="stageMulti">
+                            <button id="stageTrigger" type="button" class="date-input multi-select__trigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                                <span id="stageTriggerText">Todos</span>
+                                <span class="multi-select__chevron" aria-hidden="true"></span>
+                            </button>
+
+                            <div id="stageMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                                <div class="multi-select__actions">
+                                    <button type="button" class="multi-select__action" id="stageSelectAll">Marcar
+                                        todos</button>
+                                    <button type="button" class="multi-select__action" id="stageClear">Limpar</button>
+                                </div>
+
+                                <div id="stageCheckboxes" class="multi-select__list"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="filter-group">
@@ -148,20 +219,49 @@
                     </div>
 
                     <div class="filter-group">
-                        <label for="sistemaSelect">Sistema</label>
-                        <select id="sistemaSelect" class="date-input">
-                            <option value="">Todos</option>
-                        </select>
+                        <label for="sistemaTrigger">Sistema</label>
+
+                        <div class="multi-select" id="sistemaMulti">
+                            <button id="sistemaTrigger" type="button" class="date-input multi-select__trigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                                <span id="sistemaTriggerText">Todos</span>
+                                <span class="multi-select__chevron" aria-hidden="true"></span>
+                            </button>
+
+                            <div id="sistemaMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                                <div class="multi-select__actions">
+                                    <button type="button" class="multi-select__action" id="sistemaSelectAll">Marcar
+                                        todos</button>
+                                    <button type="button" class="multi-select__action" id="sistemaClear">Limpar</button>
+                                </div>
+
+                                <div id="sistemaCheckboxes" class="multi-select__list"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="filter-group">
-                        <label for="desafioSelect">Desafio</label>
-                        <select id="desafioSelect" class="date-input">
-                            <option value="">Todos</option>
-                        </select>
+                        <label for="desafioTrigger">Desafio</label>
+
+                        <div class="multi-select" id="desafioMulti">
+                            <button id="desafioTrigger" type="button" class="date-input multi-select__trigger"
+                                aria-haspopup="listbox" aria-expanded="false">
+                                <span id="desafioTriggerText">Todos</span>
+                                <span class="multi-select__chevron" aria-hidden="true"></span>
+                            </button>
+
+                            <div id="desafioMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                                <div class="multi-select__actions">
+                                    <button type="button" class="multi-select__action" id="desafioSelectAll">Marcar
+                                        todos</button>
+                                    <button type="button" class="multi-select__action" id="desafioClear">Limpar</button>
+                                </div>
+
+                                <div id="desafioCheckboxes" class="multi-select__list"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
 
                 <hr class="filter-sep" />
 
@@ -230,10 +330,16 @@
                         <div class="chart-title">Leads por desafio</div>
                         <canvas id="chartDesafio" height="96"></canvas>
                     </div>
-
+                    <!--
+                    
                     <div class="chart-card">
                         <div class="chart-title">Leads por Budget</div>
                         <canvas id="chartMoney" height="96"></canvas>
+                    </div>
+-->
+                    <div class="chart-card">
+                        <div class="chart-title">Leads por faturamento</div>
+                        <canvas id="chartFaturamento" height="96"></canvas>
                     </div>
 
                     <div class="chart-card">
@@ -270,6 +376,7 @@
                                 <th data-sort="team">Time <span class="sort-icon">↕</span></th>
                                 <th data-sort="area">Área <span class="sort-icon">↕</span></th>
                                 <th data-sort="money">Budget <span class="sort-icon">↕</span></th>
+                                <th data-sort="moneyraw">Faturamento <span class="sort-icon">↕</span></th>
                                 <th data-sort="system">System <span class="sort-icon">↕</span></th>
                                 <th data-sort="challenge">Desafio <span class="sort-icon">↕</span></th>
                             </tr>

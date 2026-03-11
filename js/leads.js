@@ -153,72 +153,83 @@
             .filter((v) => String(v).trim() !== '');
     }
 
-    // ====== UI: Área multi-select (dropdown com checkboxes) ======
-    function setAreaMenuOpen(open) {
-        if (!elements?.areaMulti || !elements?.areaTrigger) return;
-        elements.areaMulti.classList.toggle('is-open', !!open);
-        elements.areaTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    const MULTI_SELECT_CONFIG = {
+        area: { summaryLabel: 'selecionadas' },
+        time: { summaryLabel: 'selecionados' },
+        faturamento: { summaryLabel: 'selecionados' },
+        tag: { summaryLabel: 'selecionados' },
+        seller: { summaryLabel: 'selecionados' },
+        stage: { summaryLabel: 'selecionados' },
+        sistema: { summaryLabel: 'selecionados' },
+        desafio: { summaryLabel: 'selecionados' },
+    };
+
+    function getMultiElements(key) {
+        return {
+            wrap: elements?.[`${key}Multi`],
+            trigger: elements?.[`${key}Trigger`],
+            triggerText: elements?.[`${key}TriggerText`],
+            menu: elements?.[`${key}Menu`],
+            selectAll: elements?.[`${key}SelectAll`],
+            clear: elements?.[`${key}Clear`],
+            checkboxes: elements?.[`${key}Checkboxes`],
+        };
     }
 
-    function updateAreaTriggerText() {
-        if (!elements?.areaTriggerText) return;
+    function setMultiMenuOpen(key, open) {
+        const refs = getMultiElements(key);
+        if (!refs.wrap || !refs.trigger) return;
+        refs.wrap.classList.toggle('is-open', !!open);
+        refs.trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
 
-        const selected = getCheckedValues(elements.areaCheckboxes);
+    function updateMultiTriggerText(key) {
+        const refs = getMultiElements(key);
+        if (!refs.triggerText) return;
+
+        const selected = getCheckedValues(refs.checkboxes);
 
         if (!selected.length) {
-            elements.areaTriggerText.textContent = 'Todos';
+            refs.triggerText.textContent = 'Todos';
             return;
         }
 
         if (selected.length === 1) {
             const v = selected[0];
-            elements.areaTriggerText.textContent = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
+            refs.triggerText.textContent = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
             return;
         }
 
-        elements.areaTriggerText.textContent = `${selected.length} selecionadas`;
+        const summaryLabel = MULTI_SELECT_CONFIG?.[key]?.summaryLabel || 'selecionados';
+        refs.triggerText.textContent = `${selected.length} ${summaryLabel}`;
     }
 
-    function setAllAreaCheckboxes(checked) {
-        if (!elements?.areaCheckboxes) return;
-        elements.areaCheckboxes
+    function setAllMultiCheckboxes(key, checked) {
+        const refs = getMultiElements(key);
+        if (!refs.checkboxes) return;
+        refs.checkboxes
             .querySelectorAll('input[type="checkbox"]')
             .forEach((i) => (i.checked = !!checked));
-        updateAreaTriggerText();
+        updateMultiTriggerText(key);
     }
 
-    function setTimeMenuOpen(open) {
-        if (!elements?.timeMulti || !elements?.timeTrigger) return;
-        elements.timeMulti.classList.toggle('is-open', !!open);
-        elements.timeTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    function closeAllMultiMenus(exceptKey = null) {
+        Object.keys(MULTI_SELECT_CONFIG).forEach((key) => {
+            if (key !== exceptKey) setMultiMenuOpen(key, false);
+        });
     }
 
-    function updateTimeTriggerText() {
-        if (!elements?.timeTriggerText) return;
+    function setAreaMenuOpen(open) { setMultiMenuOpen('area', open); }
+    function updateAreaTriggerText() { updateMultiTriggerText('area'); }
+    function setAllAreaCheckboxes(checked) { setAllMultiCheckboxes('area', checked); }
 
-        const selected = getCheckedValues(elements.timeCheckboxes);
+    function setTimeMenuOpen(open) { setMultiMenuOpen('time', open); }
+    function updateTimeTriggerText() { updateMultiTriggerText('time'); }
+    function setAllTimeCheckboxes(checked) { setAllMultiCheckboxes('time', checked); }
 
-        if (!selected.length) {
-            elements.timeTriggerText.textContent = 'Todos';
-            return;
-        }
-
-        if (selected.length === 1) {
-            const v = selected[0];
-            elements.timeTriggerText.textContent = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
-            return;
-        }
-
-        elements.timeTriggerText.textContent = `${selected.length} selecionados`;
-    }
-
-    function setAllTimeCheckboxes(checked) {
-        if (!elements?.timeCheckboxes) return;
-        elements.timeCheckboxes
-            .querySelectorAll('input[type="checkbox"]')
-            .forEach((i) => (i.checked = !!checked));
-        updateTimeTriggerText();
-    }
+    function setFaturamentoMenuOpen(open) { setMultiMenuOpen('faturamento', open); }
+    function updateFaturamentoTriggerText() { updateMultiTriggerText('faturamento'); }
+    function setAllFaturamentoCheckboxes(checked) { setAllMultiCheckboxes('faturamento', checked); }
 
     function setCheckboxOptions(containerEl, values, { keepSelected = true, includeNotInformed = false } = {}) {
         if (!containerEl) return;
@@ -237,15 +248,18 @@
                 const label = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
                 const checked = current.has(v) ? 'checked' : '';
                 return `
-        <label class="multi-select__item">
-          <input type="checkbox" value="${utils.escapeHtml(v)}" ${checked} />
-          <span>${utils.escapeHtml(label)}</span>
-        </label>
-      `;
+    <label class="multi-select__item">
+      <input type="checkbox" value="${utils.escapeHtml(v)}" ${checked} />
+      <span>${utils.escapeHtml(label)}</span>
+    </label>
+  `;
             })
             .join('');
 
-        updateAreaTriggerText();
+        const multiKey = Object.keys(MULTI_SELECT_CONFIG)
+            .find((key) => elements?.[`${key}Checkboxes`] === containerEl);
+
+        if (multiKey) updateMultiTriggerText(multiKey);
     }
 
     function uniqueSorted(rows, key) {
@@ -255,6 +269,32 @@
             if (v) set.add(v);
         });
         return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }
+
+    function faturamentoSortValue(value) {
+        const raw = String(value ?? '').trim().toLowerCase();
+        if (!raw) return Number.POSITIVE_INFINITY;
+
+        const noSpaces = raw.replace(/\s+/g, '');
+        const firstNumber = Number((noSpaces.match(/\d+(?:[.,]\d+)?/) || [])[0]?.replace(',', '.'));
+
+        if (noSpaces.startsWith('<')) return Number.isFinite(firstNumber) ? firstNumber - 0.5 : -0.5;
+        if (noSpaces.startsWith('>')) return Number.isFinite(firstNumber) ? firstNumber + 0.5 : Number.MAX_SAFE_INTEGER;
+        if (noSpaces.includes('-')) return Number.isFinite(firstNumber) ? firstNumber : Number.MAX_SAFE_INTEGER - 1;
+        if (Number.isFinite(firstNumber)) return firstNumber;
+
+        return Number.POSITIVE_INFINITY;
+    }
+
+    function uniqueSortedFaturamento(rows, key) {
+        const values = uniqueSorted(rows, key);
+        return values.sort((a, b) => {
+            const aSort = faturamentoSortValue(a);
+            const bSort = faturamentoSortValue(b);
+
+            if (aSort !== bSort) return aSort - bSort;
+            return String(a).localeCompare(String(b), 'pt-BR');
+        });
     }
 
     function setOptions(selectEl, values, { keepSelected = true, includeNotInformed = false } = {}) {
@@ -483,7 +523,29 @@
         areaClear: dom.byId('areaClear'),
         areaCheckboxes: dom.byId('areaCheckboxes'),
 
-        sellerSelect: dom.byId('sellerSelect'),
+        sellerMulti: dom.byId('sellerMulti'),
+        sellerTrigger: dom.byId('sellerTrigger'),
+        sellerTriggerText: dom.byId('sellerTriggerText'),
+        sellerMenu: dom.byId('sellerMenu'),
+        sellerSelectAll: dom.byId('sellerSelectAll'),
+        sellerClear: dom.byId('sellerClear'),
+        sellerCheckboxes: dom.byId('sellerCheckboxes'),
+
+        tagMulti: dom.byId('tagMulti'),
+        tagTrigger: dom.byId('tagTrigger'),
+        tagTriggerText: dom.byId('tagTriggerText'),
+        tagMenu: dom.byId('tagMenu'),
+        tagSelectAll: dom.byId('tagSelectAll'),
+        tagClear: dom.byId('tagClear'),
+        tagCheckboxes: dom.byId('tagCheckboxes'),
+
+        stageMulti: dom.byId('stageMulti'),
+        stageTrigger: dom.byId('stageTrigger'),
+        stageTriggerText: dom.byId('stageTriggerText'),
+        stageMenu: dom.byId('stageMenu'),
+        stageSelectAll: dom.byId('stageSelectAll'),
+        stageClear: dom.byId('stageClear'),
+        stageCheckboxes: dom.byId('stageCheckboxes'),
 
         timeMulti: dom.byId('timeMulti'),
         timeTrigger: dom.byId('timeTrigger'),
@@ -493,10 +555,29 @@
         timeClear: dom.byId('timeClear'),
         timeCheckboxes: dom.byId('timeCheckboxes'),
 
-        sistemaSelect: dom.byId('sistemaSelect'),
-        desafioSelect: dom.byId('desafioSelect'),
-        tagSelect: dom.byId('tagSelect'),
-        stageSelect: dom.byId('stageSelect'),
+        faturamentoMulti: dom.byId('faturamentoMulti'),
+        faturamentoTrigger: dom.byId('faturamentoTrigger'),
+        faturamentoTriggerText: dom.byId('faturamentoTriggerText'),
+        faturamentoMenu: dom.byId('faturamentoMenu'),
+        faturamentoSelectAll: dom.byId('faturamentoSelectAll'),
+        faturamentoClear: dom.byId('faturamentoClear'),
+        faturamentoCheckboxes: dom.byId('faturamentoCheckboxes'),
+
+        sistemaMulti: dom.byId('sistemaMulti'),
+        sistemaTrigger: dom.byId('sistemaTrigger'),
+        sistemaTriggerText: dom.byId('sistemaTriggerText'),
+        sistemaMenu: dom.byId('sistemaMenu'),
+        sistemaSelectAll: dom.byId('sistemaSelectAll'),
+        sistemaClear: dom.byId('sistemaClear'),
+        sistemaCheckboxes: dom.byId('sistemaCheckboxes'),
+
+        desafioMulti: dom.byId('desafioMulti'),
+        desafioTrigger: dom.byId('desafioTrigger'),
+        desafioTriggerText: dom.byId('desafioTriggerText'),
+        desafioMenu: dom.byId('desafioMenu'),
+        desafioSelectAll: dom.byId('desafioSelectAll'),
+        desafioClear: dom.byId('desafioClear'),
+        desafioCheckboxes: dom.byId('desafioCheckboxes'),
 
 
         preset7: dom.byId('preset7'),
@@ -596,7 +677,7 @@
         hideError() {
             elements.errorToast?.classList.remove('active');
         },
-        renderEmptyState(message = 'Sem dados', colspan = 12) {
+        renderEmptyState(message = 'Sem dados', colspan = 13) {
             return `<tr><td colspan="${colspan}" style="padding:24px;color:#94a3b8;text-align:center;">${message}</td></tr>`;
         },
     };
@@ -643,6 +724,7 @@
         const area = getField(l, ['area', 'AREA', 'Área', 'Area']) ?? null;
 
         const moneyNorm = utils.normalizeMoney(getField(l, ['money', 'MONEY', 'tem_money', 'temMoney']));
+        const moneyRaw = getField(l, ['moneyraw', 'money_raw', 'MONEYRAW', 'MONEY_RAW', 'faturamento', 'FATURAMENTO', '-faturamento']) ?? null;
         const system = getField(l, ['system', 'SISTEMA', 'Sistema', 'SYSTEM']) ?? null;
         const challenge = getField(l, ['challenge', 'DESAFIO', 'Desafio', 'CHALLENGE']) ?? null;
 
@@ -658,6 +740,8 @@
             team,
             area,
             money: moneyNorm,
+            moneyraw: moneyRaw,
+            faturamento: moneyRaw,
             system,
             challenge,
         };
@@ -709,7 +793,7 @@
         if (!elements.leadsBody) return;
 
         if (!meta.slice.length) {
-            elements.leadsBody.innerHTML = ui.renderEmptyState('Sem dados para o filtro atual.', 12);
+            elements.leadsBody.innerHTML = ui.renderEmptyState('Sem dados para o filtro atual.', 13);
             updatePaginationUI({ page: 1, totalPages: 1 });
             return;
         }
@@ -720,22 +804,23 @@
                 const moneyClass = r.money === 'yes' ? 'badge--money-yes' : (r.money === 'no' ? 'badge--money-no' : 'badge--neutral');
 
                 return `
-          <tr>
-            <td>${utils.toBRDateTime(r.entry_date)}</td>
+  <tr>
+    <td>${utils.toBRDateTime(r.entry_date)}</td>
 
-            <td>${utils.toBRDate(r.purchase_date)}</td>
-            <td>${utils.safeText(r.tag)}</td>
-            <td>${utils.safeText(r.phone)}</td>
-            <td>${utils.safeText(r.manager)}</td>
-            <td>${r.chat_url ? `<a class="table-link" href="${r.chat_url}" target="_blank" rel="noopener noreferrer">Abrir</a>` : '–'}</td>
-            <td><span class="badge ${utils.stageClass(stageText)}">${stageText}</span></td>
-            <td>${utils.safeText(r.team)}</td>
-            <td>${utils.safeText(r.area)}</td>
-            <td><span class="badge ${moneyClass}">${utils.moneyLabel(r.money)}</span></td>
-            <td>${utils.safeText(r.system)}</td>
-            <td>${utils.safeText(r.challenge)}</td>
-          </tr>
-        `;
+    <td>${utils.toBRDate(r.purchase_date)}</td>
+    <td>${utils.safeText(r.tag)}</td>
+    <td>${utils.safeText(r.phone)}</td>
+    <td>${utils.safeText(r.manager)}</td>
+    <td>${r.chat_url ? `<a class="table-link" href="${r.chat_url}" target="_blank" rel="noopener noreferrer">Abrir</a>` : '–'}</td>
+    <td><span class="badge ${utils.stageClass(stageText)}">${stageText}</span></td>
+    <td>${utils.safeText(r.team)}</td>
+    <td>${utils.safeText(r.area)}</td>
+    <td><span class="badge ${moneyClass}">${utils.moneyLabel(r.money)}</span></td>
+    <td>${utils.safeText(r.moneyraw)}</td>
+    <td>${utils.safeText(r.system)}</td>
+    <td>${utils.safeText(r.challenge)}</td>
+  </tr>
+`;
             })
             .join('');
 
@@ -847,6 +932,13 @@
             options: PIE_OPTIONS_NO_LEGEND,
         });
 
+        const faturamentoPie = buildPieFromCounts(countBy(rows, 'moneyraw'), 8);
+        ensureChart('chartFaturamento', {
+            type: 'pie',
+            data: { labels: faturamentoPie.labels, datasets: [pieDataset(faturamentoPie.data, faturamentoPie.labels)] },
+            options: PIE_OPTIONS,
+        });
+
         const moneyCounts = countBy(rows, 'money', { normalizeFn: utils.normalizeMoney });
         const moneyLabels = ['Sim', 'Não', 'Não informado'];
         ensureChart('chartMoney', {
@@ -864,14 +956,14 @@
 
         const moneyMode = (elements.moneySelect?.value || '').trim();
         const areas = getCheckedValues(elements.areaCheckboxes);
-        const sellers = getSelectedValues(elements.sellerSelect);
+        const sellers = getCheckedValues(elements.sellerCheckboxes);
 
         const times = getCheckedValues(elements.timeCheckboxes);
-        const sistemas = getSelectedValues(elements.sistemaSelect);
-        const desafios = getSelectedValues(elements.desafioSelect);
-        const tags = getSelectedValues(elements.tagSelect);
-        const stages = getSelectedValues(elements.stageSelect);
-
+        const faturamentos = getCheckedValues(elements.faturamentoCheckboxes);
+        const sistemas = getCheckedValues(elements.sistemaCheckboxes);
+        const desafios = getCheckedValues(elements.desafioCheckboxes);
+        const tags = getCheckedValues(elements.tagCheckboxes);
+        const stages = getCheckedValues(elements.stageCheckboxes);
 
         let out = [...state.leadsData];
 
@@ -881,11 +973,11 @@
         if (sellers.length) out = out.filter((r) => matchesSelectValue(r.manager, sellers));
 
         if (times.length) out = out.filter((r) => matchesSelectValue(r.team, times));
+        if (faturamentos.length) out = out.filter((r) => matchesSelectValue(r.moneyraw, faturamentos));
         if (sistemas.length) out = out.filter((r) => matchesSelectValue(r.system, sistemas));
         if (desafios.length) out = out.filter((r) => matchesSelectValue(r.challenge, desafios));
         if (tags.length) out = out.filter((r) => matchesSelectValue(r.tag, tags));
         if (stages.length) out = out.filter((r) => matchesSelectValue(r.stage, stages));
-
 
         state.filtered = out;
         updateKpis(state.filtered);
@@ -895,19 +987,15 @@
 
     function refreshFilterOptions(rows) {
         setCheckboxOptions(elements.areaCheckboxes, uniqueSorted(rows, 'area'), { keepSelected: true, includeNotInformed: true });
-
-        setOptions(elements.sellerSelect, uniqueSorted(rows, 'manager'), { keepSelected: true, includeNotInformed: true });
-
+        setCheckboxOptions(elements.sellerCheckboxes, uniqueSorted(rows, 'manager'), { keepSelected: true, includeNotInformed: true });
         setCheckboxOptions(elements.timeCheckboxes, uniqueSorted(rows, 'team'), { keepSelected: true, includeNotInformed: true });
-        setOptions(elements.sistemaSelect, uniqueSorted(rows, 'system'), { keepSelected: true, includeNotInformed: true });
-        setOptions(elements.desafioSelect, uniqueSorted(rows, 'challenge'), { keepSelected: true, includeNotInformed: true });
-        setOptions(elements.tagSelect, uniqueSorted(rows, 'tag'), { keepSelected: true, includeNotInformed: true });
+        setCheckboxOptions(elements.faturamentoCheckboxes, uniqueSortedFaturamento(rows, 'moneyraw'), { keepSelected: true, includeNotInformed: true });
+        setCheckboxOptions(elements.sistemaCheckboxes, uniqueSorted(rows, 'system'), { keepSelected: true, includeNotInformed: true });
+        setCheckboxOptions(elements.desafioCheckboxes, uniqueSorted(rows, 'challenge'), { keepSelected: true, includeNotInformed: true });
+        setCheckboxOptions(elements.tagCheckboxes, uniqueSorted(rows, 'tag'), { keepSelected: true, includeNotInformed: true });
+        setCheckboxOptions(elements.stageCheckboxes, uniqueSorted(rows, 'stage'), { keepSelected: true, includeNotInformed: true });
 
-        setOptions(elements.stageSelect, uniqueSorted(rows, 'stage'), { keepSelected: true, includeNotInformed: true });
-
-
-        updateAreaTriggerText();
-        updateTimeTriggerText();
+        Object.keys(MULTI_SELECT_CONFIG).forEach(updateMultiTriggerText);
     }
 
     async function loadLeads() {
@@ -958,23 +1046,11 @@
         if (elements.clearAllFilters) {
             elements.clearAllFilters.addEventListener('click', () => {
                 if (elements.moneySelect) elements.moneySelect.value = '';
-                if (elements.sellerSelect) elements.sellerSelect.value = '';
 
-                [elements.moneySelect, elements.sellerSelect, elements.stageSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
-                    .filter(Boolean)
-                    .forEach((sel) => {
-                        if (!sel) return;
-                        if (sel.hasAttribute('multiple')) {
-                            Array.from(sel.options).forEach((o) => (o.selected = false));
-                        } else {
-                            sel.value = '';
-                        }
-                    });
-
-                setAllAreaCheckboxes(false);
-                setAllTimeCheckboxes(false);
-                setAreaMenuOpen(false);
-                setTimeMenuOpen(false);
+                Object.keys(MULTI_SELECT_CONFIG).forEach((key) => {
+                    setAllMultiCheckboxes(key, false);
+                    setMultiMenuOpen(key, false);
+                });
 
                 loadLeads();
             });
@@ -982,92 +1058,57 @@
 
         const onAnyFilterChange = () => applyAllFiltersAndRender({ resetPage: true });
 
-        [elements.moneySelect, elements.sellerSelect, elements.stageSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
-            .filter(Boolean)
-            .forEach((el) => el.addEventListener('change', onAnyFilterChange));
-
-
-        // change nos checkboxes de área (delegação)
-        if (elements.areaCheckboxes) {
-            elements.areaCheckboxes.addEventListener('change', () => {
-                updateAreaTriggerText();
-                onAnyFilterChange();
-            });
+        if (elements.moneySelect) {
+            elements.moneySelect.addEventListener('change', onAnyFilterChange);
         }
 
-        if (elements.timeCheckboxes) {
-            elements.timeCheckboxes.addEventListener('change', () => {
-                updateTimeTriggerText();
-                onAnyFilterChange();
-            });
-        }
+        Object.keys(MULTI_SELECT_CONFIG).forEach((key) => {
+            const refs = getMultiElements(key);
 
-        // ====== eventos do dropdown de Área ======
-        if (elements.areaTrigger) {
-            elements.areaTrigger.addEventListener('click', (e) => {
-                e.preventDefault();
-                const open = !elements.areaMulti?.classList.contains('is-open');
-                setTimeMenuOpen(false);
-                setAreaMenuOpen(open);
-            });
-        }
+            if (refs.checkboxes) {
+                refs.checkboxes.addEventListener('change', () => {
+                    updateMultiTriggerText(key);
+                    onAnyFilterChange();
+                });
+            }
 
-        if (elements.areaSelectAll) {
-            elements.areaSelectAll.addEventListener('click', (e) => {
-                e.preventDefault();
-                setAllAreaCheckboxes(true);
-                onAnyFilterChange();
-            });
-        }
+            if (refs.trigger) {
+                refs.trigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const open = !refs.wrap?.classList.contains('is-open');
+                    closeAllMultiMenus(key);
+                    setMultiMenuOpen(key, open);
+                });
+            }
 
-        if (elements.areaClear) {
-            elements.areaClear.addEventListener('click', (e) => {
-                e.preventDefault();
-                setAllAreaCheckboxes(false);
-                onAnyFilterChange();
-            });
-        }
+            if (refs.selectAll) {
+                refs.selectAll.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    setAllMultiCheckboxes(key, true);
+                    onAnyFilterChange();
+                });
+            }
 
-        if (elements.timeTrigger) {
-            elements.timeTrigger.addEventListener('click', (e) => {
-                e.preventDefault();
-                const open = !elements.timeMulti?.classList.contains('is-open');
-                setAreaMenuOpen(false);
-                setTimeMenuOpen(open);
-            });
-        }
-
-        if (elements.timeSelectAll) {
-            elements.timeSelectAll.addEventListener('click', (e) => {
-                e.preventDefault();
-                setAllTimeCheckboxes(true);
-                onAnyFilterChange();
-            });
-        }
-
-        if (elements.timeClear) {
-            elements.timeClear.addEventListener('click', (e) => {
-                e.preventDefault();
-                setAllTimeCheckboxes(false);
-                onAnyFilterChange();
-            });
-        }
-
-        // fechar ao clicar fora
-        document.addEventListener('pointerdown', (e) => {
-            const areaWrap = elements.areaMulti;
-            if (areaWrap && areaWrap.classList.contains('is-open') && !areaWrap.contains(e.target)) setAreaMenuOpen(false);
-
-            const timeWrap = elements.timeMulti;
-            if (timeWrap && timeWrap.classList.contains('is-open') && !timeWrap.contains(e.target)) setTimeMenuOpen(false);
+            if (refs.clear) {
+                refs.clear.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    setAllMultiCheckboxes(key, false);
+                    onAnyFilterChange();
+                });
+            }
         });
 
-        // fechar no ESC
+        document.addEventListener('pointerdown', (e) => {
+            Object.keys(MULTI_SELECT_CONFIG).forEach((key) => {
+                const refs = getMultiElements(key);
+                if (refs.wrap && refs.wrap.classList.contains('is-open') && !refs.wrap.contains(e.target)) {
+                    setMultiMenuOpen(key, false);
+                }
+            });
+        });
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                setAreaMenuOpen(false);
-                setTimeMenuOpen(false);
-            }
+            if (e.key === 'Escape') closeAllMultiMenus();
         });
 
         const applyPresetDays = (days) => {
@@ -1078,9 +1119,11 @@
             if (elements.entryEndInput) elements.entryEndInput.value = utils.getDateString(end);
             loadLeads();
         };
+
         if (elements.preset7) elements.preset7.addEventListener('click', () => applyPresetDays(7));
         if (elements.preset14) elements.preset14.addEventListener('click', () => applyPresetDays(14));
         if (elements.preset30) elements.preset30.addEventListener('click', () => applyPresetDays(30));
+
         const applyCurrentMonth = () => {
             const end = new Date();
             const start = new Date(end.getFullYear(), end.getMonth(), 1);
@@ -1092,7 +1135,6 @@
         };
 
         if (elements.presetMonth) elements.presetMonth.addEventListener('click', applyCurrentMonth);
-
 
         const applyRelativeDay = (delta) => {
             const startStr = elements.entryStartInput?.value || '';

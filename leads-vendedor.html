@@ -98,6 +98,8 @@
             </select>
           </div>
 
+          <!--
+          
           <div class="filter-group">
             <label for="moneySelect">Budget</label>
             <select id="moneySelect" class="date-input">
@@ -106,6 +108,27 @@
               <option value="no">Não</option>
               <option value="unknown">Não informado</option>
             </select>
+          </div>
+-->
+          <div class="filter-group">
+            <label for="faturamentoTrigger">Faturamento</label>
+
+            <div class="multi-select" id="faturamentoMulti">
+              <button id="faturamentoTrigger" type="button" class="date-input multi-select__trigger"
+                aria-haspopup="listbox" aria-expanded="false">
+                <span id="faturamentoTriggerText">Todos</span>
+                <span class="multi-select__chevron" aria-hidden="true"></span>
+              </button>
+
+              <div id="faturamentoMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                <div class="multi-select__actions">
+                  <button type="button" class="multi-select__action" id="faturamentoSelectAll">Marcar todos</button>
+                  <button type="button" class="multi-select__action" id="faturamentoClear">Limpar</button>
+                </div>
+
+                <div id="faturamentoCheckboxes" class="multi-select__list"></div>
+              </div>
+            </div>
           </div>
 
           <div class="filter-group">
@@ -210,10 +233,16 @@
             <div class="chart-title">Leads por desafio</div>
             <canvas id="chartDesafio" height="96"></canvas>
           </div>
-
+          <!--
+          
           <div class="chart-card">
             <div class="chart-title">Leads por Budget</div>
             <canvas id="chartMoney" height="96"></canvas>
+          </div>
+-->
+          <div class="chart-card">
+            <div class="chart-title">Leads por faturamento</div>
+            <canvas id="chartFaturamento" height="96"></canvas>
           </div>
 
           <div class="chart-card">
@@ -238,6 +267,7 @@
                 <th class="col-stage-funnel" data-sort="STAGE">Etapa atual <span class="sort-icon">↕</span></th>
                 <th class="col-substage" data-sort="SUBSTAGE">Substage <span class="sort-icon">↕</span></th>
                 <th class="col-money" data-sort="MONEY">Budget <span class="sort-icon">↕</span></th>
+                <th class="col-faturamento" data-sort="MONEYRAW">Faturamento <span class="sort-icon">↕</span></th>
                 <th class="col-area" data-sort="AREA">Área <span class="sort-icon">↕</span></th>
                 <th class="col-time" data-sort="TIME">Time <span class="sort-icon">↕</span></th>
                 <th class="col-sistema" data-sort="SISTEMA">Sistema <span class="sort-icon">↕</span></th>
