@@ -73,29 +73,66 @@
 
         <div class="filter-row filter-row--main">
           <div class="filter-group">
-            <label for="stageSelect">Stage</label>
-            <select id="stageSelect" class="date-input">
+            <label for="stageTrigger">Stage</label>
 
-              <option value="presentation" selected>Apresentação</option>
-              <option value="proposal_sent">Proposta</option>
-              <option value="payment_pending">Pagamento</option>
-              <option value="negotiation">Negociação</option>
-              <option value="signature">Assinatura</option>
-            </select>
+            <div class="multi-select" id="stageMulti">
+              <button id="stageTrigger" type="button" class="date-input multi-select__trigger" aria-haspopup="listbox"
+                aria-expanded="false">
+                <span id="stageTriggerText">Todos</span>
+                <span class="multi-select__chevron" aria-hidden="true"></span>
+              </button>
+
+              <div id="stageMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                <div class="multi-select__actions">
+                  <button type="button" class="multi-select__action" id="stageSelectAll">Marcar todos</button>
+                  <button type="button" class="multi-select__action" id="stageClear">Limpar</button>
+                </div>
+
+                <div id="stageCheckboxes" class="multi-select__list"></div>
+              </div>
+            </div>
           </div>
 
           <div class="filter-group">
-            <label for="substageSelect">Substage</label>
-            <select id="substageSelect" class="date-input">
-              <option value="">Todos</option>
-            </select>
+            <label for="substageTrigger">Substage</label>
+
+            <div class="multi-select" id="substageMulti">
+              <button id="substageTrigger" type="button" class="date-input multi-select__trigger"
+                aria-haspopup="listbox" aria-expanded="false">
+                <span id="substageTriggerText">Todos</span>
+                <span class="multi-select__chevron" aria-hidden="true"></span>
+              </button>
+
+              <div id="substageMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                <div class="multi-select__actions">
+                  <button type="button" class="multi-select__action" id="substageSelectAll">Marcar todos</button>
+                  <button type="button" class="multi-select__action" id="substageClear">Limpar</button>
+                </div>
+
+                <div id="substageCheckboxes" class="multi-select__list"></div>
+              </div>
+            </div>
           </div>
 
           <div class="filter-group">
-            <label for="vendorSelect">Vendedor</label>
-            <select id="vendorSelect" class="date-input">
-              <option value="">Todos</option>
-            </select>
+            <label for="vendorTrigger">Vendedor</label>
+
+            <div class="multi-select" id="vendorMulti">
+              <button id="vendorTrigger" type="button" class="date-input multi-select__trigger" aria-haspopup="listbox"
+                aria-expanded="false">
+                <span id="vendorTriggerText">Todos</span>
+                <span class="multi-select__chevron" aria-hidden="true"></span>
+              </button>
+
+              <div id="vendorMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                <div class="multi-select__actions">
+                  <button type="button" class="multi-select__action" id="vendorSelectAll">Marcar todos</button>
+                  <button type="button" class="multi-select__action" id="vendorClear">Limpar</button>
+                </div>
+
+                <div id="vendorCheckboxes" class="multi-select__list"></div>
+              </div>
+            </div>
           </div>
 
           <!--
@@ -130,26 +167,70 @@
               </div>
             </div>
           </div>
+        </div>
 
+        <div class="filter-row filter-row--main">
           <div class="filter-group">
-            <label for="areaSelect">Área</label>
-            <select id="areaSelect" class="date-input">
-              <option value="">Todos</option>
-            </select>
+            <label for="areaTrigger">Área</label>
+
+            <div class="multi-select" id="areaMulti">
+              <button id="areaTrigger" type="button" class="date-input multi-select__trigger" aria-haspopup="listbox"
+                aria-expanded="false">
+                <span id="areaTriggerText">Todos</span>
+                <span class="multi-select__chevron" aria-hidden="true"></span>
+              </button>
+
+              <div id="areaMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                <div class="multi-select__actions">
+                  <button type="button" class="multi-select__action" id="areaSelectAll">Marcar todos</button>
+                  <button type="button" class="multi-select__action" id="areaClear">Limpar</button>
+                </div>
+
+                <div id="areaCheckboxes" class="multi-select__list"></div>
+              </div>
+            </div>
           </div>
 
           <div class="filter-group">
-            <label for="timeSelect">Time</label>
-            <select id="timeSelect" class="date-input">
-              <option value="">Todos</option>
-            </select>
+            <label for="timeTrigger">Time</label>
+
+            <div class="multi-select" id="timeMulti">
+              <button id="timeTrigger" type="button" class="date-input multi-select__trigger" aria-haspopup="listbox"
+                aria-expanded="false">
+                <span id="timeTriggerText">Todos</span>
+                <span class="multi-select__chevron" aria-hidden="true"></span>
+              </button>
+
+              <div id="timeMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                <div class="multi-select__actions">
+                  <button type="button" class="multi-select__action" id="timeSelectAll">Marcar todos</button>
+                  <button type="button" class="multi-select__action" id="timeClear">Limpar</button>
+                </div>
+
+                <div id="timeCheckboxes" class="multi-select__list"></div>
+              </div>
+            </div>
           </div>
 
           <div class="filter-group">
-            <label for="desafioSelect">Desafio</label>
-            <select id="desafioSelect" class="date-input">
-              <option value="">Todos</option>
-            </select>
+            <label for="desafioTrigger">Desafio</label>
+
+            <div class="multi-select" id="desafioMulti">
+              <button id="desafioTrigger" type="button" class="date-input multi-select__trigger" aria-haspopup="listbox"
+                aria-expanded="false">
+                <span id="desafioTriggerText">Todos</span>
+                <span class="multi-select__chevron" aria-hidden="true"></span>
+              </button>
+
+              <div id="desafioMenu" class="multi-select__menu" role="listbox" aria-multiselectable="true">
+                <div class="multi-select__actions">
+                  <button type="button" class="multi-select__action" id="desafioSelectAll">Marcar todos</button>
+                  <button type="button" class="multi-select__action" id="desafioClear">Limpar</button>
+                </div>
+
+                <div id="desafioCheckboxes" class="multi-select__list"></div>
+              </div>
+            </div>
           </div>
 
           <div class="filter-group filter-group--search">

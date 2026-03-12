@@ -446,6 +446,7 @@ body {
     line-height: 1;
 }
 
+
 /* Small screens: keep existing 3-line layout behavior */
 @media (max-width: 768px) {
     .dashboard {

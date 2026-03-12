@@ -279,6 +279,14 @@
   }
 
 
+  const STAGE_FILTER_OPTIONS = [
+    { value: 'presentation', label: 'Apresentação' },
+    { value: 'proposal_sent', label: 'Proposta' },
+    { value: 'payment_pending', label: 'Pagamento' },
+    { value: 'negotiation', label: 'Negociação' },
+    { value: 'signature', label: 'Assinatura' },
+  ];
+
   function getSelectedValues(selectEl) {
     if (!selectEl) return [];
     return Array.from(selectEl.selectedOptions || []).map((o) => o.value).filter((v) => String(v).trim() !== '');
@@ -291,65 +299,117 @@
       .filter((v) => String(v).trim() !== '');
   }
 
-  function setFaturamentoMenuOpen(open) {
-    if (!elements?.faturamentoMulti || !elements?.faturamentoTrigger) return;
-    elements.faturamentoMulti.classList.toggle('is-open', !!open);
-    elements.faturamentoTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  function getMultiSelectRefs(key) {
+    return {
+      wrap: elements?.[`${key}Multi`],
+      trigger: elements?.[`${key}Trigger`],
+      triggerText: elements?.[`${key}TriggerText`],
+      selectAll: elements?.[`${key}SelectAll`],
+      clear: elements?.[`${key}Clear`],
+      checkboxes: elements?.[`${key}Checkboxes`],
+    };
   }
 
-  function updateFaturamentoTriggerText() {
-    if (!elements?.faturamentoTriggerText) return;
+  function closeAllMultiSelectMenus(exceptKey = null) {
+    ['stage', 'substage', 'vendor', 'faturamento', 'area', 'time', 'desafio']
+      .filter((key) => key !== exceptKey)
+      .forEach((key) => setMultiSelectMenuOpen(key, false));
+  }
 
-    const selected = getCheckedValues(elements.faturamentoCheckboxes);
+  function setMultiSelectMenuOpen(key, open) {
+    const refs = getMultiSelectRefs(key);
+    if (!refs.wrap || !refs.trigger) return;
 
-    if (!selected.length) {
-      elements.faturamentoTriggerText.textContent = 'Todos';
+    if (open) closeAllMultiSelectMenus(key);
+
+    refs.wrap.classList.toggle('is-open', !!open);
+    refs.trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function updateMultiSelectTriggerText(key) {
+    const refs = getMultiSelectRefs(key);
+    if (!refs.triggerText || !refs.checkboxes) return;
+
+    const checkedInputs = Array.from(refs.checkboxes.querySelectorAll('input[type="checkbox"]:checked'));
+
+    if (!checkedInputs.length) {
+      refs.triggerText.textContent = 'Todos';
       return;
     }
 
-    if (selected.length === 1) {
-      const v = selected[0];
-      elements.faturamentoTriggerText.textContent = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
+    if (checkedInputs.length === 1) {
+      refs.triggerText.textContent = checkedInputs[0].dataset.label || checkedInputs[0].value;
       return;
     }
 
-    elements.faturamentoTriggerText.textContent = `${selected.length} selecionados`;
+    refs.triggerText.textContent = `${checkedInputs.length} selecionados`;
   }
 
-  function setAllFaturamentoCheckboxes(checked) {
-    if (!elements?.faturamentoCheckboxes) return;
-    elements.faturamentoCheckboxes
+  function setAllMultiSelectCheckboxes(key, checked) {
+    const refs = getMultiSelectRefs(key);
+    if (!refs.checkboxes) return;
+
+    refs.checkboxes
       .querySelectorAll('input[type="checkbox"]')
       .forEach((i) => (i.checked = !!checked));
-    updateFaturamentoTriggerText();
+
+    updateMultiSelectTriggerText(key);
   }
 
-  function setCheckboxOptions(containerEl, values, { keepSelected = true, includeNotInformed = false } = {}) {
+  function setCheckboxOptions(
+    containerEl,
+    values,
+    {
+      keepSelected = true,
+      includeNotInformed = false,
+      valueToLabel = (value) => (value === NAO_INFORMADO_VALUE ? 'Não informado' : String(value ?? '')),
+    } = {}
+  ) {
     if (!containerEl) return;
 
     const current = keepSelected ? new Set(getCheckedValues(containerEl)) : new Set();
 
-    const safeValues = Array.isArray(values) ? values : [];
-    const finalValues = [...safeValues];
+    const normalizedValues = (Array.isArray(values) ? values : [])
+      .map((item) => {
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+          return {
+            value: String(item.value ?? '').trim(),
+            label: String(item.label ?? item.value ?? '').trim(),
+          };
+        }
 
-    if (includeNotInformed && !finalValues.includes(NAO_INFORMADO_VALUE)) {
-      finalValues.push(NAO_INFORMADO_VALUE);
+        const value = String(item ?? '').trim();
+        return { value, label: valueToLabel(value) };
+      })
+      .filter((item) => item.value);
+
+    const hasNotInformed = normalizedValues.some((item) => item.value === NAO_INFORMADO_VALUE);
+
+    if (includeNotInformed && !hasNotInformed) {
+      normalizedValues.push({
+        value: NAO_INFORMADO_VALUE,
+        label: valueToLabel(NAO_INFORMADO_VALUE),
+      });
     }
 
-    containerEl.innerHTML = finalValues
-      .map((v) => {
-        const label = v === NAO_INFORMADO_VALUE ? 'Não informado' : v;
-        const checked = current.has(v) ? 'checked' : '';
+    containerEl.innerHTML = normalizedValues
+      .map(({ value, label }) => {
+        const checked = current.has(value) ? 'checked' : '';
         return `
         <label class="multi-select__item">
-          <input type="checkbox" value="${utils.escapeHtml(v)}" ${checked} />
+          <input type="checkbox" value="${utils.escapeHtml(value)}" data-label="${utils.escapeHtml(label)}" ${checked} />
           <span>${utils.escapeHtml(label)}</span>
         </label>
       `;
       })
       .join('');
+  }
 
-    updateFaturamentoTriggerText();
+  function setMultiSelectOptions(key, values, options = {}) {
+    const refs = getMultiSelectRefs(key);
+    if (!refs.checkboxes) return;
+    setCheckboxOptions(refs.checkboxes, values, options);
+    updateMultiSelectTriggerText(key);
   }
 
   function faturamentoSortValue(value) {
@@ -493,11 +553,34 @@
   const elements = {
     entryStartInput: dom.byId('entryStartDate'),
     entryEndInput: dom.byId('entryEndDate'),
-    vendorSelect: dom.byId('vendorSelect'),
     applyFilters: dom.byId('applyFilters'),
     clearVendor: dom.byId('clearVendor'),
 
     moneySelect: dom.byId('moneySelect'),
+
+    stageMulti: dom.byId('stageMulti'),
+    stageTrigger: dom.byId('stageTrigger'),
+    stageTriggerText: dom.byId('stageTriggerText'),
+    stageMenu: dom.byId('stageMenu'),
+    stageSelectAll: dom.byId('stageSelectAll'),
+    stageClear: dom.byId('stageClear'),
+    stageCheckboxes: dom.byId('stageCheckboxes'),
+
+    substageMulti: dom.byId('substageMulti'),
+    substageTrigger: dom.byId('substageTrigger'),
+    substageTriggerText: dom.byId('substageTriggerText'),
+    substageMenu: dom.byId('substageMenu'),
+    substageSelectAll: dom.byId('substageSelectAll'),
+    substageClear: dom.byId('substageClear'),
+    substageCheckboxes: dom.byId('substageCheckboxes'),
+
+    vendorMulti: dom.byId('vendorMulti'),
+    vendorTrigger: dom.byId('vendorTrigger'),
+    vendorTriggerText: dom.byId('vendorTriggerText'),
+    vendorMenu: dom.byId('vendorMenu'),
+    vendorSelectAll: dom.byId('vendorSelectAll'),
+    vendorClear: dom.byId('vendorClear'),
+    vendorCheckboxes: dom.byId('vendorCheckboxes'),
 
     faturamentoMulti: dom.byId('faturamentoMulti'),
     faturamentoTrigger: dom.byId('faturamentoTrigger'),
@@ -507,12 +590,32 @@
     faturamentoClear: dom.byId('faturamentoClear'),
     faturamentoCheckboxes: dom.byId('faturamentoCheckboxes'),
 
-    areaSelect: dom.byId('areaSelect'),
-    timeSelect: dom.byId('timeSelect'),
+    areaMulti: dom.byId('areaMulti'),
+    areaTrigger: dom.byId('areaTrigger'),
+    areaTriggerText: dom.byId('areaTriggerText'),
+    areaMenu: dom.byId('areaMenu'),
+    areaSelectAll: dom.byId('areaSelectAll'),
+    areaClear: dom.byId('areaClear'),
+    areaCheckboxes: dom.byId('areaCheckboxes'),
+
+    timeMulti: dom.byId('timeMulti'),
+    timeTrigger: dom.byId('timeTrigger'),
+    timeTriggerText: dom.byId('timeTriggerText'),
+    timeMenu: dom.byId('timeMenu'),
+    timeSelectAll: dom.byId('timeSelectAll'),
+    timeClear: dom.byId('timeClear'),
+    timeCheckboxes: dom.byId('timeCheckboxes'),
+
     sistemaSelect: dom.byId('sistemaSelect'),
-    stageSelect: dom.byId('stageSelect'),
-    substageSelect: dom.byId('substageSelect'),
-    desafioSelect: dom.byId('desafioSelect'),
+
+    desafioMulti: dom.byId('desafioMulti'),
+    desafioTrigger: dom.byId('desafioTrigger'),
+    desafioTriggerText: dom.byId('desafioTriggerText'),
+    desafioMenu: dom.byId('desafioMenu'),
+    desafioSelectAll: dom.byId('desafioSelectAll'),
+    desafioClear: dom.byId('desafioClear'),
+    desafioCheckboxes: dom.byId('desafioCheckboxes'),
+
     globalSearch: dom.byId('globalSearch'),
     presetPrevDay: dom.byId('presetPrevDay'),
     presetNextDay: dom.byId('presetNextDay'),
@@ -787,19 +890,23 @@
     };
   }
 
+  function getStageValueForRow(row) {
+    const stage = getCurrentStage(row);
+
+    if (stage === 'payment_pending') return parseCurrencyValue(row?.PAYMENT_PENDING_VALUE);
+    if (stage === 'negotiation') return parseCurrencyValue(row?.NEGOTIATION_VALUE);
+
+    return null;
+  }
+
+  function getStageValueDisplay(row) {
+    const value = getStageValueForRow(row);
+    return value === null ? '—' : formatBRL(value);
+  }
+
   const render = {
-    vendorSelectOptions(vendors, keepSelected = true) {
-      if (!elements.vendorSelect) return;
-      const current = keepSelected ? (elements.vendorSelect.value || '') : '';
-
-      const opts = ['<option value="">Todos</option>']
-        .concat(
-          vendors.map((v) => `<option value="${utils.escapeHtml(v)}">${utils.escapeHtml(v)}</option>`)
-        )
-        .join('');
-
-      elements.vendorSelect.innerHTML = opts;
-      if (keepSelected && vendors.includes(current)) elements.vendorSelect.value = current;
+    vendorFilterOptions(vendors, keepSelected = true) {
+      setMultiSelectOptions('vendor', vendors, { keepSelected });
     },
 
     recordsTable(rows) {
@@ -829,16 +936,7 @@
           const area = utils.escapeHtml(r.AREA ?? '');
           const time = utils.escapeHtml(r.TIME ?? '');
           const sistema = utils.escapeHtml(r.SISTEMA ?? '');
-          const selectedStage = (elements.stageSelect?.value || '').trim();
-
-          let valorRaw = null;
-          if (selectedStage === 'payment_pending') valorRaw = r.PAYMENT_PENDING_VALUE;
-          else if (selectedStage === 'negotiation') valorRaw = r.NEGOTIATION_VALUE;
-
-          const valorDisplay = (selectedStage === 'payment_pending' || selectedStage === 'negotiation')
-            ? formatBRL(valorRaw)
-            : '—';
-
+          const valorDisplay = getStageValueDisplay(r);
           const desafio = utils.escapeHtml(r.DESAFIO ?? '');
           const origem = utils.escapeHtml(r.ORIGEM ?? '');
           const stageRaw = String(r.STAGE ?? '').trim();
@@ -904,30 +1002,28 @@
 
   function applyAllFiltersAndRender({ resetPage = false } = {}) {
     if (resetPage) state.pagination.page = 1;
-    const selectedVendor = (elements.vendorSelect?.value || '').trim();
-    const selectedStage = (elements.stageSelect?.value || 'presentation').trim() || 'presentation';
 
-    const entryStart = elements.entryStartInput?.value || '';
-    const entryEnd = elements.entryEndInput?.value || '';
+    const selectedStages = getCheckedValues(elements.stageCheckboxes);
+    const selectedVendors = getCheckedValues(elements.vendorCheckboxes);
 
     const moneyMode = (elements.moneySelect?.value || '').trim();
     const faturamentos = getCheckedValues(elements.faturamentoCheckboxes);
-    const areas = getSelectedValues(elements.areaSelect);
-    const times = getSelectedValues(elements.timeSelect);
+    const areas = getCheckedValues(elements.areaCheckboxes);
+    const times = getCheckedValues(elements.timeCheckboxes);
     const sistemas = getSelectedValues(elements.sistemaSelect);
-    const substages = getSelectedValues(elements.substageSelect);
-    const desafios = getSelectedValues(elements.desafioSelect);
+    const substages = getCheckedValues(elements.substageCheckboxes);
+    const desafios = getCheckedValues(elements.desafioCheckboxes);
 
     const q = String(elements.globalSearch?.value || '').trim().toLowerCase();
 
     let out = [...state.rows];
 
-    if (selectedStage) {
-      out = out.filter((r) => getCurrentStage(r) === selectedStage);
+    if (selectedStages.length) {
+      out = out.filter((r) => selectedStages.includes(getCurrentStage(r)));
     }
 
-    if (selectedVendor) {
-      out = out.filter((r) => String(r.VENDEDOR || '').trim() === selectedVendor);
+    if (selectedVendors.length) {
+      out = out.filter((r) => matchesSelectValue(r.VENDEDOR, selectedVendors));
     }
 
     if (moneyMode) {
@@ -980,7 +1076,6 @@
     const totalShown = state.filtered.length || 0;
     const pct = totalShown ? Math.round((yes / totalShown) * 100) : 0;
 
-    // KPIs de tamanho de lead (mesma lógica do gráfico "Leads por vendedor")
     let pequenosTotal = 0;
     let grandesTotal = 0;
     state.filtered.forEach((r) => {
@@ -988,9 +1083,10 @@
       else grandesTotal += 1;
     });
 
-    const rowsByStage = state.rows.filter(
-      (r) => getCurrentStage(r) === selectedStage
-    );
+    const rowsByStage = selectedStages.length
+      ? state.rows.filter((r) => selectedStages.includes(getCurrentStage(r)))
+      : state.rows;
+
     if (elements.kpiTotal) elements.kpiTotal.textContent = String(rowsByStage.length);
 
     if (elements.kpiShown) elements.kpiShown.textContent = String(totalShown);
@@ -998,21 +1094,15 @@
     if (elements.kpiGrandes) elements.kpiGrandes.textContent = String(grandesTotal);
     if (elements.kpiMoneyPct) elements.kpiMoneyPct.textContent = totalShown ? `${pct}%` : '—';
 
-    // KPI: MRR mensal por stage (média no stage selecionado) + Valor total (soma)
     let stageSum = 0;
     let stageCount = 0;
 
-    if (selectedStage === 'negotiation') {
-      state.filtered.forEach((r) => {
-        stageSum += utils.parseNumberPt(r.NEGOTIATION_VALUE) || 0;
-        stageCount += 1;
-      });
-    } else if (selectedStage === 'payment_pending') {
-      state.filtered.forEach((r) => {
-        stageSum += utils.parseNumberPt(r.PAYMENT_PENDING_VALUE) || 0;
-        stageCount += 1;
-      });
-    }
+    state.filtered.forEach((r) => {
+      const value = getStageValueForRow(r);
+      if (value === null || value === undefined) return;
+      stageSum += value;
+      stageCount += 1;
+    });
 
     if (elements.kpiStageMrr) {
       if (!stageCount) {
@@ -1048,28 +1138,21 @@
       });
     }
 
-    if (key === 'VALOR') {
-      const selectedStage = (elements.stageSelect?.value || '').trim();
-      const pick = (r) => {
-        if (selectedStage === 'payment_pending') return parseCurrencyValue(r.PAYMENT_PENDING_VALUE);
-        if (selectedStage === 'negotiation') return parseCurrencyValue(r.NEGOTIATION_VALUE);
-        return null;
-      };
-
-      if (key === 'MONEYRAW') {
-        return [...items].sort((a, b) => {
-          const av = faturamentoSortValue(a?.MONEYRAW);
-          const bv = faturamentoSortValue(b?.MONEYRAW);
-          return (av - bv) * dir;
-        });
-      }
-
+    if (key === 'MONEYRAW') {
       return [...items].sort((a, b) => {
-        const av = pick(a);
-        const bv = pick(b);
+        const av = faturamentoSortValue(a?.MONEYRAW);
+        const bv = faturamentoSortValue(b?.MONEYRAW);
+        return (av - bv) * dir;
+      });
+    }
 
-        const aNull = (av === null || av === undefined);
-        const bNull = (bv === null || bv === undefined);
+    if (key === 'VALOR') {
+      return [...items].sort((a, b) => {
+        const av = getStageValueForRow(a);
+        const bv = getStageValueForRow(b);
+
+        const aNull = av === null || av === undefined;
+        const bNull = bv === null || bv === undefined;
         if (aNull && bNull) return 0;
         if (aNull) return 1;
         if (bNull) return -1;
@@ -1641,23 +1724,23 @@
       state.vendorCounts = computeVendorCounts(rows);
 
       const vendors = getVendorsFromCounts(state.vendorCounts);
-      render.vendorSelectOptions(vendors, true);
 
-      setOptions(elements.areaSelect, uniqueSorted(rows, 'AREA'), { keepSelected: true, includeNotInformed: true });
-      setOptions(elements.timeSelect, uniqueSorted(rows, 'TIME'), { keepSelected: true, includeNotInformed: true });
-      setCheckboxOptions(elements.faturamentoCheckboxes, uniqueSortedFaturamento(rows, 'MONEYRAW'), {
+      setMultiSelectOptions('stage', STAGE_FILTER_OPTIONS, { keepSelected: true });
+      render.vendorFilterOptions(vendors, true);
+      setMultiSelectOptions('area', uniqueSorted(rows, 'AREA'), { keepSelected: true, includeNotInformed: true });
+      setMultiSelectOptions('time', uniqueSorted(rows, 'TIME'), { keepSelected: true, includeNotInformed: true });
+      setMultiSelectOptions('faturamento', uniqueSortedFaturamento(rows, 'MONEYRAW'), {
         keepSelected: true,
         includeNotInformed: true,
       });
       setOptions(elements.sistemaSelect, uniqueSorted(rows, 'SISTEMA'), { keepSelected: true, includeNotInformed: true });
-      setOptions(elements.substageSelect, uniqueSorted(rows, 'SUBSTAGE'), { keepSelected: true, includeNotInformed: true });
-      setOptions(elements.desafioSelect, uniqueSorted(rows, 'DESAFIO'), { keepSelected: true, includeNotInformed: true });
+      setMultiSelectOptions('substage', uniqueSorted(rows, 'SUBSTAGE'), { keepSelected: true, includeNotInformed: true });
+      setMultiSelectOptions('desafio', uniqueSorted(rows, 'DESAFIO'), { keepSelected: true, includeNotInformed: true });
 
       applyAllFiltersAndRender({ resetPage: true });
     } catch (e) {
       ui.showError(`Failed to load leads: ${e.message}`);
       if (elements.recordsBody) elements.recordsBody.innerHTML = ui.renderEmptyState('Erro ao carregar', 16);
-
     } finally {
       ui.hideLoading();
     }
@@ -1674,62 +1757,53 @@
 
     if (elements.applyFilters) elements.applyFilters.addEventListener('click', loadData);
 
-    if (elements.vendorSelect) {
-      elements.vendorSelect.addEventListener('change', () => applyAllFiltersAndRender({ resetPage: true }));
-    }
+    const onAnyFilterChange = () => applyAllFiltersAndRender({ resetPage: true });
+
+    const bindMultiSelect = (key) => {
+      const refs = getMultiSelectRefs(key);
+      if (!refs.wrap) return;
+
+      if (refs.trigger) {
+        refs.trigger.addEventListener('click', (e) => {
+          e.preventDefault();
+          const open = !refs.wrap.classList.contains('is-open');
+          setMultiSelectMenuOpen(key, open);
+        });
+      }
+
+      if (refs.checkboxes) {
+        refs.checkboxes.addEventListener('change', onAnyFilterChange);
+      }
+
+      if (refs.selectAll) {
+        refs.selectAll.addEventListener('click', (e) => {
+          e.preventDefault();
+          setAllMultiSelectCheckboxes(key, true);
+          onAnyFilterChange();
+        });
+      }
+
+      if (refs.clear) {
+        refs.clear.addEventListener('click', (e) => {
+          e.preventDefault();
+          setAllMultiSelectCheckboxes(key, false);
+          onAnyFilterChange();
+        });
+      }
+    };
+
+    ['stage', 'substage', 'vendor', 'faturamento', 'area', 'time', 'desafio'].forEach(bindMultiSelect);
 
     if (elements.clearVendor) {
       elements.clearVendor.addEventListener('click', () => {
-        if (elements.vendorSelect) elements.vendorSelect.value = '';
+        setAllMultiSelectCheckboxes('vendor', false);
         applyAllFiltersAndRender({ resetPage: true });
       });
     }
 
-    const onAnyFilterChange = () => applyAllFiltersAndRender({ resetPage: true });
-
-    [elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.stageSelect, elements.desafioSelect]
+    [elements.moneySelect, elements.sistemaSelect]
       .filter(Boolean)
       .forEach((el) => el.addEventListener('change', onAnyFilterChange));
-
-    if (elements.substageSelect) {
-      elements.substageSelect.addEventListener('change', onAnyFilterChange);
-    }
-
-    if (elements.faturamentoCheckboxes) {
-      elements.faturamentoCheckboxes.addEventListener('change', () => onAnyFilterChange());
-    }
-
-    if (elements.faturamentoTrigger) {
-      elements.faturamentoTrigger.addEventListener('click', (e) => {
-        e.preventDefault();
-        const open = !elements.faturamentoMulti?.classList.contains('is-open');
-        setFaturamentoMenuOpen(open);
-      });
-    }
-
-    if (elements.faturamentoSelectAll) {
-      elements.faturamentoSelectAll.addEventListener('click', (e) => {
-        e.preventDefault();
-        setAllFaturamentoCheckboxes(true);
-        onAnyFilterChange();
-      });
-    }
-
-    if (elements.faturamentoClear) {
-      elements.faturamentoClear.addEventListener('click', (e) => {
-        e.preventDefault();
-        setAllFaturamentoCheckboxes(false);
-        onAnyFilterChange();
-      });
-    }
-
-    let searchTimer = null;
-    if (elements.globalSearch) {
-      elements.globalSearch.addEventListener('input', () => {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => applyAllFiltersAndRender({ resetPage: true }), 200);
-      });
-    }
 
     const applyPresetDays = (days) => {
       const end = new Date();
@@ -1799,32 +1873,34 @@
 
     if (elements.clearAllFilters) {
       elements.clearAllFilters.addEventListener('click', () => {
-        if (elements.vendorSelect) elements.vendorSelect.value = '';
         if (elements.moneySelect) elements.moneySelect.value = '';
-        if (elements.stageSelect) elements.stageSelect.value = 'presentation';
-        if (elements.substageSelect) elements.substageSelect.value = '';
         if (elements.globalSearch) elements.globalSearch.value = '';
 
-        [elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect]
+        ['stage', 'substage', 'vendor', 'faturamento', 'area', 'time', 'desafio'].forEach((key) => {
+          setAllMultiSelectCheckboxes(key, false);
+          setMultiSelectMenuOpen(key, false);
+        });
+
+        [elements.sistemaSelect]
           .filter(Boolean)
           .forEach((sel) => Array.from(sel.options).forEach((o) => (o.selected = false)));
 
         applyAllFiltersAndRender({ resetPage: true });
-        setAllFaturamentoCheckboxes(false);
-        setFaturamentoMenuOpen(false);
       });
     }
 
     document.addEventListener('pointerdown', (e) => {
-      const faturamentoWrap = elements.faturamentoMulti;
-      if (faturamentoWrap && faturamentoWrap.classList.contains('is-open') && !faturamentoWrap.contains(e.target)) {
-        setFaturamentoMenuOpen(false);
-      }
+      ['stage', 'substage', 'vendor', 'faturamento', 'area', 'time', 'desafio'].forEach((key) => {
+        const refs = getMultiSelectRefs(key);
+        if (refs.wrap && refs.wrap.classList.contains('is-open') && !refs.wrap.contains(e.target)) {
+          setMultiSelectMenuOpen(key, false);
+        }
+      });
     });
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        setFaturamentoMenuOpen(false);
+        closeAllMultiSelectMenus();
       }
     });
 

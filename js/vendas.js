@@ -148,13 +148,61 @@
         entryStartInput: $id("entryStartDate"),
         entryEndInput: $id("entryEndDate"),
 
-        managerSelect: $id("managerSelect"),
-        moneySelect: $id("moneySelect"),
-        areaSelect: $id("areaSelect"),
-        timeSelect: $id("timeSelect"),
-        sistemaSelect: $id("sistemaSelect"),
-        desafioSelect: $id("desafioSelect"),
-        tagSelect: $id("tagSelect"),
+        managerMulti: $id("managerMulti"),
+        managerTrigger: $id("managerTrigger"),
+        managerTriggerText: $id("managerTriggerText"),
+        managerMenu: $id("managerMenu"),
+        managerSelectAll: $id("managerSelectAll"),
+        managerClear: $id("managerClear"),
+        managerCheckboxes: $id("managerCheckboxes"),
+
+        moneyMulti: $id("moneyMulti"),
+        moneyTrigger: $id("moneyTrigger"),
+        moneyTriggerText: $id("moneyTriggerText"),
+        moneyMenu: $id("moneyMenu"),
+        moneySelectAll: $id("moneySelectAll"),
+        moneyClear: $id("moneyClear"),
+        moneyCheckboxes: $id("moneyCheckboxes"),
+
+        areaMulti: $id("areaMulti"),
+        areaTrigger: $id("areaTrigger"),
+        areaTriggerText: $id("areaTriggerText"),
+        areaMenu: $id("areaMenu"),
+        areaSelectAll: $id("areaSelectAll"),
+        areaClear: $id("areaClear"),
+        areaCheckboxes: $id("areaCheckboxes"),
+
+        timeMulti: $id("timeMulti"),
+        timeTrigger: $id("timeTrigger"),
+        timeTriggerText: $id("timeTriggerText"),
+        timeMenu: $id("timeMenu"),
+        timeSelectAll: $id("timeSelectAll"),
+        timeClear: $id("timeClear"),
+        timeCheckboxes: $id("timeCheckboxes"),
+
+        sistemaMulti: $id("sistemaMulti"),
+        sistemaTrigger: $id("sistemaTrigger"),
+        sistemaTriggerText: $id("sistemaTriggerText"),
+        sistemaMenu: $id("sistemaMenu"),
+        sistemaSelectAll: $id("sistemaSelectAll"),
+        sistemaClear: $id("sistemaClear"),
+        sistemaCheckboxes: $id("sistemaCheckboxes"),
+
+        desafioMulti: $id("desafioMulti"),
+        desafioTrigger: $id("desafioTrigger"),
+        desafioTriggerText: $id("desafioTriggerText"),
+        desafioMenu: $id("desafioMenu"),
+        desafioSelectAll: $id("desafioSelectAll"),
+        desafioClear: $id("desafioClear"),
+        desafioCheckboxes: $id("desafioCheckboxes"),
+
+        tagMulti: $id("tagMulti"),
+        tagTrigger: $id("tagTrigger"),
+        tagTriggerText: $id("tagTriggerText"),
+        tagMenu: $id("tagMenu"),
+        tagSelectAll: $id("tagSelectAll"),
+        tagClear: $id("tagClear"),
+        tagCheckboxes: $id("tagCheckboxes"),
         quickSearch: $id("globalSearch"),
 
         presetPrevDay: $id("presetPrevDay"),
@@ -214,6 +262,99 @@
         return Array.from(selectEl.selectedOptions || [])
             .map((o) => o.value)
             .filter((v) => String(v).trim() !== "");
+    }
+
+
+    function getCheckedValues(containerEl) {
+        if (!containerEl) return [];
+        return Array.from(containerEl.querySelectorAll('input[type="checkbox"]:checked'))
+            .map((i) => i.value)
+            .filter((v) => String(v).trim() !== "");
+    }
+
+    function getMultiSelectRefs(key) {
+        return {
+            wrap: elements?.[`${key}Multi`],
+            trigger: elements?.[`${key}Trigger`],
+            triggerText: elements?.[`${key}TriggerText`],
+            menu: elements?.[`${key}Menu`],
+            selectAll: elements?.[`${key}SelectAll`],
+            clear: elements?.[`${key}Clear`],
+            checkboxes: elements?.[`${key}Checkboxes`],
+        };
+    }
+
+    function setMultiSelectMenuOpen(key, open) {
+        const refs = getMultiSelectRefs(key);
+        if (!refs.wrap || !refs.trigger) return;
+        if (open) closeAllMultiSelectMenus(key);
+        refs.wrap.classList.toggle('is-open', !!open);
+        refs.trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function closeAllMultiSelectMenus(exceptKey = null) {
+        ['manager', 'money', 'area', 'time', 'sistema', 'desafio', 'tag']
+            .filter((key) => key !== exceptKey)
+            .forEach((key) => setMultiSelectMenuOpen(key, false));
+    }
+
+    function updateMultiSelectTriggerText(key) {
+        const refs = getMultiSelectRefs(key);
+        if (!refs.triggerText || !refs.checkboxes) return;
+
+        const checkedInputs = Array.from(refs.checkboxes.querySelectorAll('input[type="checkbox"]:checked'));
+        if (!checkedInputs.length) {
+            refs.triggerText.textContent = 'Todos';
+            return;
+        }
+        if (checkedInputs.length === 1) {
+            refs.triggerText.textContent = checkedInputs[0].dataset.label || checkedInputs[0].value;
+            return;
+        }
+        refs.triggerText.textContent = `${checkedInputs.length} selecionados`;
+    }
+
+    function setAllMultiSelectCheckboxes(key, checked) {
+        const refs = getMultiSelectRefs(key);
+        if (!refs.checkboxes) return;
+        refs.checkboxes.querySelectorAll('input[type="checkbox"]').forEach((i) => i.checked = !!checked);
+        updateMultiSelectTriggerText(key);
+    }
+
+    function setCheckboxOptions(containerEl, values, { keepSelected = true, includeNotInformed = false } = {}) {
+        if (!containerEl) return;
+        const current = keepSelected ? new Set(getCheckedValues(containerEl)) : new Set();
+        const normalizedValues = (Array.isArray(values) ? values : [])
+            .map((item) => {
+                if (item && typeof item === 'object' && !Array.isArray(item)) {
+                    return { value: String(item.value ?? '').trim(), label: String(item.label ?? item.value ?? '').trim() };
+                }
+                const value = String(item ?? '').trim();
+                return { value, label: value };
+            })
+            .filter((item) => item.value);
+
+        const hasNotInformed = normalizedValues.some((item) => item.value === NAO_INFORMADO_VALUE);
+        if (includeNotInformed && !hasNotInformed) {
+            normalizedValues.push({ value: NAO_INFORMADO_VALUE, label: 'Não informado' });
+        }
+
+        containerEl.innerHTML = normalizedValues.map(({ value, label }) => {
+            const checked = current.has(value) ? 'checked' : '';
+            return `
+                <label class="multi-select__item">
+                    <input type="checkbox" value="${utils.escapeHtml(value)}" data-label="${utils.escapeHtml(label)}" ${checked} />
+                    <span>${utils.escapeHtml(label)}</span>
+                </label>
+            `;
+        }).join('');
+    }
+
+    function setMultiSelectOptions(key, values, options = {}) {
+        const refs = getMultiSelectRefs(key);
+        if (!refs.checkboxes) return;
+        setCheckboxOptions(refs.checkboxes, values, options);
+        updateMultiSelectTriggerText(key);
     }
 
     function uniqueSorted(rows, key) {
@@ -541,27 +682,32 @@
     }
 
     function refreshFilterOptions(rows) {
-        setOptions(elements.managerSelect, uniqueSorted(rows, "manager"), { keepSelected: true, includeNotInformed: true });
-        setOptions(elements.areaSelect, uniqueSorted(rows, "area"), { keepSelected: true, includeNotInformed: true });
-        setOptions(elements.timeSelect, uniqueSorted(rows, "team"), { keepSelected: true, includeNotInformed: true });
-        setOptions(elements.sistemaSelect, uniqueSorted(rows, "system"), { keepSelected: true, includeNotInformed: true });
-        setOptions(elements.desafioSelect, uniqueSorted(rows, "challenge"), { keepSelected: true, includeNotInformed: true });
-        setOptions(elements.tagSelect, uniqueSorted(rows, "lead_tag_display"), { keepSelected: true, includeNotInformed: true });
+        setMultiSelectOptions('manager', uniqueSorted(rows, "manager"), { keepSelected: true, includeNotInformed: true });
+        setMultiSelectOptions('money', [
+            { value: 'yes', label: 'Sim' },
+            { value: 'no', label: 'Não' },
+            { value: 'unknown', label: 'Não informado' },
+        ], { keepSelected: true, includeNotInformed: false });
+        setMultiSelectOptions('area', uniqueSorted(rows, "area"), { keepSelected: true, includeNotInformed: true });
+        setMultiSelectOptions('time', uniqueSorted(rows, "team"), { keepSelected: true, includeNotInformed: true });
+        setMultiSelectOptions('sistema', uniqueSorted(rows, "system"), { keepSelected: true, includeNotInformed: true });
+        setMultiSelectOptions('desafio', uniqueSorted(rows, "challenge"), { keepSelected: true, includeNotInformed: true });
+        setMultiSelectOptions('tag', uniqueSorted(rows, "lead_tag_display"), { keepSelected: true, includeNotInformed: true });
     }
 
     function applyAllFiltersAndRender() {
-        const moneyMode = String(elements.moneySelect?.value || "").trim();
-        const managers = getSelectedValues(elements.managerSelect);
-        const areas = getSelectedValues(elements.areaSelect);
-        const times = getSelectedValues(elements.timeSelect);
-        const sistemas = getSelectedValues(elements.sistemaSelect);
-        const desafios = getSelectedValues(elements.desafioSelect);
-        const tags = getSelectedValues(elements.tagSelect);
+        const moneyModes = getCheckedValues(elements.moneyCheckboxes);
+        const managers = getCheckedValues(elements.managerCheckboxes);
+        const areas = getCheckedValues(elements.areaCheckboxes);
+        const times = getCheckedValues(elements.timeCheckboxes);
+        const sistemas = getCheckedValues(elements.sistemaCheckboxes);
+        const desafios = getCheckedValues(elements.desafioCheckboxes);
+        const tags = getCheckedValues(elements.tagCheckboxes);
         const q = String(elements.quickSearch?.value ?? "").trim().toLowerCase();
 
         let out = [...state.salesData];
 
-        if (moneyMode) out = out.filter((r) => utils.normalizeMoney(r.money) === moneyMode);
+        if (moneyModes.length) out = out.filter((r) => moneyModes.includes(utils.normalizeMoney(r.money)));
         if (managers.length) out = out.filter((r) => matchesSelectValue(r.manager, managers));
         if (areas.length) out = out.filter((r) => matchesSelectValue(r.area, areas));
         if (times.length) out = out.filter((r) => matchesSelectValue(r.team, times));
@@ -601,7 +747,8 @@
         // Regras:
         // - Se vendedor = "Todos", usa totais.ticket_medio_mensal e conversão geral (soma vendas / soma leads entregues)
         // - Se vendedor selecionado, usa managers[].ticket_medio_mensal e vendas_por_vendedor[].taxa_conversao_pct
-        const selectedManager = String(elements.managerSelect?.value || "").trim();
+        const selectedManagers = getCheckedValues(elements.managerCheckboxes);
+        const selectedManager = selectedManagers.length === 1 ? selectedManagers[0] : '';
 
         // Ticket médio mensal
         const ticketTotals = state.meta?.ticketTotals;
@@ -703,7 +850,7 @@
         elements.applyFilters?.addEventListener("click", loadSales);
 
         elements.clearVendor?.addEventListener("click", () => {
-            if (elements.managerSelect) elements.managerSelect.value = "";
+            setAllMultiSelectCheckboxes('manager', false);
             applyAllFiltersAndRender();
         });
 
@@ -712,22 +859,19 @@
             if (elements.entryStartInput) elements.entryStartInput.value = today;
             if (elements.entryEndInput) elements.entryEndInput.value = today;
 
-            if (elements.moneySelect) elements.moneySelect.value = "";
             if (elements.quickSearch) elements.quickSearch.value = "";
 
-            [elements.managerSelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
-                .filter(Boolean)
-                .forEach((sel) => {
-                    sel.value = "";
-                });
+            ['manager', 'money', 'area', 'time', 'sistema', 'desafio', 'tag'].forEach((key) => {
+                setAllMultiSelectCheckboxes(key, false);
+            });
 
             loadSales();
         });
 
         const onAnyFilterChange = () => applyAllFiltersAndRender();
-        [elements.managerSelect, elements.moneySelect, elements.areaSelect, elements.timeSelect, elements.sistemaSelect, elements.desafioSelect, elements.tagSelect]
+        [elements.managerCheckboxes, elements.moneyCheckboxes, elements.areaCheckboxes, elements.timeCheckboxes, elements.sistemaCheckboxes, elements.desafioCheckboxes, elements.tagCheckboxes]
             .filter(Boolean)
-            .forEach((el) => el.addEventListener("change", onAnyFilterChange));
+            .forEach((el) => el.addEventListener('change', onAnyFilterChange));
 
         let searchTimer = null;
         elements.quickSearch?.addEventListener("input", () => {
@@ -778,6 +922,31 @@
         elements.presetNextDay?.addEventListener("click", () => applyRelativeDay(1));
 
         elements.closeToast?.addEventListener("click", () => ui.hideError());
+
+        ['manager', 'money', 'area', 'time', 'sistema', 'desafio', 'tag'].forEach((key) => {
+            const refs = getMultiSelectRefs(key);
+            refs.trigger?.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const willOpen = !refs.wrap?.classList.contains('is-open');
+                setMultiSelectMenuOpen(key, willOpen);
+            });
+            refs.menu?.addEventListener?.('click', (event) => event.stopPropagation());
+            refs.checkboxes?.addEventListener('click', (event) => event.stopPropagation());
+            refs.selectAll?.addEventListener('click', (event) => {
+                event.stopPropagation();
+                setAllMultiSelectCheckboxes(key, true);
+                applyAllFiltersAndRender();
+            });
+            refs.clear?.addEventListener('click', (event) => {
+                event.stopPropagation();
+                setAllMultiSelectCheckboxes(key, false);
+                applyAllFiltersAndRender();
+            });
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.multi-select')) closeAllMultiSelectMenus();
+        });
 
         loadSales();
     }
